@@ -36,6 +36,7 @@ namespace diff {
                     auto message = graph->nodes[messages[p1->id]];
                     auto op = std::make_shared<Add>(gradient, message);
                     auto new_message = graph->create_derived_node(op);
+                    graph->nodes[new_message]->grad_level = gradient->grad_level;
                     messages[p1->id] = new_message;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p1->id);
                 } else {
@@ -47,6 +48,7 @@ namespace diff {
                     auto message = graph->nodes[messages[p2->id]];
                     auto op = std::make_shared<Add>(gradient, message);
                     auto new_message = graph->create_derived_node(op);
+                    graph->nodes[new_message]->grad_level = gradient->grad_level;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p2->id);
                     messages[p2->id] = new_message;
                 } else {
@@ -76,16 +78,19 @@ namespace diff {
             }
             auto p1 = this->p1.lock();
             if(p1->type != CONST) {
-                auto op = std::make_shared<Neg>(graph->nodes[messages[current]]);
-                auto gradient = graph->nodes[graph->create_derived_node(op)];
-                gradient->name = "Grad of " + std::to_string(p1->id);
+                auto gradient = graph->nodes[messages[current]];
+                auto op = std::make_shared<Neg>(gradient);
+                auto new_grad = graph->nodes[graph->create_derived_node(op)];
+                new_grad->name = "Grad of " + std::to_string(p1->id);
+                new_grad->grad_level = gradient->grad_level;
                 if (messages.find(p1->id) != messages.end()) {
                     auto message = graph->nodes[messages[p1->id]];
-                    auto op = std::make_shared<Add>(gradient, message);
+                    auto op = std::make_shared<Add>(new_grad, message);
                     auto new_message = graph->create_derived_node(op);
+                    graph->nodes[new_message]->grad_level = new_grad->grad_level;
                     messages[p1->id] = new_message;
                 } else {
-                    messages[p1->id] = gradient->id;
+                    messages[p1->id] = new_grad->id;
                 }
             }
         };
@@ -117,12 +122,15 @@ namespace diff {
                 auto op = std::make_shared<Mul>(gradient, p2);
                 auto p1_message = graph->nodes[graph->create_derived_node(op)];
                 p1_message->name = "Grad Msg [" + std::to_string(current) + "->" + std::to_string(p1->id) + "]";
+                p1_message->grad_level = gradient->grad_level;
                 if (messages.find(p1->id) != messages.end()) {
                     auto message = graph->nodes[messages[p1->id]];
                     auto add_op = std::make_shared<Add>(p1_message, message);
                     auto new_message = graph->create_derived_node(add_op);
+                    graph->nodes[new_message]->grad_level = gradient->grad_level;
                     messages[p1->id] = new_message;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p1->id);
+                    graph->nodes[new_message]->grad_level = gradient->grad_level;
                 } else {
                     messages[p1->id] = p1_message->id;
                 }
@@ -131,12 +139,14 @@ namespace diff {
                 auto op = std::make_shared<Mul>(gradient, p1);
                 auto p2_message = graph->nodes[graph->create_derived_node(op)];
                 p2_message->name = "Grad Msg [" + std::to_string(current) + "->" + std::to_string(p2->id) + "]";
+                p2_message->grad_level = gradient->grad_level;
                 if (messages.find(p2->id) != messages.end()) {
                     auto message = graph->nodes[messages[p2->id]];
                     auto add_op = std::make_shared<Add>(p2_message, message);
                     auto new_message = graph->create_derived_node(add_op);
                     messages[p2->id] = new_message;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p1->id);
+                    graph->nodes[new_message]->grad_level = gradient->grad_level;
                 } else {
                     messages[p2->id] = p2_message->id;
                 }

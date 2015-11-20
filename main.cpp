@@ -40,6 +40,7 @@ void testBackend()
 
 int main(int argc, char *argv[])
 {
+
     af::dim4 dims(10, 10, 1, 1);
     diff::Graph graph = diff::Graph();
     auto c1 = graph.create_constant_node(af::constant(0.5, dims, f32));
@@ -56,8 +57,19 @@ int main(int argc, char *argv[])
     for(int i=0;i<grads.size();i++){
         std::cout << grads[i] << std::endl;
     }
-    graph.print_to_file("test.html", s_f);
-//    std::generate(input.begin(), input.end(), unifRand);
+    grads.push_back(s_f);
+    graph.print_to_file("test.html", grads);
+//    af::setBackend(AF_BACKEND_CPU);
+//    int c = 2;
+//    array randmat = af::randn(10000, 1000);
+//    array randmat2 = af::randn(1000, 1000);
+//    clock_t begin = clock();
+//    auto result = af::matmul(randmat, randmat2);
+//    af::eval(result);
+//    clock_t end = clock();
+//    double t =  double(end - begin) / CLOCKS_PER_SEC;
+//    printf("Elapsed Time: %f sec\n", t);
+
 //
 //    try {
 //        printf("Trying CPU Backend\n");

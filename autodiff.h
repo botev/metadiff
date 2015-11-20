@@ -46,9 +46,10 @@ namespace diff {
         af::array value;
         std::shared_ptr<Operator> op;
         std::vector<std::weak_ptr<Node>> children;
+        int grad_level;
         Node() {}
 
-        void dagre_print(std::string* nodes, std::string* edges, NodeId target){
+        void dagre_print(std::string* nodes, std::string* edges, std::vector<NodeId> targets){
             std::string state_name;
             std::string state_color;
             if(this->type == INPUT) {
@@ -58,7 +59,7 @@ namespace diff {
             } else {
                 state_name = this->op->name + "[" + std::to_string(this->id) + "]";
             }
-            if (this->id == target){
+            if(std::find(targets.begin(), targets.end(), this->id) != targets.end()) {
                 state_color = "#f00";
             } else if(this->type == INPUT) {
                 state_color = "#0f0";
@@ -85,14 +86,16 @@ namespace diff {
                 }
             }
             anc_id_str += "]";
-            nodes->append("\t\"" + state_name + "\": {\n"
+            nodes->append("\t'" + state_name + "': {\n"
                     "\t\tdescription: \"Name: " + this->name + " <br> "
-                                  "Parents: " + anc_id_str + "\",\n"
+                                  "Parents: " + anc_id_str + " <br> "
+                                  "Gradient Level:" + std::to_string(this->grad_level) +  "\",\n"
                                   "\t\tstyle: \"fill: " + state_color + "\"\n"
                                   "\t},\n");
             for(int i=0;i<anc_names.size();i++){
-                edges->append("g.setEdge(\"" + anc_names[i] +  "\", \"" + state_name + "\", {label: \"" + std::to_string(i) + "\"});\n");
+                edges->append("g.setEdge('" + anc_names[i] +  "', '" + state_name + "', {label: \"" + std::to_string(i) + "\"});\n");
             }
+            edges->append("g.setParent('" + state_name + "', 'grad_" + std::to_string(this->grad_level) + "');\n");
         }
 
     };
@@ -125,6 +128,7 @@ namespace diff {
             result->id = nodes.size();
             result->name = "Input Node";
             result->type = INPUT;
+            result->grad_level = 0;
             this->nodes.push_back(result);
             return result->id;
         }
@@ -136,6 +140,7 @@ namespace diff {
             result->name = "Constant";
             result->type = CONST;
             result->value = value;
+            result->grad_level = 0;
             this->nodes.push_back(result);
             return result->id;
         }
@@ -146,6 +151,7 @@ namespace diff {
             result->id = nodes.size();
             result->name = "Derived";
             result->type = INPUT_DERIVED;
+            result->grad_level = 0;
             this->nodes.push_back(result);
             return result->id;
         }
@@ -153,7 +159,9 @@ namespace diff {
         std::vector<NodeId> gradient(NodeId objective, std::vector<NodeId> params){
             std::unordered_map<NodeId, NodeId> grad_messages;
             auto target = this->nodes[objective];
-            grad_messages[target->id] = this->create_constant_node(af::constant(1.0, af::dim4(10, 10, 1, 1), f32));
+            auto unity_grad = this->create_constant_node(af::constant(1.0, af::dim4(10, 10, 1, 1), f32));
+            this->nodes[unity_grad]->grad_level = target->grad_level + 1;
+            grad_messages[target->id] = unity_grad;
             this->nodes[grad_messages[target->id]]->name = "Grad of " + std::to_string(objective);
             long n = this->nodes.size();
             int j=0;
@@ -172,13 +180,19 @@ namespace diff {
         NodeId neg(NodeId arg1);
         NodeId mul(NodeId arg1_id, NodeId arg2_id);
 
-        void print_to_file(std::string file_name, NodeId target){
+        void print_to_file(std::string file_name, std::vector<NodeId> targets){
+            int max_grad_level = 0;
+            for(int i=0; i<targets.size(); i++){
+                if(this->nodes[targets[i]]->grad_level > max_grad_level){
+                    max_grad_level = this->nodes[targets[i]]->grad_level;
+                }
+            }
             std::ofstream f;
             f.open (file_name);
             std::string edges;
             std::string nodes;
             for(int i=0; i<this->nodes.size(); i++){
-                this->nodes[i]->dagre_print(&nodes, &edges, target);
+                this->nodes[i]->dagre_print(&nodes, &edges, targets);
             }
             f << ""
                     "<!DOCTYPE html>\n"
@@ -237,12 +251,20 @@ namespace diff {
                     "\n"
                     "<script id=\"js\">\n"
                     "// Create a new directed graph\n"
-                    "var g = new dagreD3.graphlib.Graph().setGraph({});\n";
-
+                    "var g = new dagreD3.graphlib.Graph({compound:true})\n"
+                    "\t\t.setGraph({})\n"
+                    "\t\t.setDefaultEdgeLabel(function() { return {}; });\n";
             // Print the nodes
-            f << "var states = {\n";
+            f << "// Nodes states\n"
+                    "var states = {\n";
             f << nodes;
             f << "}\n";
+            "// Set the gradient level boxes\n";
+            // Print grad boxes
+            for(int i=0;i<=max_grad_level; i++){
+                auto name = "Calculation Level[" + std::to_string(i) + "]";
+                f << "g.setNode('grad_" + std::to_string(i) + "', {label: '" + name + "', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});\n";
+            }
 
             f << "// Add states to the graph, set labels, and style\n"
                     "Object.keys(states).forEach(function(state) {\n"
