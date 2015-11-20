@@ -59,16 +59,17 @@ int main(int argc, char *argv[])
     }
     grads.push_back(s_f);
     graph.print_to_file("test.html", grads);
-//    af::setBackend(AF_BACKEND_CPU);
-//    int c = 2;
-//    array randmat = af::randn(10000, 1000);
-//    array randmat2 = af::randn(1000, 1000);
-//    clock_t begin = clock();
-//    auto result = af::matmul(randmat, randmat2);
-//    af::eval(result);
-//    clock_t end = clock();
-//    double t =  double(end - begin) / CLOCKS_PER_SEC;
-//    printf("Elapsed Time: %f sec\n", t);
+    af::setBackend(AF_BACKEND_CPU);
+    int c = 2;
+    array randmat = af::randn(10000, 1000);
+    array randmat2 = af::randn(1000, 1000);
+    std::cout << randmat.numdims() << std::endl;
+    clock_t begin = clock();
+    auto result = af::matmul(randmat, randmat2);
+    af::eval(result);
+    clock_t end = clock();
+    double t =  double(end - begin) / CLOCKS_PER_SEC;
+    printf("Elapsed Time: %f sec\n", t);
 
 //
 //    try {

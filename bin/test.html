@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<!-- saved from url=(0065)http://cpettitt.github.io/project/dagre-d3/latest/demo/hover.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="utf-8">
+<title>Function graph</title>
+
+<link rel="stylesheet" href="./test_files/demo.css">
+<script src="./test_files/d3.v3.min.js" charset="utf-8"></script>
+<script src="./test_files/dagre-d3.js"></script><style type="text/css"></style>
+
+<!-- Pull in JQuery dependencies -->
+<link rel="stylesheet" href="./test_files/tipsy.css">
+<script src="./test_files/jquery-1.9.1.min.js"></script>
+<script src="./test_files/tipsy.js"></script>
+
+</head><body style="margin:0;padding:0" height="100%"><h3>Function graph</h3>
+
+<style id="css">
+text {
+  font-weight: 300;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+  font-size: 14px;
+}
+
+.node rect {
+  stroke: #333;
+  fill: #fff;
+}
+
+.edgePath path {
+  stroke: #333;
+  fill: #333;
+  stroke-width: 1.5px;
+}
+
+.node text {
+  pointer-events: none;
+}
+
+/* This styles the title of the tooltip */
+.tipsy .name {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #60b1fc;
+  margin: 0;
+}
+
+/* This styles the body of the tooltip */
+.tipsy .description {
+  font-size: 1.2em;
+}
+</style>
+
+<svg width="1500" height="900"></svg>
+
+<script id="js">
+// Create a new directed graph
+var g = new dagreD3.graphlib.Graph({compound:true})
+		.setGraph({})
+		.setDefaultEdgeLabel(function() { return {}; });
+// Nodes states
+var states = {
+	'CONST[0]': {
+		description: "Name: Constant <br> Parents: [] <br> Gradient Level:0",
+		style: "fill: #ff0"
+	},
+	'CONST[1]': {
+		description: "Name: Constant <br> Parents: [] <br> Gradient Level:0",
+		style: "fill: #ff0"
+	},
+	'INPUT[2]': {
+		description: "Name: Input Node <br> Parents: [] <br> Gradient Level:0",
+		style: "fill: #0f0"
+	},
+	'INPUT[3]': {
+		description: "Name: Input Node <br> Parents: [] <br> Gradient Level:0",
+		style: "fill: #0f0"
+	},
+	'MUL[4]': {
+		description: "Name: Derived <br> Parents: [0, 2] <br> Gradient Level:0",
+		style: "fill: #00f"
+	},
+	'MUL[5]': {
+		description: "Name: Derived <br> Parents: [1, 3] <br> Gradient Level:0",
+		style: "fill: #00f"
+	},
+	'NEG[6]': {
+		description: "Name: Derived <br> Parents: [5] <br> Gradient Level:0",
+		style: "fill: #00f"
+	},
+	'ADD[7]': {
+		description: "Name: Derived <br> Parents: [4, 6] <br> Gradient Level:0",
+		style: "fill: #00f"
+	},
+	'MUL[8]': {
+		description: "Name: Derived <br> Parents: [7, 1] <br> Gradient Level:0",
+		style: "fill: #f00"
+	},
+	'CONST[9]': {
+		description: "Name: Grad of 8 <br> Parents: [] <br> Gradient Level:1",
+		style: "fill: #ff0"
+	},
+	'MUL[10]': {
+		description: "Name: Grad Msg [8->7] <br> Parents: [9, 1] <br> Gradient Level:1",
+		style: "fill: #00f"
+	},
+	'NEG[11]': {
+		description: "Name: Grad of 5 <br> Parents: [10] <br> Gradient Level:1",
+		style: "fill: #00f"
+	},
+	'MUL[12]': {
+		description: "Name: Grad Msg [5->3] <br> Parents: [11, 1] <br> Gradient Level:1",
+		style: "fill: #f00"
+	},
+	'MUL[13]': {
+		description: "Name: Grad Msg [4->2] <br> Parents: [10, 0] <br> Gradient Level:1",
+		style: "fill: #f00"
+	},
+}
+g.setNode('grad_0', {label: 'Calculation Level[0]', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});
+g.setNode('grad_1', {label: 'Calculation Level[1]', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});
+// Add states to the graph, set labels, and style
+Object.keys(states).forEach(function(state) {
+  var value = states[state];
+  value.label = state;
+  value.rx = value.ry = 5;
+  g.setNode(state, value);
+});
+// Set up the edges
+g.setParent('CONST[0]', 'grad_0');
+g.setParent('CONST[1]', 'grad_0');
+g.setParent('INPUT[2]', 'grad_0');
+g.setParent('INPUT[3]', 'grad_0');
+g.setEdge('CONST[0]', 'MUL[4]', {label: "0"});
+g.setEdge('INPUT[2]', 'MUL[4]', {label: "1"});
+g.setParent('MUL[4]', 'grad_0');
+g.setEdge('CONST[1]', 'MUL[5]', {label: "0"});
+g.setEdge('INPUT[3]', 'MUL[5]', {label: "1"});
+g.setParent('MUL[5]', 'grad_0');
+g.setEdge('MUL[5]', 'NEG[6]', {label: "0"});
+g.setParent('NEG[6]', 'grad_0');
+g.setEdge('MUL[4]', 'ADD[7]', {label: "0"});
+g.setEdge('NEG[6]', 'ADD[7]', {label: "1"});
+g.setParent('ADD[7]', 'grad_0');
+g.setEdge('ADD[7]', 'MUL[8]', {label: "0"});
+g.setEdge('CONST[1]', 'MUL[8]', {label: "1"});
+g.setParent('MUL[8]', 'grad_0');
+g.setParent('CONST[9]', 'grad_1');
+g.setEdge('CONST[9]', 'MUL[10]', {label: "0"});
+g.setEdge('CONST[1]', 'MUL[10]', {label: "1"});
+g.setParent('MUL[10]', 'grad_1');
+g.setEdge('MUL[10]', 'NEG[11]', {label: "0"});
+g.setParent('NEG[11]', 'grad_1');
+g.setEdge('NEG[11]', 'MUL[12]', {label: "0"});
+g.setEdge('CONST[1]', 'MUL[12]', {label: "1"});
+g.setParent('MUL[12]', 'grad_1');
+g.setEdge('MUL[10]', 'MUL[13]', {label: "0"});
+g.setEdge('CONST[0]', 'MUL[13]', {label: "1"});
+g.setParent('MUL[13]', 'grad_1');
+
+// Create the renderer
+var render = new dagreD3.render();
+
+// Set up an SVG group so that we can translate the final graph.
+var svg = d3.select("svg"),
+    inner = svg.append("g");
+
+// Set up zoom support
+var zoom = d3.behavior.zoom().on("zoom", function() {
+    inner.attr("transform", "translate(" + d3.event.translate + ")" +
+                                "scale(" + d3.event.scale + ")");
+  });
+svg.call(zoom);
+
+// Simple function to style the tooltip for the given node.
+var styleTooltip = function(name, description) {
+  return "<p class='name'>" + name + "</p><p class='description'  style=\"text-align:left\">" + description + "</p>";
+};
+
+// Run the renderer. This is what draws the final graph.
+render(inner, g);
+
+inner.selectAll("g.node")
+  .attr("title", function(v) { return styleTooltip(v, g.node(v).description) })
+  .each(function(v) { $(this).tipsy({ gravity: "w", opacity: 1, html: true }); });
+
+// Center the graph
+var initialScale = 0.75;
+zoom
+  .translate([(svg.attr("width") - g.graph().width * initialScale) / 2, 20])
+  .scale(initialScale)
+  .event(svg);
+svg.attr('height', g.graph().height * initialScale + 40);
+</script>
+</body></html>
