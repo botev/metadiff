@@ -1,0 +1,169 @@
+//
+// Created by alex on 19/03/15.
+//
+
+#ifndef _AUTODIFF_AUTODIFF_H_
+#define _AUTODIFF_AUTODIFF_H_
+#include "Eigen/Dense"
+#include "memory"
+#include "iostream"
+#include "set"
+
+enum class Operator {
+    NONE = 0,
+    PLUS = 1,
+    MINUS = 2,
+    MULTIPLY = 3,
+    DIVISION = 4,
+    NON_LINEAR = 5
+};
+
+enum class Type {
+    UNDEFINED = 0,
+    CONSTANT_VARIABLE = 1,
+    VIRTUAL_CONSTANT_VARIABLE = 2,
+    PARAMETER = 3,
+    DERIVED = 4,
+    VIRTUAL_DERIVED = 5
+};
+
+
+template<typename M>
+class ADNode {
+private:
+    typedef std::function<const M (const M&)> matrixFunc;
+
+
+    static int id;
+    int myid;
+    bool printed;
+
+    Operator op;
+    bool gradAltering;
+
+    std::vector<std::shared_ptr<ADNode<M>>> children;
+    std::vector<ADNode<M> *> gradParents;
+    std::vector<matrixFunc> gradFuncs;
+
+    int gradMsgs;
+    int gradChildren;
+
+    void setGradParent(ADNode<M> &parent, matrixFunc childToParentGrad);
+    void calculateGradient(const M &grad);
+public:
+    const Type type;
+    const M value;
+    M gradient;
+
+    ADNode(const Type type, const M &value);
+    ~ADNode() {};//std::cout << "Destroying node " << myid << std::endl;};
+    void calculateGradient();
+    void print();
+    void printTree();
+    /**
+    * Operators
+    */
+    // Asignment
+    ADNode<M>& operator=(ADNode<M>& rhs){
+        if (this == &rhs)
+            return *this;
+        std::shared_ptr<ADNode<M>> result = std::make_shared<ADNode<M>>(getChildType(rhs), rhs.value);
+        result->op = Operator::NONE;
+        result->gradAltering = false;
+        rhs.children.push_back(result);
+        auto tmp = &result->value;
+        result->setGradParent(rhs,[=](const M& x){return  x;});
+        return *result;
+    }
+    // Addition
+    template<typename T> friend ADNode<T>& operator+(ADNode<T>& lhs, ADNode<T>& rhs);
+    template<typename T> friend ADNode<T>& operator+(ADNode<T>& lhs, double rhs);
+    template<typename T> friend ADNode<T>& operator+(double lhs, ADNode<T>& rhs);
+    template<typename T> friend ADNode<T>& operator+(ADNode<T>& lhs, T& rhs);
+    template<typename T> friend ADNode<T>& operator+(T& lhs, ADNode<T>& rhs);
+    // Multiplication
+    template<typename T> friend ADNode<T>& operator*(ADNode<T>& lhs, ADNode<T>& rhs);
+    template<typename T> friend ADNode<T>& operator*(ADNode<T>& lhs, double rhs);
+    template<typename T> friend ADNode<T>& operator*(double lhs, ADNode<T>& rhs);
+    template<typename T> friend ADNode<T>& operator*(ADNode<T>& lhs, T& rhs);
+    template<typename T> friend ADNode<T>& operator*(T& lhs, ADNode<T>& rhs);
+    // Elementwise functions
+    template<typename T> friend ADNode<T>& sigmoid(ADNode<T>& lhs);
+};
+
+
+/**
+* Operators
+        ADNode &operator+(ADNode &rhs);
+
+        template<class T>
+        ADNode &operator+(T &rhs);
+
+        ADNode &operator+(double rhs);
+
+        ADNode &operator-(ADNode &rhs);
+
+        template<class T>
+        ADNode &operator-(T &rhs);
+
+        ADNode &operator-(double rhs);
+
+        ADNode &operator*(ADNode &rhs);
+
+        template<class T>
+        ADNode &operator*(T &rhs);
+
+        ADNode &operator*(double rhs);
+    };
+
+/**
+* Defining a right associative operators
+    template<class T>
+    ADNode &operator+(T &lhs, ADNode &rhs);
+
+    ADNode &operator+(double lhs, ADNode &rhs);
+
+    template<class T>
+    ADNode &operator-(T &lhs, ADNode &rhs);
+
+    ADNode &operator-(double lhs, ADNode &rhs);
+
+    template<class T>
+    ADNode &operator*(T &lhs, ADNode &rhs);
+
+    ADNode &operator*(double lhs, ADNode &rhs);
+
+    template<class T>
+    ADNode &operator/(T &lhs, ADNode &rhs);
+
+    ADNode &operator/(double lhs, ADNode &rhs);
+
+class DoubleWrap {
+public:
+    DoubleWrap(double value);
+    friend DoubleWrap operator+(const DoubleWrap &lhs, const DoubleWrap &rhs);
+private:
+    class DoubleWrapImpl;
+    std::shared_ptr<DoubleWrapImpl> pimpl;
+
+};
+
+DoubleWrap operator+(const DoubleWrap &lhs, const DoubleWrap &rhs);
+
+class Interface{
+public:
+    int myid();
+    Interface(double in);
+    //~Interface(){
+    //    std::cout<<"Destroy "<<myid()<<std::endl;
+    //}
+    friend Interface operator+(const Interface& a, const Interface& b);
+    void tree();
+private:
+    class Impl;
+    std::shared_ptr<Impl> pimpl;
+};
+Interface operator+(const Interface& a, const Interface& b);
+*/
+#include "autodiff_impl.h"
+#endif //_AUTODIFF_AUTODIFF_H_

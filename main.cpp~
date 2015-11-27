@@ -1,0 +1,64 @@
+#define EIGEN_USE_MKL_ALL
+#include <iostream>
+#include <Eigen/Dense>
+#include "autodiff.h"
+
+double singleTest(int X, int L, Eigen::MatrixXd* res);
+int main()
+{
+    int N = 100;
+    double totalTime = 0;
+    Eigen::MatrixXd results[N];// = new Eigen::MatrixXd[100];
+    for(int i=0;i<N;i++)
+        totalTime += singleTest(1000,10,results+i);
+    std::cout<<"Total time elapsed: " << totalTime << " seconds." <<std::endl;
+/*
+
+
+    Eigen::MatrixXd m = Eigen::MatrixXd::Random(3,3).array() / 5;
+    std::cout<< m.array() / 3 << std::endl;
+    ADNode<Eigen::MatrixXd> node(Type::CONSTANT_VARIABLE,m);
+    ADNode<Eigen::MatrixXd> node2(Type::PARAMETER,m*2);
+    ADNode<Eigen::MatrixXd> node3(Type::PARAMETER,m*3);
+    ADNode<Eigen::MatrixXd> c = node + node2;
+    ADNode<Eigen::MatrixXd> x = (node3 + c) * node2 + node3;
+    ADNode<Eigen::MatrixXd> f = sigmoid(x);
+    f.calculateGradient();
+
+    node.print();
+    node2.print();
+    node3.print();
+    c.print();
+    x.print();
+    f.print();
+    f.printTree();
+    /*
+    DoubleWrap dw(12.6);
+    DoubleWrap dw2(12.5);
+    DoubleWrap dw3(12.4);
+    DoubleWrap dw4(12.3);
+    DoubleWrap a = dw + dw2 + dw3;
+    DoubleWrap b = a + dw+ dw2+ dw3 + dw4;
+    Interface aa(1.0);
+    Interface ba(2.0);
+    Interface ca(3.5);
+    Interface d = aa + ba + ca;
+    d.tree();
+    */
+    return 0;
+}
+
+double singleTest(int X, int L,Eigen::MatrixXd* res){
+    Eigen::MatrixXd input = Eigen::MatrixXd::Random(X,1);
+    ADNode<Eigen::MatrixXd> W(Type::PARAMETER, Eigen::MatrixXd::Random(X,X));
+    clock_t begin = clock();
+    ADNode<Eigen::MatrixXd> h = sigmoid(W*input);
+    for(int i=0;i<L-1;i++)
+        h = sigmoid(W*h);
+    h.calculateGradient();
+    // std::cout << h.value(0,0) << std::endl;
+    //*res = W.gradient;
+    clock_t end = clock();
+    return double(end - begin) / CLOCKS_PER_SEC;
+};
+
