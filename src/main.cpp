@@ -10,7 +10,6 @@
 #include <arrayfire.h>
 #include <algorithm>
 #include "operators.h"
-#include "iostream"
 #include "symbolic.h"
 #include <ctime>
 
@@ -110,8 +109,8 @@ int main(int argc, char *argv[])
 //    double f_m3 = ((double)(m3)) / (CLOCKS_PER_SEC);
 //    std::cout << "(" << f_m1 << "," << f_m2 << "," << f_m3 << ")" << std::endl;
 //    std::cout << res << std::endl;
-    auto t_a = symbolic::SymbolicMonomial<10>(2);
-    auto t_b = symbolic::SymbolicMonomial<10>(1);
+    auto t_a = symbolic::SymbolicMonomial<10, unsigned int>(2);
+    auto t_b = symbolic::SymbolicMonomial<10, unsigned int>(1);
     auto t_c = 2*t_b*t_a*t_a;
     std::cout << 5*t_c/(t_b*2*5) << std::endl;
     auto t_p = t_c + t_a;
