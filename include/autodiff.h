@@ -93,7 +93,8 @@ namespace diff {
                                   "\t\tstyle: \"fill: " + state_color + "\"\n"
                                   "\t},\n");
             for(int i=0;i<anc_names.size();i++){
-                edges->append("g.setEdge('" + anc_names[i] +  "', '" + state_name + "', {label: \"" + std::to_string(i) + "\"});\n");
+                edges->append("g.setEdge({v:'" + anc_names[i] +  "', w:'" + state_name + "', name:'" + std::to_string(i) +
+                                      "'}, {label: \"" + std::to_string(i) + "\"});\n");
             }
             edges->append("g.setParent('" + state_name + "', 'grad_" + std::to_string(this->grad_level) + "');\n");
         }
@@ -251,7 +252,7 @@ namespace diff {
                     "\n"
                     "<script id=\"js\">\n"
                     "// Create a new directed graph\n"
-                    "var g = new dagreD3.graphlib.Graph({compound:true})\n"
+                    "var g = new dagreD3.graphlib.Graph({compound:true, multigraph: true})\n"
                     "\t\t.setGraph({})\n"
                     "\t\t.setDefaultEdgeLabel(function() { return {}; });\n";
             // Print the nodes

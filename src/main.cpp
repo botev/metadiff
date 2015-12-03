@@ -39,25 +39,53 @@
 //
 int main(int argc, char *argv[])
 {
-
     af::dim4 dims(10, 10, 1, 1);
     diff::Graph graph = diff::Graph();
+
     auto c1 = graph.create_constant_node(af::constant(0.5, dims, f32));
     auto c2 = graph.create_constant_node(af::constant(1.5, dims, f32));
+
     auto i1 = graph.create_input_node();
     auto i2 = graph.create_input_node();
-    auto s1 = graph.mul(c1, i1);
-    auto s2 = graph.mul(c2, i2);
-    auto s4 = graph.neg(s2);
-    auto s = graph.add(s1, s4);
-    auto s_f = graph.mul(s, c2);
+
+    auto s1 = graph.add(c1, i1);
+    auto s2 = graph.add(c2, i2);
+
+    //auto s4 = graph.neg(s2);
+    auto s = graph.add(s1, s2);
+
+    auto s_f = graph.add(s, i2);
+
     std::vector<diff::NodeId> params {i1 ,i2};
-    auto grads = graph.gradient(s_f, params);
-    for(int i=0;i<grads.size();i++){
-        std::cout << grads[i] << std::endl;
+    {
+        auto grads = graph.gradient(s_f, params);
+        for(int i=0;i<grads.size();i++){
+            std::cout << grads[i] << std::endl;
+        }
+        grads.push_back(s_f);
+        graph.print_to_file("test_full.html", grads);
     }
-    grads.push_back(s_f);
-    graph.print_to_file("test.html", grads);
+
+//
+//
+//    af::dim4 dims(10, 10, 1, 1);
+//    diff::Graph graph = diff::Graph();
+//    auto c1 = graph.create_constant_node(af::constant(0.5, dims, f32));
+//    auto c2 = graph.create_constant_node(af::constant(1.5, dims, f32));
+//    auto i1 = graph.create_input_node();
+//    auto i2 = graph.create_input_node();
+//    auto s1 = graph.mul(c1, i1);
+//    auto s2 = graph.mul(c2, i2);
+//    auto s4 = graph.neg(s2);
+//    auto s = graph.add(s1, s4);
+//    auto s_f = graph.mul(s, c2);
+//    std::vector<diff::NodeId> params {i1 ,i2};
+//    auto grads = graph.gradient(s_f, params);
+//    for(int i=0;i<grads.size();i++){
+//        std::cout << grads[i] << std::endl;
+//    }
+//    grads.push_back(s_f);
+//    graph.print_to_file("tests.html", grads);
 //    af::setBackend(AF_BACKEND_CPU);
 //    int c = 2;
 //    array randmat = af::randn(10000, 1000);

@@ -13981,7 +13981,7 @@ module.exports = '1.0.5';
      * var source = { 'greeting': 'hi' };
      *
      * _.isMatch(object, source, function(value, other) {
-     *   return _.every([value, other], RegExp.prototype.test, /^h(?:i|ello)$/) || undefined;
+     *   return _.every([value, other], RegExp.prototype.tests, /^h(?:i|ello)$/) || undefined;
      * });
      * // => true
      */

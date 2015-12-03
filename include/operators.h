@@ -25,12 +25,14 @@ namespace diff {
         }
 
         void generate_gradients(Graph *graph, NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+            std::cout<< "This: " << graph->nodes[current]->id << std::endl;
             if(messages.find(current) == messages.end()){
                 return;
             }
             auto gradient = graph->nodes[messages[current]];
             auto p1 = this->p1.lock();
             auto p2 = this->p2.lock();
+            std::cout<< p1->id << ", " << p2->id << std::endl;
             if(p1->type != CONST) {
                 if (messages.find(p1->id) != messages.end()) {
                     auto message = graph->nodes[messages[p1->id]];
