@@ -16,7 +16,7 @@
 
 namespace symbolic {
 
-    class impossible_division: public std::exception
+    class non_integer_division: public std::exception
     {
         virtual const char* what() const throw()
         {
@@ -24,9 +24,18 @@ namespace symbolic {
         }
     };
 
+    class unrecognised_symbolic_variable: public std::exception
+    {
+        virtual const char* what() const throw()
+        {
+            return "Requested a symbolic variable >= N";
+        }
+    };
+
     template<const size_t N, typename T>
     class SymbolicMonomial {
         static_assert(std::numeric_limits<T>::is_integer, "X can be only instantiated with integer types");
+        static_assert(not std::numeric_limits<T>::is_signed, "X can be only instansiated with unsigned types");
     public:
         T powers[N];
         int coefficient;
@@ -46,6 +55,9 @@ namespace symbolic {
         }
 
         SymbolicMonomial(const size_t variable): SymbolicMonomial(){
+            if(variable >= N){
+                throw unrecognised_symbolic_variable();
+            }
             this->powers[variable] = 1;
         }
 
@@ -186,11 +198,11 @@ namespace symbolic {
         for (int i = 0; i < N; i++) {
             result.powers[i] -= rhs.powers[i];
             if(result.powers[i] > lhs.powers[i]){
-                throw impossible_division();
+                throw non_integer_division();
             }
         }
         if(rhs.coefficient == 0 or result.coefficient % rhs.coefficient != 0){
-            throw impossible_division();
+            throw non_integer_division();
         }
         result.coefficient = lhs.coefficient / rhs.coefficient;
         return result;
@@ -199,7 +211,7 @@ namespace symbolic {
     template<size_t N, typename T>
     SymbolicMonomial<N,T> operator/(const SymbolicMonomial<N,T>& lhs, int rhs) {
         if(rhs == 0 or lhs.coefficient % rhs != 0){
-            throw impossible_division();
+            throw non_integer_division();
         }
         auto result = SymbolicMonomial<N,T>(lhs);
         result.coefficient /= rhs;
@@ -209,7 +221,7 @@ namespace symbolic {
     template<size_t N, typename T>
     SymbolicMonomial<N,T> operator/(int lhs, const SymbolicMonomial<N,T>& rhs) {
         if(not rhs.is_constant() or rhs.coefficient == 0 or lhs % rhs.coefficient != 0){
-            throw impossible_division();
+            throw non_integer_division();
         }
         return as_monomial(lhs / rhs.coefficient);
     }
@@ -381,8 +393,6 @@ namespace symbolic {
         return rhs + lhs;
     }
 
-
-
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator+(const SymbolicPolynomial<N,T>& lhs, const SymbolicPolynomial<N,T>& rhs) {
         auto result = SymbolicPolynomial<N,T>(lhs);
@@ -514,7 +524,7 @@ namespace symbolic {
 //            std::cout << (reminder == 0) << std::endl;
         }
         if(reminder != 0){
-            throw impossible_division();
+            throw non_integer_division();
         }
         result.simplify();
         return result;
@@ -533,7 +543,7 @@ namespace symbolic {
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator/(const SymbolicMonomial<N,T>& lhs, const SymbolicPolynomial<N,T>& rhs) {
         if(rhs.monomials.size() != 1){
-            throw impossible_division();
+            throw non_integer_division();
         }
         auto result = SymbolicPolynomial<N,T>();
         result.monomials.push_back(lhs / rhs.monomials[0]);
@@ -543,7 +553,7 @@ namespace symbolic {
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator/(const SymbolicPolynomial<N,T>& lhs, const int rhs) {
         if(rhs == 0){
-            throw impossible_division();
+            throw non_integer_division();
         }
         auto result = SymbolicPolynomial<N,T>();
         for(int i=0;i<lhs.monomials.size();i++){
@@ -556,7 +566,7 @@ namespace symbolic {
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator/(const int lhs, const SymbolicPolynomial<N,T> rhs) {
         if(rhs.monomials.size() != 1){
-            throw impossible_division();
+            throw non_integer_division();
         }
         auto result = SymbolicPolynomial<N,T>();
         result.monomials.push_back(lhs / rhs.monomials[0]);
