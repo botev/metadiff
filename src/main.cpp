@@ -9,9 +9,10 @@
 
 #include <arrayfire.h>
 #include <algorithm>
-#include "operators.h"
+#include "autodiff.h"
 #include "symbolic.h"
 #include <ctime>
+//#include <visualization/dagre.h>
 
 //using namespace af;
 
@@ -40,13 +41,13 @@
 int main(int argc, char *argv[])
 {
     af::dim4 dims(10, 10, 1, 1);
-    diff::Graph graph = diff::Graph();
+    autodiff::Graph graph = autodiff::Graph();
 
-    auto c1 = graph.create_constant_node(af::constant(0.5, dims, f32));
-    auto c2 = graph.create_constant_node(af::constant(1.5, dims, f32));
+    auto c1 = graph.constant_node(af::constant(0.5, dims, f32));
+    auto c2 = graph.constant_node(af::constant(1.5, dims, f32));
 
-    auto i1 = graph.create_input_node();
-    auto i2 = graph.create_input_node();
+    auto i1 = graph.input_node();
+    auto i2 = graph.input_node();
 
     auto s1 = graph.add(c1, i1);
     auto s2 = graph.add(c2, i2);
@@ -56,14 +57,18 @@ int main(int argc, char *argv[])
 
     auto s_f = graph.add(s, i2);
 
-    std::vector<diff::NodeId> params {i1 ,i2};
+    std::vector<autodiff::NodeId> params {i1 ,i2};
     {
         auto grads = graph.gradient(s_f, params);
         for(int i=0;i<grads.size();i++){
             std::cout << grads[i] << std::endl;
         }
         grads.push_back(s_f);
-        graph.print_to_file("test_full.html", grads);
+        for(int i=0;i<graph.nodes.size(); i++){
+            auto node = graph.nodes[i];
+//            std::cout << node->id << ", " << node->grad_level << std::endl;
+        }
+        autodiff::dagre::dagre_to_file("test_full.html", graph, grads);
     }
 
 //
@@ -137,17 +142,17 @@ int main(int argc, char *argv[])
 //    double f_m3 = ((double)(m3)) / (CLOCKS_PER_SEC);
 //    std::cout << "(" << f_m1 << "," << f_m2 << "," << f_m3 << ")" << std::endl;
 //    std::cout << res << std::endl;
-    auto t_a = symbolic::SymbolicMonomial<10, unsigned int>(2);
-    auto t_b = symbolic::SymbolicMonomial<10, unsigned int>(1);
-    auto t_c = 2*t_b*t_a*t_a;
-    std::cout << 5*t_c/(t_b*2*5) << std::endl;
-    auto t_p = t_c + t_a;
-    auto t_p2 = t_c - 2;
-    auto r = t_p * t_p2;
-    std::cout << t_p << std::endl;
-    std::cout << t_p2 << std::endl;
-    std::cout << r << std::endl;
-    std::cout << r / t_p << std::endl;
+//    auto t_a = symbolic::SymbolicMonomial<10, unsigned int>(2);
+//    auto t_b = symbolic::SymbolicMonomial<10, unsigned int>(1);
+//    auto t_c = 2*t_b*t_a*t_a;
+//    std::cout << 5*t_c/(t_b*2*5) << std::endl;
+//    auto t_p = t_c + t_a;
+//    auto t_p2 = t_c - 2;
+//    auto r = t_p * t_p2;
+//    std::cout << t_p << std::endl;
+//    std::cout << t_p2 << std::endl;
+//    std::cout << r << std::endl;
+//    std::cout << r / t_p << std::endl;
 //
 //    try {
 //        printf("Trying CPU Backend\n");

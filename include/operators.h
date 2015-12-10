@@ -6,15 +6,17 @@
 #ifndef AUTODIFF_OPERATORS_H
 #define AUTODIFF_OPERATORS_H
 
-#include "autodiff.h"
+#include "core.h"
 
-namespace diff {
+namespace autodiff {
     class Add : public Operator {
     public:
         std::weak_ptr<Node> p1;
         std::weak_ptr<Node> p2;
 
-        Add(std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) : Operator("ADD"), p1(p1), p2(p2) { }
+        Add(Graph* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+                Operator(graph, "ADD"),
+                p1(p1), p2(p2) { }
 
         std::vector<std::weak_ptr<Node>> get_parents() {
             return std::vector<std::weak_ptr<Node>> {p1, p2};
@@ -24,20 +26,36 @@ namespace diff {
             return std::vector<std::weak_ptr<Node>> {};
         }
 
-        void generate_gradients(Graph *graph, NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
-            std::cout<< "This: " << graph->nodes[current]->id << std::endl;
+        ad_value_type get_value_type(){
+            return ad_value_type::FLOAT ;
+        }
+
+        unsigned short get_gradient_level(){
+            auto p1 = this->p1.lock();
+            auto p2 = this->p1.lock();
+            if(p1->grad_level > p2->grad_level){
+                return p1->grad_level;
+            } else{
+                return p2->grad_level;
+            }
+        }
+
+        void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+//            std::cout << "G" << std::endl;
+//            std::cout << "G " << this->graph << std::endl;
+//            std::cout<< "This: " << graph->nodes[current]->id << std::endl;
             if(messages.find(current) == messages.end()){
                 return;
             }
             auto gradient = graph->nodes[messages[current]];
             auto p1 = this->p1.lock();
             auto p2 = this->p2.lock();
-            std::cout<< p1->id << ", " << p2->id << std::endl;
-            if(p1->type != CONST) {
+//            std::cout<< p1->id << ", " << p2->id << std::endl;
+            if(p1->type != ad_node_type::CONSTANT) {
                 if (messages.find(p1->id) != messages.end()) {
                     auto message = graph->nodes[messages[p1->id]];
-                    auto op = std::make_shared<Add>(gradient, message);
-                    auto new_message = graph->create_derived_node(op);
+                    auto op = std::make_shared<Add>(graph, gradient, message);
+                    auto new_message = graph->derived_node(op);
                     graph->nodes[new_message]->grad_level = gradient->grad_level;
                     messages[p1->id] = new_message;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p1->id);
@@ -45,11 +63,11 @@ namespace diff {
                     messages[p1->id] = gradient->id;
                 }
             }
-            if(p2->type != CONST) {
+            if(p2->type != ad_node_type::CONSTANT) {
                 if (messages.find(p2->id) != messages.end()) {
                     auto message = graph->nodes[messages[p2->id]];
-                    auto op = std::make_shared<Add>(gradient, message);
-                    auto new_message = graph->create_derived_node(op);
+                    auto op = std::make_shared<Add>(graph, gradient, message);
+                    auto new_message = graph->derived_node(op);
                     graph->nodes[new_message]->grad_level = gradient->grad_level;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p2->id);
                     messages[p2->id] = new_message;
@@ -64,7 +82,9 @@ namespace diff {
     public:
         std::weak_ptr<Node> p1;
 
-        Neg(std::weak_ptr<Node> p1) : Operator("NEG"), p1(p1) { }
+        Neg(Graph* graph, std::weak_ptr<Node> p1) :
+                Operator(graph, "NEG"),
+                p1(p1) { }
 
         std::vector<std::weak_ptr<Node>> get_parents() {
             return std::vector<std::weak_ptr<Node>> {p1};
@@ -74,21 +94,29 @@ namespace diff {
             return std::vector<std::weak_ptr<Node>> {};
         }
 
-        void generate_gradients(Graph *graph, NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+        ad_value_type get_value_type(){
+            return ad_value_type::FLOAT ;
+        }
+
+        unsigned short get_gradient_level(){
+            return p1.lock()->grad_level;
+        }
+
+        void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
             if(messages.find(current) == messages.end()){
                 return;
             }
             auto p1 = this->p1.lock();
-            if(p1->type != CONST) {
+            if(p1->type != ad_node_type::CONSTANT) {
                 auto gradient = graph->nodes[messages[current]];
-                auto op = std::make_shared<Neg>(gradient);
-                auto new_grad = graph->nodes[graph->create_derived_node(op)];
+                auto op = std::make_shared<Neg>(graph, gradient);
+                auto new_grad = graph->nodes[graph->derived_node(op)];
                 new_grad->name = "Grad of " + std::to_string(p1->id);
                 new_grad->grad_level = gradient->grad_level;
                 if (messages.find(p1->id) != messages.end()) {
                     auto message = graph->nodes[messages[p1->id]];
-                    auto op = std::make_shared<Add>(new_grad, message);
-                    auto new_message = graph->create_derived_node(op);
+                    auto op = std::make_shared<Add>(graph, new_grad, message);
+                    auto new_message = graph->derived_node(op);
                     graph->nodes[new_message]->grad_level = new_grad->grad_level;
                     messages[p1->id] = new_message;
                 } else {
@@ -103,7 +131,9 @@ namespace diff {
         std::weak_ptr<Node> p1;
         std::weak_ptr<Node> p2;
 
-        Mul(std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) : Operator("MUL"), p1(p1), p2(p2) { }
+        Mul(Graph* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+                Operator(graph, "MUL"),
+                p1(p1), p2(p2) { }
 
         std::vector<std::weak_ptr<Node>> get_parents() {
             return std::vector<std::weak_ptr<Node>> {p1, p2};
@@ -113,22 +143,36 @@ namespace diff {
             return std::vector<std::weak_ptr<Node>> {};
         }
 
-        void generate_gradients(Graph *graph, NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+        ad_value_type get_value_type(){
+            return ad_value_type::FLOAT ;
+        }
+
+        unsigned short get_gradient_level(){
+            auto p1 = this->p1.lock();
+            auto p2 = this->p1.lock();
+            if(p1->grad_level > p2->grad_level){
+                return p1->grad_level;
+            } else{
+                return p2->grad_level;
+            }
+        }
+
+        void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
             if(messages.find(current) == messages.end()){
                 return;
             }
             auto gradient = graph->nodes[messages[current]];
             auto p1 = this->p1.lock();
             auto p2 = this->p2.lock();
-            if(p1->type != CONST) {
-                auto op = std::make_shared<Mul>(gradient, p2);
-                auto p1_message = graph->nodes[graph->create_derived_node(op)];
+            if(p1->type != ad_node_type::CONSTANT) {
+                auto op = std::make_shared<Mul>(graph, gradient, p2);
+                auto p1_message = graph->nodes[graph->derived_node(op)];
                 p1_message->name = "Grad Msg [" + std::to_string(current) + "->" + std::to_string(p1->id) + "]";
                 p1_message->grad_level = gradient->grad_level;
                 if (messages.find(p1->id) != messages.end()) {
                     auto message = graph->nodes[messages[p1->id]];
-                    auto add_op = std::make_shared<Add>(p1_message, message);
-                    auto new_message = graph->create_derived_node(add_op);
+                    auto add_op = std::make_shared<Add>(graph, p1_message, message);
+                    auto new_message = graph->derived_node(add_op);
                     graph->nodes[new_message]->grad_level = gradient->grad_level;
                     messages[p1->id] = new_message;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p1->id);
@@ -137,15 +181,15 @@ namespace diff {
                     messages[p1->id] = p1_message->id;
                 }
             }
-            if(p2->type != CONST) {
-                auto op = std::make_shared<Mul>(gradient, p1);
-                auto p2_message = graph->nodes[graph->create_derived_node(op)];
+            if(p2->type != ad_node_type::CONSTANT) {
+                auto op = std::make_shared<Mul>(graph, gradient, p1);
+                auto p2_message = graph->nodes[graph->derived_node(op)];
                 p2_message->name = "Grad Msg [" + std::to_string(current) + "->" + std::to_string(p2->id) + "]";
                 p2_message->grad_level = gradient->grad_level;
                 if (messages.find(p2->id) != messages.end()) {
                     auto message = graph->nodes[messages[p2->id]];
-                    auto add_op = std::make_shared<Add>(p2_message, message);
-                    auto new_message = graph->create_derived_node(add_op);
+                    auto add_op = std::make_shared<Add>(graph, p2_message, message);
+                    auto new_message = graph->derived_node(add_op);
                     messages[p2->id] = new_message;
                     graph->nodes[new_message]->name = "Grad of " + std::to_string(p1->id);
                     graph->nodes[new_message]->grad_level = gradient->grad_level;
@@ -160,12 +204,12 @@ namespace diff {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
         NodeId result;
-        if (arg1->type == CONST and arg2->type == CONST) {
-            result = this->create_constant_node(arg1->value + arg2->value);
+        if (arg1->type == ad_node_type::CONSTANT and arg2->type == ad_node_type::CONSTANT) {
+            result = this->constant_node(arg1->value + arg2->value);
         }
         else {
-            auto op = std::make_shared<Add>(arg1, arg2);
-            result = this->create_derived_node(op);
+            auto op = std::make_shared<Add>(this, arg1, arg2);
+            result = this->derived_node(op);
         }
         return result;
     };
@@ -173,12 +217,12 @@ namespace diff {
     NodeId Graph::neg(NodeId arg1_id) {
         auto arg1 = this->nodes[arg1_id];
         NodeId result;
-        if (arg1->type == CONST) {
-            result = this->create_constant_node(- arg1->value);
+        if (arg1->type == ad_node_type::CONSTANT) {
+            result = this->constant_node(- arg1->value);
         }
         else {
-            auto op = std::make_shared<Neg>(arg1);
-            result = this->create_derived_node(op);
+            auto op = std::make_shared<Neg>(this, arg1);
+            result = this->derived_node(op);
         }
         return result;
     };
@@ -187,12 +231,12 @@ namespace diff {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
         NodeId result;
-        if (arg1->type == CONST and arg2->type == CONST) {
-            result = this->create_constant_node(arg1->value * arg2->value);
+        if (arg1->type == ad_node_type::CONSTANT and arg2->type == ad_node_type::CONSTANT) {
+            result = this->constant_node(arg1->value * arg2->value);
         }
         else {
-            auto op = std::make_shared<Mul>(arg1, arg2);
-            result = this->create_derived_node(op);
+            auto op = std::make_shared<Mul>(this, arg1, arg2);
+            result = this->derived_node(op);
         }
         return result;
     };

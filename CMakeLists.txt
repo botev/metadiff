@@ -3,7 +3,7 @@ project(autodiff)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Werror=return-type")
-set(SOURCE_FILES src/main.cpp)
+set(SOURCE_FILES src/main.cpp include/autodiff.h include/visualization/dagre.h)
 
 include_directories(include)
 include_directories(/opt/arrayfire-3/include)
