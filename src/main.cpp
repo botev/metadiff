@@ -40,6 +40,7 @@
 //
 int main(int argc, char *argv[])
 {
+    std::cout << "cm²\u00B9" << std::endl;
     af::dim4 dims(10, 10, 1, 1);
     autodiff::Graph graph = autodiff::Graph();
 
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
 //    double t =  double(end - begin) / CLOCKS_PER_SEC;
 //    printf("Elapsed Time: %f sec\n", t);
 //
-//    const size_t N = 10;
+    const size_t N = 10;
 //    std::vector<unsigned short> myvec;
 //    int N = 2000000;
 //    int M = 100;
@@ -142,17 +143,17 @@ int main(int argc, char *argv[])
 //    double f_m3 = ((double)(m3)) / (CLOCKS_PER_SEC);
 //    std::cout << "(" << f_m1 << "," << f_m2 << "," << f_m3 << ")" << std::endl;
 //    std::cout << res << std::endl;
-//    auto t_a = symbolic::SymbolicMonomial<10, unsigned int>(2);
-//    auto t_b = symbolic::SymbolicMonomial<10, unsigned int>(1);
-//    auto t_c = 2*t_b*t_a*t_a;
-//    std::cout << 5*t_c/(t_b*2*5) << std::endl;
-//    auto t_p = t_c + t_a;
-//    auto t_p2 = t_c - 2;
-//    auto r = t_p * t_p2;
-//    std::cout << t_p << std::endl;
-//    std::cout << t_p2 << std::endl;
-//    std::cout << r << std::endl;
-//    std::cout << r / t_p << std::endl;
+    auto t_a = symbolic::SymbolicMonomial<10, unsigned int>(0);
+    auto t_b = symbolic::SymbolicMonomial<10, unsigned int>(1);
+    auto t_c = 2*t_b*t_a*t_a;
+    std::cout << 5*t_c/(t_b*2*5) << std::endl;
+    auto t_p = t_c + t_a;
+    auto t_p2 = t_c - 2;
+    auto r = t_p * t_p2;
+    std::cout << t_p << std::endl;
+    std::cout << t_p2 << std::endl;
+    std::cout << r << std::endl;
+    std::cout << r / t_p << std::endl;
 //
 //    try {
 //        printf("Trying CPU Backend\n");

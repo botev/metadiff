@@ -67,6 +67,14 @@ namespace symbolic {
             return result;
         }
 
+        static SymbolicMonomial one(){
+            return as_monomial(1);
+        }
+
+        static SymbolicMonomial zero(){
+            return as_monomial(0);
+        }
+
         bool is_constant() const{
             for(int i=0;i<N;i++){
                 if(this->powers[i] > 0){
@@ -75,16 +83,61 @@ namespace symbolic {
             }
             return true;
         }
+
+        int eval(int (&values)[N]){
+            int value = 0;
+            for(int i=0;i<N;i++){
+                value += pow(values[i], this->powers[i]);
+            }
+            return value * this->coefficient;
+        }
+
+        std::string to_string() const{
+            if(this->coefficient == 0){
+                return "0";
+            }
+            std::string result;
+            if(this->coefficient != 1){
+                if(this->coefficient == -1){
+                    result += "-";
+                } else {
+                    result += std::to_string(this->coefficient);
+                }
+            }
+            for(int i=0;i<N;i++){
+                if(powers[i] > 0){
+                    result += 'a' + i;
+                    if(powers[i] > 1){
+                        auto n = powers[i];
+                        std::string supercripts;
+                        while(n > 0){
+                            auto reminder = n % 10;
+                            n /= 10;
+                            switch(reminder){
+                                case 0: supercripts = "\u2070" + supercripts; break;
+                                case 1: supercripts = "\u00B9" + supercripts; break;
+                                case 2: supercripts = "\u00B2" + supercripts; break;
+                                case 3: supercripts = "\u00B3" + supercripts; break;
+                                case 4: supercripts = "\u2074" + supercripts; break;
+                                case 5: supercripts = "\u2075" + supercripts; break;
+                                case 6: supercripts = "\u2076" + supercripts; break;
+                                case 7: supercripts = "\u2077" + supercripts; break;
+                                case 8: supercripts = "\u2078" + supercripts; break;
+                                case 9: supercripts = "\u2079" + supercripts; break;
+                            }
+                        }
+                        result += supercripts;
+                    }
+                }
+            }
+            return result;
+        }
     };
 
     template<const size_t N, typename T>
-    std::ostream &operator<<(std::ostream &out, const SymbolicMonomial<N,T>& value){
-        out << value.coefficient << "(";
-        for(int i=0;i<N-1;i++){
-            out << value.powers[i] << ",";
-        }
-        out << value.powers[N-1] << ")";
-        return out;
+    std::ostream &operator<<(std::ostream &f, const SymbolicMonomial<N,T>& value){
+        f << value.to_string();
+        return f;
     }
 
     template<size_t N, typename T>
@@ -280,22 +333,35 @@ namespace symbolic {
                 }
             }
         }
+
+        int eval(int (&values)[N]){
+            int value = 0;
+            for(int i=0;i<this->monomials.size();i++){
+                value += monomials[i].eval(values);
+            }
+            return value;
+        }
+
+        std::string to_string() const{
+            if(this->monomials.size() == 0){
+                return "0";
+            }
+            auto result = this->monomials[0].to_string();
+            for(int i=1;i<this->monomials.size();i++){
+                if(this->monomials[i].coefficient > 0){
+                    result += "+" + this->monomials[i].to_string();
+                } else {
+                    result += this->monomials[i].to_string();
+                }
+            }
+            return result;
+        }
     };
 
     template<const size_t N, typename T>
-    std::ostream &operator<<(std::ostream &out, const SymbolicPolynomial<N,T>& polynomial){
-        if(polynomial.monomials.size() == 0){
-            out << "0" << std::endl;
-        } else {
-            for(int i=0;i<polynomial.monomials.size();i++){
-                if(i < polynomial.monomials.size()-1) {
-                    out << polynomial.monomials[i] << "|";
-                } else {
-                    out << polynomial.monomials[i];
-                }
-            }
-        }
-        return out;
+    std::ostream &operator<<(std::ostream &f, const SymbolicPolynomial<N,T>& polynomial){
+        f << polynomial.to_string();
+        return f;
     }
 
     template<const size_t N, typename T>
