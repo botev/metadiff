@@ -255,42 +255,47 @@ namespace autodiff {
     NodeId Graph::add(NodeId arg1_id, NodeId arg2_id) {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
-        NodeId result;
-        if (arg1->type == ad_node_type::CONSTANT and arg2->type == ad_node_type::CONSTANT) {
-            result = this->constant_node(arg1->value + arg2->value);
-        }
-        else {
-            auto op = std::make_shared<Add>(this, arg1, arg2);
-            result = this->derived_node(op);
-        }
-        return result;
+        auto op = std::make_shared<Add>(this, arg1, arg2);
+//        NodeId result;
+
+//        if (arg1->type == ad_node_type::CONSTANT and arg2->type == ad_node_type::CONSTANT) {
+//            result = this->constant_node(arg1->value + arg2->value);
+//        }
+//        else {
+//            auto op = std::make_shared<Add>(this, arg1, arg2);
+//            result =;
+//        }
+        return  this->derived_node(op);
     };
 
     NodeId Graph::neg(NodeId arg1_id) {
         auto arg1 = this->nodes[arg1_id];
-        NodeId result;
-        if (arg1->type == ad_node_type::CONSTANT) {
-            result = this->constant_node(- arg1->value);
-        }
-        else {
-            auto op = std::make_shared<Neg>(this, arg1);
-            result = this->derived_node(op);
-        }
-        return result;
+        auto op = std::make_shared<Neg>(this, arg1);
+//        NodeId result;
+//        auto op = std::make_shared<Neg>(this, arg1);
+//        if (arg1->type == ad_node_type::CONSTANT) {
+//            result = this->constant_node(- arg1->value);
+//        }
+//        else {
+//            auto op = std::make_shared<Neg>(this, arg1);
+//            result = this->derived_node(op);
+//        }
+        return this->derived_node(op);
     };
 
     NodeId Graph::mul(NodeId arg1_id, NodeId arg2_id) {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
-        NodeId result;
-        if (arg1->type == ad_node_type::CONSTANT and arg2->type == ad_node_type::CONSTANT) {
-            result = this->constant_node(arg1->value * arg2->value);
-        }
-        else {
-            auto op = std::make_shared<Mul>(this, arg1, arg2);
-            result = this->derived_node(op);
-        }
-        return result;
+        auto op = std::make_shared<Mul>(this, arg1, arg2);
+//        NodeId result;
+//        if (arg1->type == ad_node_type::CONSTANT and arg2->type == ad_node_type::CONSTANT) {
+//            result = this->constant_node(arg1->value * arg2->value);
+//        }
+//        else {
+//            auto op = std::make_shared<Mul>(this, arg1, arg2);
+//            result = this->derived_node(op);
+//        }
+        return this->derived_node(op);
     };
 }
 

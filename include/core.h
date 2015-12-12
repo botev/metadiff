@@ -10,7 +10,7 @@
 #include <fstream>
 #include "memory"
 #include <unordered_map>
-#include "arrayfire.h"
+//#include "arrayfire.h"
 #include "symbolic.h"
 
 namespace autodiff {
@@ -189,7 +189,11 @@ namespace autodiff {
         std::vector<std::weak_ptr<Node>> children;
         unsigned short grad_level;
         // Only for constant nodes
-        af::array value;
+//        af::array value;
+        double *f_value;
+        double fs_value;
+        int *i_value;
+        int is_value;
         // Only for symbolic integers
         symbolic::SymbolicMonomial<N, unsigned short> integer_value;
 
@@ -353,11 +357,11 @@ namespace autodiff {
             return SymInt(this->sym_integer_count-1);
         }
 
-        NodeId constant_node(af::array value){
-            std::array<SymInt,4> shape;
-            for(auto i=0;i<4;i++){
-                shape[i] = SymInt::as_polynomial(value.dims()[i]);
-            }
+        NodeId constant_node(double* value, std::array<size_t, 4> dims){
+            std::array<SymInt,4> shape {SymInt::as_polynomial(dims[0]),
+                                        SymInt::as_polynomial(dims[1]),
+                                        SymInt::as_polynomial(dims[2]),
+                                        SymInt::as_polynomial(dims[3])};
             auto result = std::make_shared<Node>(
                     this,
                     default_device,
@@ -369,7 +373,64 @@ namespace autodiff {
                     std::make_shared<InputOperator>(this),
                     0
             );
-            result->value = value;
+            result->f_value = value;
+            this->nodes.push_back(result);
+            return result->id;
+        }
+
+        NodeId constant_node(double value){
+            std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    "Constant Node",
+                    ad_node_type::CONSTANT ,
+                    ad_value_type::FLOAT ,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            result->fs_value = value;
+            this->nodes.push_back(result);
+            return result->id;
+        }
+
+        NodeId constant_node(int* value, std::array<size_t, 4> dims){
+            std::array<SymInt,4> shape {SymInt::as_polynomial(dims[0]),
+                                        SymInt::as_polynomial(dims[1]),
+                                        SymInt::as_polynomial(dims[2]),
+                                        SymInt::as_polynomial(dims[3])};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    "Constant Node",
+                    ad_node_type::CONSTANT ,
+                    ad_value_type::INTEGER,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            result->i_value = value;
+            this->nodes.push_back(result);
+            return result->id;
+        }
+
+        NodeId constant_node(int value){
+            std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    "Constant Node",
+                    ad_node_type::CONSTANT ,
+                    ad_value_type::INTEGER,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            result->is_value = value;
             this->nodes.push_back(result);
             return result->id;
         }
@@ -398,7 +459,7 @@ namespace autodiff {
             std::unordered_map<NodeId, NodeId> grad_messages;
             auto target = this->nodes[objective];
             long n = this->nodes.size();
-            auto unity_grad = this->constant_node(af::constant(1.0, af::dim4(1, 1, 1, 1)));
+            auto unity_grad = this->constant_node(1.0);
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
             grad_messages[target->id] = unity_grad;
             this->nodes[grad_messages[target->id]]->name = "Grad of " + std::to_string(objective);
