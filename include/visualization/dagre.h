@@ -61,6 +61,9 @@ namespace autodiff {
                     "\t\tdescription: \"Name: " + node->name + " <br> "
                                     "Device: " + autodiff::to_string(node->device) + " <br> "
                                     "Value type: " + autodiff::to_string(node->v_type) + " <br> "
+                                    "Shape: [" + node->shape[0].to_string() + ", " +
+                                    node->shape[1].to_string() + ", " + node->shape[2].to_string() + ", " +
+                                    node->shape[3].to_string() + "] <br> "
                                     "Gradient Level:" + std::to_string(node->grad_level) + " <br> "
                                     "Parents: " + anc_id_str + " <br> "
                                     "Children: " + child_id_str +

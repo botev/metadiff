@@ -10,7 +10,6 @@
 #include <arrayfire.h>
 #include <algorithm>
 #include "autodiff.h"
-#include "symbolic.h"
 #include <ctime>
 //#include <visualization/dagre.h>
 
@@ -41,14 +40,15 @@
 int main(int argc, char *argv[])
 {
     std::cout << "cm²\u00B9" << std::endl;
-    af::dim4 dims(10, 10, 1, 1);
+    af::dim4 dims(1, 1, 1, 1);
     autodiff::Graph graph = autodiff::Graph();
+    graph.broadcast = autodiff::ad_implicit_broadcast::WARN;
 
     auto c1 = graph.constant_node(af::constant(0.5, dims, f32));
     auto c2 = graph.constant_node(af::constant(1.5, dims, f32));
 
-    auto i1 = graph.input_node();
-    auto i2 = graph.input_node();
+    auto i1 = graph.matrix(autodiff::ad_value_type::FLOAT);
+    auto i2 = graph.vector(autodiff::ad_value_type::FLOAT, graph.shape(i1)[0]);
 
     auto s1 = graph.add(c1, i1);
     auto s2 = graph.add(c2, i2);

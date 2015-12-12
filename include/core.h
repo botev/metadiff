@@ -16,6 +16,7 @@
 namespace autodiff {
     const size_t N = 100;
     typedef size_t NodeId;
+    typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
 
     enum ad_node_type{CONSTANT, INPUT, SHARED_INPUT, INPUT_DERIVED, SYMBOLIC_INTEGER};
     enum ad_value_type{FLOAT, INTEGER, BOOLEAN};
@@ -23,7 +24,6 @@ namespace autodiff {
     enum ad_implicit_broadcast {RAISE, WARN, QUIET};
     enum ad_float_type {f16, c16, f32, c32, f64, c64};
     enum ad_integer_type {s8, u8, s16, u16, s32, u32, s64, u64};
-    enum ad_shape {VARIABLE};
 
     std::string to_string(ad_node_type const & type){
         switch(type){
@@ -163,6 +163,7 @@ namespace autodiff {
         virtual void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId>& messages) = 0;
         virtual ad_value_type get_value_type() = 0;
         virtual unsigned short get_gradient_level() = 0;
+        virtual std::array<SymInt,4> get_shape() = 0;
         virtual std::vector<std::weak_ptr<Node>> get_parents() = 0;
         virtual std::vector<std::weak_ptr<Node>> get_arguments() = 0;
         std::vector<std::weak_ptr<Node>> get_ancestors(){
@@ -183,7 +184,7 @@ namespace autodiff {
         std::string name;
         ad_node_type type;
         ad_value_type v_type;
-//        symbolic::SymbolicMonomial shape[4];
+        std::array<SymInt,4> shape;
         std::shared_ptr<Operator> op;
         std::vector<std::weak_ptr<Node>> children;
         unsigned short grad_level;
@@ -198,10 +199,9 @@ namespace autodiff {
         {}
 
         Node(Graph* graph, Device device, size_t id, std::string name,
-             ad_node_type type, ad_value_type v_type,
+             ad_node_type type, ad_value_type v_type, std::array<SymInt,4> shape,
              std::shared_ptr<Operator> op,
-             unsigned short grad_level
-        ):
+             unsigned short grad_level):
                 graph(graph),
                 device(device),
                 id(id),
@@ -209,11 +209,95 @@ namespace autodiff {
                 type(type),
                 v_type(v_type),
                 op(op),
-                grad_level(grad_level)
-        {
-//            for(int i=0;i<4;i++){
-//                this->shape[i] = shape[i];
-//            }
+                grad_level(grad_level),
+                shape(shape)
+        {}
+
+        bool is_scalar(){
+            for(int i=0; i < 4; i++){
+                if(this->shape[i] != 1){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool is_vector(){
+            for(int i=1; i < 4; i++){
+                if(this->shape[i] != 1){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool is_vector_strict(){
+            for(int i=0; i < 1; i++){
+                if(this->shape[i] == 1){
+                    return false;
+                }
+            }
+            for(int i=1; i < 4; i++){
+                if(this->shape[i] != 1){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool is_matrix(){
+            for(int i=2; i < 4; i++){
+                if(this->shape[i] != 1){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool is_matrix_strict(){
+            for(int i=0; i < 2; i++){
+                if(this->shape[i] == 1){
+                    return false;
+                }
+            }
+            for(int i=2; i < 4; i++){
+                if(this->shape[i] != 1){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool is_tensor3(){
+            for(int i=3; i < 4; i++){
+                if(this->shape[i] != 1){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool is_tensor3_strict(){
+            for(int i=0; i < 3; i++){
+                if(this->shape[i] == 1){
+                    return false;
+                }
+            }
+            for(int i=3; i < 4; i++){
+                if(this->shape[i] != 1){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool is_tensor4_strict(){
+            for(int i=0; i < 4; i++){
+                if(this->shape[i] == 1){
+                    return false;
+                }
+            }
+            return true;
         }
     };
 
@@ -229,26 +313,8 @@ namespace autodiff {
             return 0;
         }
 
-        std::vector<std::weak_ptr<Node>> get_parents(){
-            return std::vector<std::weak_ptr<Node>> {};
-        }
-
-        std::vector<std::weak_ptr<Node>> get_arguments(){
-            return std::vector<std::weak_ptr<Node>> {};
-        }
-
-        void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId>& messages){};
-    };
-
-    class SymbolicIntegerOperator : public Operator {
-        SymbolicIntegerOperator(Graph* graph): Operator(graph, "SymbolicInteger"){}
-
-        ad_value_type get_value_type(){
-            return ad_value_type::INTEGER;
-        }
-
-        unsigned short get_gradient_level(){
-            return 0;
+        std::array<SymInt,4> get_shape(){
+            return std::array<SymInt,4>{0, 0, 0, 0};
         }
 
         std::vector<std::weak_ptr<Node>> get_parents(){
@@ -270,32 +336,28 @@ namespace autodiff {
         ad_float_type f_type;
         ad_integer_type i_type;
         ad_implicit_broadcast broadcast;
+        size_t sym_integer_count;
 
         Graph(){
             name = "Function";
+            sym_integer_count = 0;
             // TODO Check if GPU is available and use that instead
             default_device = Device(CPU, 0);
             f_type = ad_float_type::f32;
             i_type = ad_integer_type::s32;
-            ad_implicit_broadcast::RAISE;
+            broadcast = ad_implicit_broadcast::RAISE;
         }
 
-        NodeId input_node(){
-            auto result = std::make_shared<Node>(
-                    this,
-                    default_device,
-                    nodes.size(),
-                    "Input Node",
-                    ad_node_type::INPUT ,
-                    ad_value_type::FLOAT ,
-                    std::make_shared<InputOperator>(this),
-                    0
-            );
-            this->nodes.push_back(result);
-            return result->id;
+        SymInt get_new_symbolic_integer(){
+            this->sym_integer_count++;
+            return SymInt(this->sym_integer_count-1);
         }
 
         NodeId constant_node(af::array value){
+            std::array<SymInt,4> shape;
+            for(auto i=0;i<4;i++){
+                shape[i] = SymInt::as_polynomial(value.dims()[i]);
+            }
             auto result = std::make_shared<Node>(
                     this,
                     default_device,
@@ -303,6 +365,7 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT ,
                     ad_value_type::FLOAT ,
+                    shape,
                     std::make_shared<InputOperator>(this),
                     0
             );
@@ -319,6 +382,7 @@ namespace autodiff {
                     "Derived Node",
                     ad_node_type::INPUT_DERIVED,
                     op->get_value_type(),
+                    op->get_shape(),
                     op,
                     op->get_gradient_level()
             );
@@ -334,17 +398,13 @@ namespace autodiff {
             std::unordered_map<NodeId, NodeId> grad_messages;
             auto target = this->nodes[objective];
             long n = this->nodes.size();
-            auto unity_grad = this->constant_node(af::constant(1.0, af::dim4(10, 10, 1, 1)));
+            auto unity_grad = this->constant_node(af::constant(1.0, af::dim4(1, 1, 1, 1)));
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
             grad_messages[target->id] = unity_grad;
             this->nodes[grad_messages[target->id]]->name = "Grad of " + std::to_string(objective);
-//            std::cout << "Target " << objective << std::endl;
             int j=0;
-            for(auto i=n;i>0;i--){
-//                std::cout<<"Checking " << i << std::endl;
+            for(size_t i=n;i>0;i--){
                 if(grad_messages.find(i-1) != grad_messages.end()){
-//                    std::cout << "Grad msg found" << std::endl;
-//                    std::cout << this <<  "-" << this->nodes[i-1]->graph << std::endl;
                     this->nodes[i-1]->op->generate_gradients(i-1, grad_messages);
                 }
             }
@@ -354,9 +414,380 @@ namespace autodiff {
             }
             return grads;
         }
+        std::array<SymInt,4> shape(NodeId node){
+            return this->nodes[node]->shape;
+        };
+
         NodeId add(NodeId arg1, NodeId arg2);
         NodeId neg(NodeId arg1);
         NodeId mul(NodeId arg1_id, NodeId arg2_id);
+
+        NodeId scalar(std::string name, ad_value_type v_type){
+            std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    name,
+                    ad_node_type::INPUT ,
+                    v_type ,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            this->nodes.push_back(result);
+            return result->id;
+        }
+
+        NodeId scalar(ad_value_type v_type){
+            return scalar("InputNode", v_type);
+        }
+
+        NodeId scalar_as(std::string name, NodeId node){
+            return scalar(name, this->nodes[node]->v_type);
+        }
+
+        NodeId scalar_as(NodeId node){
+            return scalar("InputNode", this->nodes[node]->v_type);
+        }
+
+        NodeId vector(std::string name, ad_value_type v_type, SymInt shape0){
+            std::array<SymInt,4> shape {shape0, SymInt::one(), SymInt::one(), SymInt::one()};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    name,
+                    ad_node_type::INPUT ,
+                    v_type ,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            this->nodes.push_back(result);
+            return result->id;
+        }
+
+        NodeId vector(std::string name, ad_value_type v_type, size_t shape0) {
+            return vector(name, v_type, SymInt::as_polynomial(shape0));
+        }
+
+        NodeId vector(ad_value_type v_type, SymInt shape0){
+            return vector("InputNode", v_type, shape0);
+        }
+
+        NodeId vector(ad_value_type v_type, size_t shape0){
+            return vector("InputNode", v_type, shape0);
+        }
+
+        NodeId vector(std::string name, ad_value_type v_type){
+            auto shape0 = this->get_new_symbolic_integer();
+            return vector(name, v_type, shape0);
+        }
+
+        NodeId vector(ad_value_type v_type){
+            auto shape0 = this->get_new_symbolic_integer();
+            return vector("InputNode", v_type, shape0);
+        }
+
+        NodeId vector_as(std::string name, NodeId node){
+            return vector(name, this->nodes[node]->v_type, this->nodes[node]->shape[0]);
+        }
+
+        NodeId vector_as(NodeId node){
+            return vector("InputNode", this->nodes[node]->v_type, this->nodes[node]->shape[0]);
+        }
+
+        NodeId matrix(std::string name, ad_value_type v_type, SymInt shape0, SymInt shape1){
+            std::array<SymInt,4> shape {shape0, shape1, SymInt::one(), SymInt::one()};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    name,
+                    ad_node_type::INPUT ,
+                    v_type ,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            this->nodes.push_back(result);
+            return result->id;
+        }
+
+        NodeId matrix(std::string name, ad_value_type v_type, SymInt shape0, size_t shape1) {
+            return matrix(name, v_type, shape0, SymInt::as_polynomial(shape1));
+        }
+
+        NodeId matrix(std::string name, ad_value_type v_type, size_t shape0, SymInt shape1) {
+            return matrix(name, v_type, SymInt::as_polynomial(shape0), shape1);
+        }
+
+        NodeId matrix(std::string name, ad_value_type v_type, size_t shape0, size_t shape1) {
+            return matrix(name, v_type, SymInt::as_polynomial(shape0), SymInt::as_polynomial(shape1));
+        }
+
+        NodeId matrix(ad_value_type v_type, SymInt shape0, SymInt shape1){
+            return matrix("InputNode", v_type, shape0, shape1);
+        }
+
+        NodeId matrix(ad_value_type v_type, SymInt shape0, size_t shape1){
+            return matrix("InputNode", v_type, shape0, shape1);
+        }
+
+        NodeId matrix(ad_value_type v_type, size_t shape0, SymInt shape1){
+            return matrix("InputNode", v_type, shape0, shape1);
+        }
+
+        NodeId matrix(ad_value_type v_type, size_t shape0, size_t shape1){
+            return matrix("InputNode", v_type, shape0, shape1);
+        }
+
+        NodeId matrix(std::string name, ad_value_type v_type){
+            auto shape0 = this->get_new_symbolic_integer();
+            auto shape1 = this->get_new_symbolic_integer();
+            return matrix(name, v_type, shape0, shape1);
+        }
+
+        NodeId matrix(ad_value_type v_type){
+            auto shape0 = this->get_new_symbolic_integer();
+            auto shape1 = this->get_new_symbolic_integer();
+            return matrix("InputNode", v_type, shape0, shape1);
+        }
+
+        NodeId square_matrix(std::string name, ad_value_type v_type, SymInt shape) {
+            return matrix(name, v_type, shape, shape);
+        }
+
+        NodeId square_matrix(std::string name, ad_value_type v_type, size_t shape) {
+            return matrix(name, v_type, shape, shape);
+        }
+
+        NodeId square_matrix(ad_value_type v_type, SymInt shape){
+            return matrix("InputNode", v_type, shape, shape);
+        }
+
+        NodeId square_matrix(ad_value_type v_type, size_t shape){
+            return matrix("InputNode", v_type, shape, shape);
+        }
+
+        NodeId square_matrix(std::string name, ad_value_type v_type){
+            auto shape = this->get_new_symbolic_integer();
+            return matrix(name, v_type, shape, shape);
+        }
+
+        NodeId square_matrix(ad_value_type v_type){
+            auto shape = this->get_new_symbolic_integer();
+            return matrix("InputNode", v_type, shape, shape);
+        }
+
+        NodeId matrix_as(std::string name, NodeId node){
+            return matrix(name, this->nodes[node]->v_type,
+                          this->nodes[node]->shape[0], this->nodes[node]->shape[1]);
+        }
+
+        NodeId matrix_as(NodeId node){
+            return matrix("InputNode", this->nodes[node]->v_type,
+                          this->nodes[node]->shape[0], this->nodes[node]->shape[1]);
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, SymInt shape0, SymInt shape1, SymInt shape2){
+            std::array<SymInt,4> shape {shape0, shape1, shape2, SymInt::one()};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    name,
+                    ad_node_type::INPUT ,
+                    v_type ,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            this->nodes.push_back(result);
+            return result->id;
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, SymInt shape0, SymInt shape1, size_t shape2) {
+            return tensor3(name, v_type, shape0, shape1, SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, SymInt shape0, size_t shape1, SymInt shape2) {
+            return tensor3(name, v_type, shape0, SymInt::as_polynomial(shape1), shape2);
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, SymInt shape0, size_t shape1, size_t shape2) {
+            return tensor3(name, v_type, shape0, SymInt::as_polynomial(shape1), SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, size_t shape0, SymInt shape1, SymInt shape2) {
+            return tensor3(name, v_type, SymInt::as_polynomial(shape0), shape1, shape2);
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, size_t shape0, SymInt shape1, size_t shape2) {
+            return tensor3(name, v_type, SymInt::as_polynomial(shape0), shape1, SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, size_t shape0, size_t shape1, SymInt shape2) {
+            return tensor3(name, v_type, SymInt::as_polynomial(shape0), SymInt::as_polynomial(shape1), shape2);
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type, size_t shape0, size_t shape1, size_t shape2) {
+            return tensor3(name, v_type, SymInt::as_polynomial(shape0), SymInt::as_polynomial(shape1), SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(ad_value_type v_type, SymInt shape0, SymInt shape1, SymInt shape2){
+            return tensor3("InputNode", v_type, shape0, shape1, shape2);
+        }
+
+        NodeId tensor3(ad_value_type v_type, SymInt shape0, SymInt shape1, size_t shape2) {
+            return tensor3("InputNode", v_type, shape0, shape1, SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(ad_value_type v_type, SymInt shape0, size_t shape1, SymInt shape2) {
+            return tensor3("InputNode", v_type, shape0, SymInt::as_polynomial(shape1), shape2);
+        }
+
+        NodeId tensor3(ad_value_type v_type, SymInt shape0, size_t shape1, size_t shape2) {
+            return tensor3("InputNode", v_type, shape0, SymInt::as_polynomial(shape1), SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(ad_value_type v_type, size_t shape0, SymInt shape1, SymInt shape2) {
+            return tensor3("InputNode", v_type, SymInt::as_polynomial(shape0), shape1, shape2);
+        }
+
+        NodeId tensor3(ad_value_type v_type, size_t shape0, SymInt shape1, size_t shape2) {
+            return tensor3("InputNode", v_type, SymInt::as_polynomial(shape0), shape1, SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(ad_value_type v_type, size_t shape0, size_t shape1, SymInt shape2) {
+            return tensor3("InputNode", v_type, SymInt::as_polynomial(shape0), SymInt::as_polynomial(shape1), shape2);
+        }
+
+        NodeId tensor3(ad_value_type v_type, size_t shape0, size_t shape1, size_t shape2) {
+            return tensor3("InputNode", v_type, SymInt::as_polynomial(shape0), SymInt::as_polynomial(shape1), SymInt::as_polynomial(shape2));
+        }
+
+        NodeId tensor3(std::string name, ad_value_type v_type) {
+            auto shape0 = this->get_new_symbolic_integer();
+            auto shape1 = this->get_new_symbolic_integer();
+            auto shape2 = this->get_new_symbolic_integer();
+            return tensor3(name, v_type, shape0, shape1, shape2);
+        }
+
+        NodeId tensor3(ad_value_type v_type) {
+            auto shape0 = this->get_new_symbolic_integer();
+            auto shape1 = this->get_new_symbolic_integer();
+            auto shape2 = this->get_new_symbolic_integer();
+            return tensor3("InputNode", v_type, shape0, shape1, shape2);
+        }
+
+        NodeId tensor3_as(std::string name, NodeId node){
+            return tensor3(name, this->nodes[node]->v_type,
+                           this->nodes[node]->shape[0],
+                           this->nodes[node]->shape[1],
+                           this->nodes[node]->shape[2]);
+        }
+
+        NodeId tensor3_as(NodeId node){
+            return tensor3("InputNode", this->nodes[node]->v_type,
+                           this->nodes[node]->shape[0],
+                           this->nodes[node]->shape[1],
+                           this->nodes[node]->shape[2]);
+        }
+    };
+
+    class OperatorError : public std::exception{
+    public:
+        std::string name;
+        std::vector<size_t> input_ids;
+        std::vector<std::array<SymInt,4>> input_shapes;
+        OperatorError(std::string name,
+                      std::vector<std::weak_ptr<Node>> inputs):
+                name(name)
+        {
+            for(int i=0;i < inputs.size(); i++){
+                input_ids.push_back(inputs[i].lock()->id);
+                input_shapes.push_back(inputs[i].lock()->shape);
+            }
+        };
+    };
+
+    class IncompatibleShapes: public OperatorError
+    {
+    public:
+        IncompatibleShapes(std::string name,
+                           std::vector<std::weak_ptr<Node>> inputs) :
+                OperatorError(name, inputs)
+        {}
+        virtual const char* what() const throw()
+        {
+            std::string id_msg;
+            std::string shape_msg;
+            for(auto i=0;i<input_ids.size();i++){
+                id_msg += std::to_string(input_ids[i]);
+                shape_msg += "[";
+                for(auto j=0; j<4; j++){
+                    shape_msg += input_shapes[i][j].to_string();
+                    if(j < 3){
+                        shape_msg += ", ";
+                    }
+                }
+                shape_msg += "]";
+                if(i < input_ids.size() - 1){
+                    id_msg += ", ";
+                    shape_msg += ", ";
+                }
+            }
+            std::string msg = "\nIncomaptible dimensions in operator '" + name + "'\n" +
+                              "Input ids: " + id_msg + "\n" +
+                              "Input shapes: " + shape_msg;
+            return msg.c_str();
+        }
+    };
+
+    class ImplicitBroadcast: public OperatorError
+    {
+    public:
+        std::vector<size_t> dims;
+        ImplicitBroadcast(std::string name,
+                           std::vector<std::weak_ptr<Node>> inputs,
+        std::vector<size_t> dims) :
+                OperatorError(name, inputs),
+                dims(dims)
+        {}
+        virtual const char* what() const throw()
+        {
+            std::string id_msg;
+            std::string shape_msg;
+            for(auto i=0;i<input_ids.size();i++){
+                id_msg += std::to_string(input_ids[i]);
+                shape_msg += "[";
+                for(auto j=0; j<4; j++){
+                    shape_msg += input_shapes[i][j].to_string();
+                    if(j < 3){
+                        shape_msg += ", ";
+                    }
+                }
+                shape_msg += "]";
+                if(i < input_ids.size() - 1){
+                    id_msg += ", ";
+                    shape_msg += ", ";
+                }
+            }
+            std::string dim_msg;
+            for(int i=0;i<dims.size();i++){
+                dim_msg += std::to_string(dims[i]);
+                if(i < dims.size() - 1){
+                    dim_msg += ", ";
+                }
+            }
+            std::string msg = "\nImplicit broadvast in operator '" + name + "' " +
+                              "along dimensions " + dim_msg + "\n" +
+                              "Input ids: " + id_msg + "\n" +
+                              "Input shapes: " + shape_msg;
+            return msg.c_str();
+        }
     };
 }
 

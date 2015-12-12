@@ -40,6 +40,50 @@ namespace autodiff {
             }
         }
 
+        std::array<SymInt,4> get_shape(){
+            auto p1 = this->p1.lock();
+            auto p2 = this->p2.lock();
+            if(p1->is_scalar()){
+                return p2->shape;
+            } else if(p2->is_scalar()){
+                return p1->shape;
+            } else if(p1->shape == p2->shape) {
+                return p1->shape;
+            } else{
+                std::array<SymInt,4> shape;
+                std::vector<size_t> dims;
+                bool err = false;
+                for(int i=0; i<4; i++){
+                    if(p1->shape[i] != p2->shape[i]){
+                        if(p1->shape[i] == 1){
+                            dims.push_back(i);
+                            shape[i] = p2->shape[i];
+                        } else if(p2->shape[i] == 1){
+                            dims.push_back(i);
+                            shape[i] = p1->shape[i];
+                        } else {
+                            err = true;
+                        }
+                    } else {
+                        shape[i] = p1->shape[i];
+                    }
+                }
+                if(err){
+                    throw IncompatibleShapes(this->name, {p1, p2});
+                } else if(dims.size() == 0){
+                    return shape;
+                } else if(this->graph->broadcast == ad_implicit_broadcast::RAISE){
+                    throw ImplicitBroadcast(this->name, this->get_parents(), dims);
+                } else if(this->graph->broadcast == ad_implicit_broadcast::WARN){
+                    auto msg = ImplicitBroadcast(this->name, this->get_parents(), dims);
+                    std::cout << "WARNING:" << msg.what() << std::endl;
+                    return shape;
+                } else {
+                    return shape;
+                }
+            }
+        }
+
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
 //            std::cout << "G" << std::endl;
 //            std::cout << "G " << this->graph << std::endl;
@@ -102,6 +146,10 @@ namespace autodiff {
             return p1.lock()->grad_level;
         }
 
+        std::array<SymInt,4> get_shape(){
+            return p1.lock()->shape;
+        }
+
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
             if(messages.find(current) == messages.end()){
                 return;
@@ -155,6 +203,10 @@ namespace autodiff {
             } else{
                 return p2->grad_level;
             }
+        }
+
+        std::array<SymInt,4> get_shape(){
+            return p1.lock()->shape;
         }
 
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {

@@ -37,7 +37,7 @@ namespace symbolic {
         static_assert(std::numeric_limits<T>::is_integer, "X can be only instantiated with integer types");
         static_assert(not std::numeric_limits<T>::is_signed, "X can be only instansiated with unsigned types");
     public:
-        T powers[N];
+        std::array<T,N> powers;
         int coefficient;
 
         SymbolicMonomial() {
@@ -48,9 +48,7 @@ namespace symbolic {
         }
 
         SymbolicMonomial(const SymbolicMonomial<N,T>& monomial){
-            for (int i = 0; i < N; i++) {
-                this->powers[i] = monomial.powers[i];
-            }
+            this->powers = monomial.powers;
             this->coefficient = monomial.coefficient;
         }
 
@@ -84,7 +82,7 @@ namespace symbolic {
             return true;
         }
 
-        int eval(int (&values)[N]){
+        int eval(std::array<T,N>& values){
             int value = 0;
             for(int i=0;i<N;i++){
                 value += pow(values[i], this->powers[i]);
@@ -130,7 +128,11 @@ namespace symbolic {
                     }
                 }
             }
-            return result;
+            if(result == ""){
+                return "1";
+            } else {
+                return result;
+            }
         }
     };
 
@@ -296,6 +298,9 @@ namespace symbolic {
         }
 
         static SymbolicPolynomial as_polynomial(const int value){
+            if(value == 0){
+                return SymbolicPolynomial();
+            }
             auto result = SymbolicPolynomial<N,T>();
             result.monomials.push_back(SymbolicMonomial<N,T>::as_monomial(value));
             return result;
@@ -356,6 +361,14 @@ namespace symbolic {
             }
             return result;
         }
+
+        static SymbolicPolynomial<N,T> one(){
+            return as_polynomial(1);
+        };
+
+        static SymbolicPolynomial<N,T> zero(){
+            return SymbolicPolynomial<N,T>();
+        };
     };
 
     template<const size_t N, typename T>
@@ -580,14 +593,9 @@ namespace symbolic {
         auto result = SymbolicPolynomial<N,T>();
         auto reminder = SymbolicPolynomial<N,T>(lhs);
         while(not reminder.is_constant()){
-//            std::cout<< "R: " << reminder << std::endl;
             result.monomials.push_back(reminder.monomials[0] / rhs.monomials[0]);
-//            std::cout<< "M: " << result.monomials.back() << std::endl;
             auto s = rhs * result.monomials.back();
-//            std::cout<< "S: " << s << std::endl;
             reminder =  reminder - s;
-//            std::cout<< "R2: " << reminder << std::endl;
-//            std::cout << (reminder == 0) << std::endl;
         }
         if(reminder != 0){
             throw non_integer_division();
