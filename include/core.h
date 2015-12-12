@@ -772,6 +772,10 @@ namespace autodiff {
                 input_shapes.push_back(inputs[i].lock()->shape);
             }
         };
+        virtual std::string get_message() const = 0;
+        const char* what() const throw(){
+            return this->get_message().c_str();
+        }
     };
 
     class IncompatibleShapes: public OperatorError
@@ -781,7 +785,7 @@ namespace autodiff {
                            std::vector<std::weak_ptr<Node>> inputs) :
                 OperatorError(name, inputs)
         {}
-        virtual const char* what() const throw()
+        std::string get_message() const
         {
             std::string id_msg;
             std::string shape_msg;
@@ -817,7 +821,7 @@ namespace autodiff {
                 OperatorError(name, inputs),
                 dims(dims)
         {}
-        virtual const char* what() const throw()
+        std::string get_message() const
         {
             std::string id_msg;
             std::string shape_msg;

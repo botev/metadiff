@@ -76,7 +76,7 @@ namespace autodiff {
                     throw ImplicitBroadcast(this->name, this->get_parents(), dims);
                 } else if(this->graph->broadcast == ad_implicit_broadcast::WARN){
                     auto msg = ImplicitBroadcast(this->name, this->get_parents(), dims);
-                    std::cout << "WARNING:" << msg.what() << std::endl;
+                    std::cout << "WARNING:" << msg.get_message() << std::endl;
                     return shape;
                 } else {
                     return shape;
