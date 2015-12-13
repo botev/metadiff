@@ -14,7 +14,7 @@ namespace autodiff {
         std::weak_ptr<Node> p1;
         std::weak_ptr<Node> p2;
 
-        Add(GraphInternal* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+        Add(std::weak_ptr<GraphInternal> graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
                 Operator(graph, "ADD"),
                 p1(p1), p2(p2) { }
 
@@ -41,6 +41,7 @@ namespace autodiff {
         }
 
         std::array<SymInt,4> get_shape(){
+            auto graph = this->graph.lock();
             auto p1 = this->p1.lock();
             auto p2 = this->p2.lock();
             if(p1->is_scalar()){
@@ -72,9 +73,9 @@ namespace autodiff {
                     throw IncompatibleShapes(this->name, {p1, p2});
                 } else if(dims.size() == 0){
                     return shape;
-                } else if(this->graph->broadcast == ad_implicit_broadcast::RAISE){
+                } else if(graph->broadcast == ad_implicit_broadcast::RAISE){
                     throw ImplicitBroadcast(this->name, this->get_parents(), dims);
-                } else if(this->graph->broadcast == ad_implicit_broadcast::WARN){
+                } else if(graph->broadcast == ad_implicit_broadcast::WARN){
                     auto msg = ImplicitBroadcast(this->name, this->get_parents(), dims);
                     std::cout << "WARNING:" << msg.get_message() << std::endl;
                     return shape;
@@ -85,6 +86,7 @@ namespace autodiff {
         }
 
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+            auto graph = this->graph.lock();
 //            std::cout << "G" << std::endl;
 //            std::cout << "G " << this->graph << std::endl;
 //            std::cout<< "This: " << graph->nodes[current]->id << std::endl;
@@ -126,7 +128,7 @@ namespace autodiff {
     public:
         std::weak_ptr<Node> p1;
 
-        Neg(GraphInternal* graph, std::weak_ptr<Node> p1) :
+        Neg(std::weak_ptr<GraphInternal> graph, std::weak_ptr<Node> p1) :
                 Operator(graph, "NEG"),
                 p1(p1) { }
 
@@ -151,6 +153,7 @@ namespace autodiff {
         }
 
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+            auto graph = this->graph.lock();
             if(messages.find(current) == messages.end()){
                 return;
             }
@@ -179,7 +182,7 @@ namespace autodiff {
         std::weak_ptr<Node> p1;
         std::weak_ptr<Node> p2;
 
-        Mul(GraphInternal* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+        Mul(std::weak_ptr<GraphInternal> graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
                 Operator(graph, "MUL"),
                 p1(p1), p2(p2) { }
 
@@ -206,6 +209,7 @@ namespace autodiff {
         }
 
         std::array<SymInt,4> get_shape(){
+            auto graph = this->graph.lock();
             auto p1 = this->p1.lock();
             auto p2 = this->p2.lock();
             if(p1->is_scalar()){
@@ -237,9 +241,9 @@ namespace autodiff {
                     throw IncompatibleShapes(this->name, {p1, p2});
                 } else if(dims.size() == 0){
                     return shape;
-                } else if(this->graph->broadcast == ad_implicit_broadcast::RAISE){
+                } else if(graph->broadcast == ad_implicit_broadcast::RAISE){
                     throw ImplicitBroadcast(this->name, this->get_parents(), dims);
-                } else if(this->graph->broadcast == ad_implicit_broadcast::WARN){
+                } else if(graph->broadcast == ad_implicit_broadcast::WARN){
                     auto msg = ImplicitBroadcast(this->name, this->get_parents(), dims);
                     std::cout << "WARNING:" << msg.get_message() << std::endl;
                     return shape;
@@ -250,6 +254,7 @@ namespace autodiff {
         }
 
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+            auto graph = this->graph.lock();
             if(messages.find(current) == messages.end()){
                 return;
             }
@@ -295,20 +300,20 @@ namespace autodiff {
     NodeId GraphInternal::add(NodeId arg1_id, NodeId arg2_id) {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
-        auto op = std::make_shared<Add>(this, arg1, arg2);
+        auto op = std::make_shared<Add>(shared_from_this(), arg1, arg2);
         return  this->derived_node(op);
     };
 
     NodeId GraphInternal::neg(NodeId arg1_id) {
         auto arg1 = this->nodes[arg1_id];
-        auto op = std::make_shared<Neg>(this, arg1);
+        auto op = std::make_shared<Neg>(shared_from_this(), arg1);
         return this->derived_node(op);
     };
 
     NodeId GraphInternal::mul(NodeId arg1_id, NodeId arg2_id) {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
-        auto op = std::make_shared<Mul>(this, arg1, arg2);
+        auto op = std::make_shared<Mul>(shared_from_this(), arg1, arg2);
         return this->derived_node(op);
     };
 }

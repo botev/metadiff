@@ -152,9 +152,9 @@ namespace autodiff {
 
     class Operator{
     public:
-        GraphInternal* graph;
+        std::weak_ptr<GraphInternal> graph;
         const std::string name;
-        Operator(GraphInternal* graph, std::string name):
+        Operator(std::weak_ptr<GraphInternal> graph, std::string name):
                 graph(graph),
                 name(name)
         {};
@@ -177,7 +177,7 @@ namespace autodiff {
 
     class Node{
     public:
-        GraphInternal* graph;
+        std::weak_ptr<GraphInternal> graph;
         Device device;
         size_t id;
         std::string name;
@@ -199,12 +199,12 @@ namespace autodiff {
         // Only for symbolic integers
         SymInt integer_value;
 
-        Node(GraphInternal* graph, Device device):
+        Node(std::weak_ptr<GraphInternal> graph, Device device):
                 graph(graph),
                 device(device)
         {}
 
-        Node(GraphInternal* graph, Device device, size_t id, std::string name,
+        Node(std::weak_ptr<GraphInternal> graph, Device device, size_t id, std::string name,
              ad_node_type type, ad_value_type v_type, std::array<SymInt,4> shape,
              std::shared_ptr<Operator> op, unsigned short grad_level):
                 graph(graph),
@@ -308,7 +308,7 @@ namespace autodiff {
 
     class InputOperator : public Operator {
     public:
-        InputOperator(GraphInternal* graph): Operator(graph, "Input"){}
+        InputOperator(std::weak_ptr<GraphInternal> graph): Operator(graph, "Input"){}
 
         ad_value_type get_value_type(){
             return ad_value_type::FLOAT;
@@ -333,7 +333,7 @@ namespace autodiff {
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId>& messages){};
     };
 
-    class GraphInternal : std::enable_shared_from_this<GraphInternal>{
+    class GraphInternal : public std::enable_shared_from_this<GraphInternal>{
     public:
         std::vector<std::shared_ptr<Node>> nodes;
         std::string name;
@@ -385,7 +385,7 @@ namespace autodiff {
 
         NodeId derived_node(std::shared_ptr<Operator> op) {
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Derived Node",
@@ -409,14 +409,14 @@ namespace autodiff {
                                         SymInt::as_polynomial(dims[2]),
                                         SymInt::as_polynomial(dims[3])};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Constant Node",
                     ad_node_type::CONSTANT ,
                     ad_value_type::FLOAT ,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             result->f_value = value;
@@ -427,14 +427,14 @@ namespace autodiff {
         NodeId constant_node(double value){
             std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Constant Node",
                     ad_node_type::CONSTANT ,
                     ad_value_type::FLOAT ,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             result->fs_value = value;
@@ -448,14 +448,14 @@ namespace autodiff {
                                         SymInt::as_polynomial(dims[2]),
                                         SymInt::as_polynomial(dims[3])};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Constant Node",
                     ad_node_type::CONSTANT ,
                     ad_value_type::INTEGER,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             result->i_value = value;
@@ -466,14 +466,14 @@ namespace autodiff {
         NodeId constant_node(int value){
             std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Constant Node",
                     ad_node_type::CONSTANT ,
                     ad_value_type::INTEGER,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             result->is_value = value;
@@ -487,14 +487,14 @@ namespace autodiff {
                                         SymInt::as_polynomial(dims[2]),
                                         SymInt::as_polynomial(dims[3])};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Constant Node",
                     ad_node_type::CONSTANT ,
                     ad_value_type::INTEGER,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             result->b_value = value;
@@ -505,14 +505,14 @@ namespace autodiff {
         NodeId constant_node(bool value){
             std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Constant Node",
                     ad_node_type::CONSTANT ,
                     ad_value_type::INTEGER,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             result->bs_value = value;
@@ -523,14 +523,14 @@ namespace autodiff {
         NodeId scalar(std::string name, ad_value_type v_type){
             std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     name,
                     ad_node_type::INPUT ,
                     v_type ,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             this->nodes.push_back(result);
@@ -552,14 +552,14 @@ namespace autodiff {
         NodeId vector(std::string name, ad_value_type v_type, SymInt shape0){
             std::array<SymInt,4> shape {shape0, SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     name,
                     ad_node_type::INPUT ,
                     v_type ,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             this->nodes.push_back(result);
@@ -599,14 +599,14 @@ namespace autodiff {
         NodeId matrix(std::string name, ad_value_type v_type, SymInt shape0, SymInt shape1){
             std::array<SymInt,4> shape {shape0, shape1, SymInt::one(), SymInt::one()};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     name,
                     ad_node_type::INPUT ,
                     v_type ,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             this->nodes.push_back(result);
@@ -692,14 +692,14 @@ namespace autodiff {
         NodeId tensor3(std::string name, ad_value_type v_type, SymInt shape0, SymInt shape1, SymInt shape2){
             std::array<SymInt,4> shape {shape0, shape1, shape2, SymInt::one()};
             auto result = std::make_shared<Node>(
-                    this,
+                    shared_from_this(),
                     default_device,
                     nodes.size(),
                     name,
                     ad_node_type::INPUT ,
                     v_type ,
                     shape,
-                    std::make_shared<InputOperator>(this),
+                    std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
             this->nodes.push_back(result);
@@ -889,7 +889,7 @@ namespace autodiff {
                     dim_msg += ", ";
                 }
             }
-            std::string msg = "\nImplicit broadvast in operator '" + name + "' " +
+            std::string msg = "\nImplicit broadcast in operator '" + name + "' " +
                               "along dimensions " + dim_msg + "\n" +
                               "Input ids: " + id_msg + "\n" +
                               "Input shapes: " + shape_msg;
