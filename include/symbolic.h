@@ -52,25 +52,25 @@ namespace symbolic {
             this->coefficient = monomial.coefficient;
         }
 
-        SymbolicMonomial(const size_t variable): SymbolicMonomial(){
+        SymbolicMonomial(const int value): SymbolicMonomial(){
+            this->coefficient = value;
+        }
+
+        static SymbolicMonomial new_variable(const size_t variable){
             if(variable >= N){
                 throw UnrecognisedSymbolicVariable();
             }
-            this->powers[variable] = 1;
-        }
-
-        static SymbolicMonomial as_monomial(int value){
             auto result = SymbolicMonomial<N,T>();
-            result.coefficient = value;
+            result.powers[variable] = 1;
             return result;
         }
 
         static SymbolicMonomial one(){
-            return as_monomial(1);
+            return SymbolicMonomial(1);
         }
 
         static SymbolicMonomial zero(){
-            return as_monomial(0);
+            return SymbolicMonomial(0);
         }
 
         bool is_constant() const{
@@ -274,11 +274,11 @@ namespace symbolic {
     }
 
     template<size_t N, typename T>
-    SymbolicMonomial<N,T> operator/(int lhs, const SymbolicMonomial<N,T>& rhs) {
+    SymbolicMonomial<N,T> operator/(const int lhs, const SymbolicMonomial<N,T>& rhs) {
         if(not rhs.is_constant() or rhs.coefficient == 0 or lhs % rhs.coefficient != 0){
             throw NonIntegerDivision();
         }
-        return as_monomial(lhs / rhs.coefficient);
+        return SymbolicMonomial<N,T>(lhs / rhs.coefficient);
     }
 
 
@@ -289,27 +289,22 @@ namespace symbolic {
 
         SymbolicPolynomial(){};
 
-        SymbolicPolynomial(const size_t variable){
-            monomials.push_back(SymbolicMonomial<N,T>(variable));
-        }
-
         SymbolicPolynomial(const SymbolicPolynomial<N,T>& polynomial){
             this->monomials = polynomial.monomials;
         }
 
-        static SymbolicPolynomial as_polynomial(const int value){
-            if(value == 0){
-                return SymbolicPolynomial();
-            }
-            auto result = SymbolicPolynomial<N,T>();
-            result.monomials.push_back(SymbolicMonomial<N,T>::as_monomial(value));
-            return result;
+        SymbolicPolynomial(const SymbolicMonomial<N,T>& monomial){
+            this->monomials.push_back(monomial);
         }
 
-        static SymbolicPolynomial as_polynomial(const SymbolicMonomial<N,T>& monomial){
-            auto result = SymbolicPolynomial<N,T>();
-            result.monomials.push_back(SymbolicMonomial<N,T>(monomial));
-            return result;
+        SymbolicPolynomial(const int value){
+            if(value != 0){
+                this->monomials.push_back(SymbolicMonomial<N,T>(value));
+            }
+        }
+
+        static SymbolicPolynomial new_variable(const size_t variable){
+            return SymbolicPolynomial(SymbolicMonomial<N,T>::new_variable(variable));
         }
 
         bool is_constant() const{
@@ -339,7 +334,7 @@ namespace symbolic {
             }
         }
 
-        int eval(int (&values)[N]){
+        int eval(std::array<int,N>& values){
             int value = 0;
             for(int i=0;i<this->monomials.size();i++){
                 value += monomials[i].eval(values);
@@ -362,12 +357,12 @@ namespace symbolic {
             return result;
         }
 
-        static SymbolicPolynomial<N,T> one(){
-            return as_polynomial(1);
+        static SymbolicPolynomial one(){
+            return SymbolicPolynomial(SymbolicMonomial<N,T>::one());
         };
 
-        static SymbolicPolynomial<N,T> zero(){
-            return SymbolicPolynomial<N,T>();
+        static SymbolicPolynomial zero(){
+            return SymbolicPolynomial(SymbolicMonomial<N,T>::zero());
         };
     };
 
@@ -462,7 +457,7 @@ namespace symbolic {
     SymbolicPolynomial<N,T> operator+(const SymbolicMonomial<N,T>& lhs, const int rhs) {
         auto result = SymbolicPolynomial<N,T>();
         result.monomials.push_back(lhs);
-        result.monomials.push_back(SymbolicMonomial<N,T>::as_monomial(rhs));
+        result.monomials.push_back(SymbolicMonomial<N,T>(rhs));
         result.simplify();
         return result;
     }
@@ -496,7 +491,7 @@ namespace symbolic {
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator+(const SymbolicPolynomial<N,T>& lhs, const int rhs) {
         auto result = SymbolicPolynomial<N,T>(lhs);
-        result.monomials.push_back(SymbolicMonomial<N,T>::as_monomial(rhs));
+        result.monomials.push_back(SymbolicMonomial<N,T>(rhs));
         result.simplify();
         return result;
     }

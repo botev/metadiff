@@ -11,19 +11,19 @@ namespace autodiff {
 
     class Add : public Operator {
     public:
-        std::weak_ptr<Node> p1;
-        std::weak_ptr<Node> p2;
+        std::weak_ptr<NodeInternal> p1;
+        std::weak_ptr<NodeInternal> p2;
 
-        Add(std::weak_ptr<GraphInternal> graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+        Add(std::weak_ptr<GraphInternal> graph, std::weak_ptr<NodeInternal> p1, std::weak_ptr<NodeInternal> p2) :
                 Operator(graph, "ADD"),
                 p1(p1), p2(p2) { }
 
-        std::vector<std::weak_ptr<Node>> get_parents() {
-            return std::vector<std::weak_ptr<Node>> {p1, p2};
+        std::vector<std::weak_ptr<NodeInternal>> get_parents() {
+            return std::vector<std::weak_ptr<NodeInternal>> {p1, p2};
         }
 
-        std::vector<std::weak_ptr<Node>> get_arguments() {
-            return std::vector<std::weak_ptr<Node>> {};
+        std::vector<std::weak_ptr<NodeInternal>> get_arguments() {
+            return std::vector<std::weak_ptr<NodeInternal>> {};
         }
 
         ad_value_type get_value_type(){
@@ -85,7 +85,7 @@ namespace autodiff {
             }
         }
 
-        void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
             auto graph = this->graph.lock();
 //            std::cout << "G" << std::endl;
 //            std::cout << "G " << this->graph << std::endl;
@@ -126,18 +126,18 @@ namespace autodiff {
 
     class Neg : public Operator {
     public:
-        std::weak_ptr<Node> p1;
+        std::weak_ptr<NodeInternal> p1;
 
-        Neg(std::weak_ptr<GraphInternal> graph, std::weak_ptr<Node> p1) :
+        Neg(std::weak_ptr<GraphInternal> graph, std::weak_ptr<NodeInternal> p1) :
                 Operator(graph, "NEG"),
                 p1(p1) { }
 
-        std::vector<std::weak_ptr<Node>> get_parents() {
-            return std::vector<std::weak_ptr<Node>> {p1};
+        std::vector<std::weak_ptr<NodeInternal>> get_parents() {
+            return std::vector<std::weak_ptr<NodeInternal>> {p1};
         }
 
-        std::vector<std::weak_ptr<Node>> get_arguments() {
-            return std::vector<std::weak_ptr<Node>> {};
+        std::vector<std::weak_ptr<NodeInternal>> get_arguments() {
+            return std::vector<std::weak_ptr<NodeInternal>> {};
         }
 
         ad_value_type get_value_type(){
@@ -152,7 +152,7 @@ namespace autodiff {
             return p1.lock()->shape;
         }
 
-        void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
             auto graph = this->graph.lock();
             if(messages.find(current) == messages.end()){
                 return;
@@ -179,19 +179,19 @@ namespace autodiff {
 
     class Mul : public Operator {
     public:
-        std::weak_ptr<Node> p1;
-        std::weak_ptr<Node> p2;
+        std::weak_ptr<NodeInternal> p1;
+        std::weak_ptr<NodeInternal> p2;
 
-        Mul(std::weak_ptr<GraphInternal> graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+        Mul(std::weak_ptr<GraphInternal> graph, std::weak_ptr<NodeInternal> p1, std::weak_ptr<NodeInternal> p2) :
                 Operator(graph, "MUL"),
                 p1(p1), p2(p2) { }
 
-        std::vector<std::weak_ptr<Node>> get_parents() {
-            return std::vector<std::weak_ptr<Node>> {p1, p2};
+        std::vector<std::weak_ptr<NodeInternal>> get_parents() {
+            return std::vector<std::weak_ptr<NodeInternal>> {p1, p2};
         }
 
-        std::vector<std::weak_ptr<Node>> get_arguments() {
-            return std::vector<std::weak_ptr<Node>> {};
+        std::vector<std::weak_ptr<NodeInternal>> get_arguments() {
+            return std::vector<std::weak_ptr<NodeInternal>> {};
         }
 
         ad_value_type get_value_type(){
@@ -253,7 +253,7 @@ namespace autodiff {
             }
         }
 
-        void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId> &messages) {
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
             auto graph = this->graph.lock();
             if(messages.find(current) == messages.end()){
                 return;
@@ -297,25 +297,41 @@ namespace autodiff {
         };
     };
 
-    NodeId GraphInternal::add(NodeId arg1_id, NodeId arg2_id) {
-        auto arg1 = this->nodes[arg1_id];
-        auto arg2 = this->nodes[arg2_id];
-        auto op = std::make_shared<Add>(shared_from_this(), arg1, arg2);
-        return  this->derived_node(op);
+    Node add(Node node1, Node node2){
+        auto graph = node1.graph.lock();
+        auto arg1 = graph->nodes[node1.id];
+        auto arg2 = graph->nodes[node2.id];
+        auto op = std::make_shared<Add>(node1.graph, arg1, arg2);
+        return Node(node1.graph, graph->derived_node(op));
     };
 
-    NodeId GraphInternal::neg(NodeId arg1_id) {
-        auto arg1 = this->nodes[arg1_id];
-        auto op = std::make_shared<Neg>(shared_from_this(), arg1);
-        return this->derived_node(op);
+    Node operator+(Node node1, Node node2){
+        return add(node1, node2);
     };
 
-    NodeId GraphInternal::mul(NodeId arg1_id, NodeId arg2_id) {
-        auto arg1 = this->nodes[arg1_id];
-        auto arg2 = this->nodes[arg2_id];
-        auto op = std::make_shared<Mul>(shared_from_this(), arg1, arg2);
-        return this->derived_node(op);
+    Node neg(Node node){
+        auto graph = node.graph.lock();
+        auto arg = graph->nodes[node.id];
+        auto op = std::make_shared<Neg>(node.graph, arg);
+        return Node(node.graph, graph->derived_node(op));
+    }
+
+    Node operator-(Node node){
+        return neg(node);
+    }
+
+    Node mul(Node node1, Node node2){
+        auto graph = node1.graph.lock();
+        auto arg1 = graph->nodes[node1.id];
+        auto arg2 = graph->nodes[node2.id];
+        auto op = std::make_shared<Mul>(node1.graph, arg1, arg2);
+        return Node(node1.graph, graph->derived_node(op));
+    }
+
+    Node operator*(Node node1, Node node2){
+        return mul(node1, node2);
     };
+
 }
 
 #endif //AUTODIFF_BASE_H

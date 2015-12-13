@@ -9,7 +9,8 @@
 
 namespace autodiff {
     namespace dagre {
-        std::string node_name_html(std::shared_ptr<Node> node) {
+        std::string node_name_html(std::weak_ptr<const NodeInternal> node_ptr) {
+            auto node = node_ptr.lock();
             if (node->type == ad_node_type::INPUT) {
                 return "INPUT[" + std::to_string(node->id) + "]";
             } else if (node->type == ad_node_type::SHARED_INPUT) {
@@ -21,7 +22,8 @@ namespace autodiff {
             }
         }
 
-        std::string node_color_html(std::shared_ptr<Node> node, std::vector<NodeId> targets) {
+        std::string node_color_html(std::weak_ptr<const NodeInternal> node_ptr, std::vector<size_t > targets) {
+            auto node = node_ptr.lock();
             if (std::find(targets.begin(), targets.end(), node->id) != targets.end()) {
                 return "#ff0000";
             } else if (node->type == ad_node_type::INPUT) {
@@ -35,8 +37,9 @@ namespace autodiff {
             }
         }
 
-        void node_to_html(std::shared_ptr<Node> node, std::vector<NodeId> &targets,
+        void node_to_html(std::weak_ptr<const NodeInternal> node_ptr, std::vector<size_t > &targets,
                           std::vector<std::string> &names) {
+            auto node = node_ptr.lock();
             std::string state_name = node_name_html(node);
             std::string state_color = node_color_html(node, targets);
 
@@ -71,8 +74,9 @@ namespace autodiff {
                                     "\t}");
         }
 
-        void edges_to_html(std::shared_ptr<Node> node,
+        void edges_to_html(std::weak_ptr<const NodeInternal> node_ptr,
                            std::vector<std::string> &edges) {
+            auto node = node_ptr.lock();
             std::string state_name = node_name_html(node);
             auto ancestors = node->op->get_ancestors();
             std::vector<std::string> anc_names;
@@ -89,7 +93,11 @@ namespace autodiff {
             edges.push_back("g.setParent('" + state_name + "', 'grad_" + std::to_string(node->grad_level) + "');");
         }
 
-        void dagre_to_file(std::string file_name, autodiff::Graph graph, std::vector<NodeId> targets) {
+        void dagre_to_file(std::string file_name, autodiff::Graph graph, std::vector<Node> target_nodes) {
+            std::vector<size_t> targets;
+            for(size_t i=0;i<target_nodes.size();i++){
+                targets.push_back(target_nodes[i].id);
+            }
             int max_grad_level = 0;
             for (int i = 0; i < targets.size(); i++) {
                 if (graph->nodes[targets[i]]->grad_level > max_grad_level) {

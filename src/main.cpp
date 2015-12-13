@@ -52,23 +52,23 @@ int main(int argc, char *argv[])
 //    auto c2 = graph->scalar(autodiff::ad_value_type::FLOAT);
     auto c1 = graph->constant_node(0.5);
     auto c2 = graph->constant_node(1.5);
+    auto d = graph->tensor(autodiff::ad_value_type::FLOAT, {autodiff::SymInt(2), 3, 4, 5});
 
     auto i1 = graph->matrix(autodiff::ad_value_type::FLOAT);
-    auto i2 = graph->vector(autodiff::ad_value_type::FLOAT, graph->shape(i1)[0]);
+    auto i2 = graph->vector(autodiff::ad_value_type::FLOAT, i1.shape()[0]);
 
-    auto s1 = graph->add(c1, i1);
-    auto s2 = graph->add(c2, i2);
+    auto s1 = c1 + i1;
+    auto s2 = c2 + i2;
 
     //auto s4 = graph->neg(s2);
-    auto s = graph->add(s1, s2);
+    auto s = s1 + s2;
 
-    auto s_f = graph->add(s, i2);
+    auto s_f = s + i2;
 
-    std::vector<autodiff::NodeId> params {i1 ,i2};
     {
-        auto grads = graph->gradient(s_f, params);
+        auto grads = graph->gradient(s_f, {i1 ,i2});
         for(int i=0;i<grads.size();i++){
-//            std::cout << grads[i] << std::endl;
+            std::cout << grads[i].id << std::endl;
         }
         grads.push_back(s_f);
         for(int i=0;i<graph->nodes.size(); i++){
