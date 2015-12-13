@@ -147,14 +147,14 @@ namespace autodiff {
     };
 
 
-    class Graph;
+    class GraphInternal;
     class Node;
 
     class Operator{
     public:
-        Graph* graph;
+        GraphInternal* graph;
         const std::string name;
-        Operator(Graph* graph, std::string name):
+        Operator(GraphInternal* graph, std::string name):
                 graph(graph),
                 name(name)
         {};
@@ -177,7 +177,7 @@ namespace autodiff {
 
     class Node{
     public:
-        Graph* graph;
+        GraphInternal* graph;
         Device device;
         size_t id;
         std::string name;
@@ -199,12 +199,12 @@ namespace autodiff {
         // Only for symbolic integers
         SymInt integer_value;
 
-        Node(Graph* graph, Device device):
+        Node(GraphInternal* graph, Device device):
                 graph(graph),
                 device(device)
         {}
 
-        Node(Graph* graph, Device device, size_t id, std::string name,
+        Node(GraphInternal* graph, Device device, size_t id, std::string name,
              ad_node_type type, ad_value_type v_type, std::array<SymInt,4> shape,
              std::shared_ptr<Operator> op, unsigned short grad_level):
                 graph(graph),
@@ -308,7 +308,7 @@ namespace autodiff {
 
     class InputOperator : public Operator {
     public:
-        InputOperator(Graph* graph): Operator(graph, "Input"){}
+        InputOperator(GraphInternal* graph): Operator(graph, "Input"){}
 
         ad_value_type get_value_type(){
             return ad_value_type::FLOAT;
@@ -333,7 +333,7 @@ namespace autodiff {
         void generate_gradients(NodeId current, std::unordered_map<NodeId, NodeId>& messages){};
     };
 
-    class Graph{
+    class GraphInternal : std::enable_shared_from_this<GraphInternal>{
     public:
         std::vector<std::shared_ptr<Node>> nodes;
         std::string name;
@@ -343,7 +343,7 @@ namespace autodiff {
         ad_implicit_broadcast broadcast;
         size_t sym_integer_count;
 
-        Graph(){
+        GraphInternal(){
             name = "Function";
             sym_integer_count = 0;
             // TODO Check if GPU is available and use that instead
@@ -896,6 +896,11 @@ namespace autodiff {
             return msg.c_str();
         }
     };
+
+    typedef std::shared_ptr<GraphInternal> Graph;
+    Graph create_graph(){
+        return std::make_shared<GraphInternal>();
+    }
 }
 
 #endif //AUTODIFF_CORE_H

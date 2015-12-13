@@ -89,18 +89,18 @@ namespace autodiff {
             edges.push_back("g.setParent('" + state_name + "', 'grad_" + std::to_string(node->grad_level) + "');");
         }
 
-        void dagre_to_file(std::string file_name, autodiff::Graph &graph, std::vector<NodeId> targets) {
+        void dagre_to_file(std::string file_name, autodiff::Graph graph, std::vector<NodeId> targets) {
             int max_grad_level = 0;
             for (int i = 0; i < targets.size(); i++) {
-                if (graph.nodes[targets[i]]->grad_level > max_grad_level) {
-                    max_grad_level = graph.nodes[targets[i]]->grad_level;
+                if (graph->nodes[targets[i]]->grad_level > max_grad_level) {
+                    max_grad_level = graph->nodes[targets[i]]->grad_level;
                 }
             }
             std::vector<std::string> nodes;
             std::vector<std::string> edges;
-            for (int i = 0; i < graph.nodes.size(); i++) {
-                node_to_html(graph.nodes[i], targets, nodes);
-                edges_to_html(graph.nodes[i], edges);
+            for (int i = 0; i < graph->nodes.size(); i++) {
+                node_to_html(graph->nodes[i], targets, nodes);
+                edges_to_html(graph->nodes[i], edges);
             }
             std::ofstream f;
             f.open(file_name);
@@ -120,11 +120,11 @@ namespace autodiff {
                     "<script src=\"../html_files/tipsy.js\"></script>\n"
                     "\n"
                     "</head><body style=\"margin:0;padding:0\" height=\"100%\">"
-                    "<h3 style=\"margin-bottom: 0px\">" << graph.name << "</h3>\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Default device: " << graph.default_device << "</h5>\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Float type: " << graph.f_type << "</h5>\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Integer type: " << graph.i_type << "</h5>\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Broadcast policy: " << graph.broadcast << "</h5>\n"
+                    "<h3 style=\"margin-bottom: 0px\">" << graph->name << "</h3>\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Default device: " << graph->default_device << "</h5>\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Float type: " << graph->f_type << "</h5>\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Integer type: " << graph->i_type << "</h5>\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Broadcast policy: " << graph->broadcast << "</h5>\n"
                     "\n"
                     "<style id=\"css\">\n"
                     "text {\n"

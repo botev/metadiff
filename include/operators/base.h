@@ -14,7 +14,7 @@ namespace autodiff {
         std::weak_ptr<Node> p1;
         std::weak_ptr<Node> p2;
 
-        Add(Graph* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+        Add(GraphInternal* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
                 Operator(graph, "ADD"),
                 p1(p1), p2(p2) { }
 
@@ -126,7 +126,7 @@ namespace autodiff {
     public:
         std::weak_ptr<Node> p1;
 
-        Neg(Graph* graph, std::weak_ptr<Node> p1) :
+        Neg(GraphInternal* graph, std::weak_ptr<Node> p1) :
                 Operator(graph, "NEG"),
                 p1(p1) { }
 
@@ -179,7 +179,7 @@ namespace autodiff {
         std::weak_ptr<Node> p1;
         std::weak_ptr<Node> p2;
 
-        Mul(Graph* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
+        Mul(GraphInternal* graph, std::weak_ptr<Node> p1, std::weak_ptr<Node> p2) :
                 Operator(graph, "MUL"),
                 p1(p1), p2(p2) { }
 
@@ -292,20 +292,20 @@ namespace autodiff {
         };
     };
 
-    NodeId Graph::add(NodeId arg1_id, NodeId arg2_id) {
+    NodeId GraphInternal::add(NodeId arg1_id, NodeId arg2_id) {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
         auto op = std::make_shared<Add>(this, arg1, arg2);
         return  this->derived_node(op);
     };
 
-    NodeId Graph::neg(NodeId arg1_id) {
+    NodeId GraphInternal::neg(NodeId arg1_id) {
         auto arg1 = this->nodes[arg1_id];
         auto op = std::make_shared<Neg>(this, arg1);
         return this->derived_node(op);
     };
 
-    NodeId Graph::mul(NodeId arg1_id, NodeId arg2_id) {
+    NodeId GraphInternal::mul(NodeId arg1_id, NodeId arg2_id) {
         auto arg1 = this->nodes[arg1_id];
         auto arg2 = this->nodes[arg2_id];
         auto op = std::make_shared<Mul>(this, arg1, arg2);
