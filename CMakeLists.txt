@@ -11,4 +11,4 @@ link_directories(/opt/arrayfire-3/lib /usr/local/lib)
 link_libraries(afcpu)
 
 add_subdirectory(tests)
-add_executable(autodiff ${SOURCE_FILES})
+add_executable(metadiff ${SOURCE_FILES})

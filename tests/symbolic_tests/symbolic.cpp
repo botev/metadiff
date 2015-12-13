@@ -42,7 +42,7 @@ TYPED_TEST(SymbolicTest, MonomialConstructor){
     EXPECT_THAT(two_x2.powers, testing::ElementsAre(2, 0, 0, 0, 0));
 
     // Test for exception
-    EXPECT_THROW(Monomial(N+0), symbolic::unrecognised_symbolic_variable);
+    EXPECT_THROW(Monomial(N+0), symbolic::UnrecognisedSymbolicVariable);
 }
 
 TYPED_TEST(SymbolicTest, MonomialEquality) {
@@ -94,10 +94,10 @@ TYPED_TEST(SymbolicTest, MonomialProductAndDivision) {
     EXPECT_EQ(composite / z, 2 * x * y);
 
     // Check for errors on non integer division
-    EXPECT_THROW(composite / 4, symbolic::non_integer_division);
-    EXPECT_THROW(composite / (x * x), symbolic::non_integer_division);
-    EXPECT_THROW(composite / (y * y), symbolic::non_integer_division);
-    EXPECT_THROW(composite / (z * z), symbolic::non_integer_division);
+    EXPECT_THROW(composite / 4, symbolic::NonIntegerDivision);
+    EXPECT_THROW(composite / (x * x), symbolic::NonIntegerDivision);
+    EXPECT_THROW(composite / (y * y), symbolic::NonIntegerDivision);
+    EXPECT_THROW(composite / (z * z), symbolic::NonIntegerDivision);
 }
 
 TYPED_TEST(SymbolicTest, PolynomialConstructor) {
@@ -139,7 +139,7 @@ TYPED_TEST(SymbolicTest, PolynomialConstructor) {
     EXPECT_THAT(two_x.monomials[0].powers, testing::ElementsAre(1, 0, 0, 0, 0));
 
     // Test for exception
-    EXPECT_THROW(Polynomial(N+0), symbolic::unrecognised_symbolic_variable);
+    EXPECT_THROW(Polynomial(N+0), symbolic::UnrecognisedSymbolicVariable);
 }
 
 TYPED_TEST(SymbolicTest, PolynomialEquality) {
@@ -246,7 +246,7 @@ TYPED_TEST(SymbolicTest, PolynomialProductAndDivision) {
     EXPECT_EQ(product / xy_plus_y_square_plus_two, xy_plus_x_square_plus_one);
 
     // Test for exception
-    EXPECT_THROW(product / x*x, symbolic::non_integer_division);
+    EXPECT_THROW(product / x*x, symbolic::NonIntegerDivision);
 }
 
 int main(int argc, char **argv) {

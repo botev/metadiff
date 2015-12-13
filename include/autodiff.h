@@ -5,6 +5,7 @@
 #ifndef _AUTODIFF_AUTODIFF_H_
 #define _AUTODIFF_AUTODIFF_H_
 
+#include "symbolic.h"
 #include "core.h"
 #include "operators.h"
 #include "visual.h"

@@ -10,8 +10,6 @@
 #include <fstream>
 #include "memory"
 #include <unordered_map>
-//#include "arrayfire.h"
-#include "symbolic.h"
 
 namespace autodiff {
     const size_t N = 100;
@@ -155,7 +153,7 @@ namespace autodiff {
     class Operator{
     public:
         Graph* graph;
-        std::string name;
+        const std::string name;
         Operator(Graph* graph, std::string name):
                 graph(graph),
                 name(name)
@@ -166,6 +164,7 @@ namespace autodiff {
         virtual std::array<SymInt,4> get_shape() = 0;
         virtual std::vector<std::weak_ptr<Node>> get_parents() = 0;
         virtual std::vector<std::weak_ptr<Node>> get_arguments() = 0;
+
         std::vector<std::weak_ptr<Node>> get_ancestors(){
             auto parents = this->get_parents();
             auto arguments = this->get_arguments();
@@ -188,14 +187,17 @@ namespace autodiff {
         std::shared_ptr<Operator> op;
         std::vector<std::weak_ptr<Node>> children;
         unsigned short grad_level;
+
         // Only for constant nodes
-//        af::array value;
         double *f_value;
         double fs_value;
         int *i_value;
         int is_value;
+        bool *b_value;
+        bool bs_value;
+
         // Only for symbolic integers
-        symbolic::SymbolicMonomial<N, unsigned short> integer_value;
+        SymInt integer_value;
 
         Node(Graph* graph, Device device):
                 graph(graph),
@@ -204,8 +206,7 @@ namespace autodiff {
 
         Node(Graph* graph, Device device, size_t id, std::string name,
              ad_node_type type, ad_value_type v_type, std::array<SymInt,4> shape,
-             std::shared_ptr<Operator> op,
-             unsigned short grad_level):
+             std::shared_ptr<Operator> op, unsigned short grad_level):
                 graph(graph),
                 device(device),
                 id(id),
@@ -357,6 +358,51 @@ namespace autodiff {
             return SymInt(this->sym_integer_count-1);
         }
 
+        std::array<SymInt,4> shape(NodeId node){
+            return this->nodes[node]->shape;
+        };
+
+        std::vector<NodeId> gradient(NodeId objective, std::vector<NodeId> params){
+            std::unordered_map<NodeId, NodeId> grad_messages;
+            auto target = this->nodes[objective];
+            long n = this->nodes.size();
+            auto unity_grad = this->constant_node(1.0);
+            this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
+            grad_messages[target->id] = unity_grad;
+            this->nodes[grad_messages[target->id]]->name = "Grad of " + std::to_string(objective);
+            int j=0;
+            for(size_t i=n;i>0;i--){
+                if(grad_messages.find(i-1) != grad_messages.end()){
+                    this->nodes[i-1]->op->generate_gradients(i-1, grad_messages);
+                }
+            }
+            std::vector<NodeId> grads;
+            for(int i=0;i<params.size();i++){
+                grads.push_back(grad_messages[params[i]]);
+            }
+            return grads;
+        }
+
+        NodeId derived_node(std::shared_ptr<Operator> op) {
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    "Derived Node",
+                    ad_node_type::INPUT_DERIVED,
+                    op->get_value_type(),
+                    op->get_shape(),
+                    op,
+                    op->get_gradient_level()
+            );
+            this->nodes.push_back(result);
+            auto ancestors = op->get_ancestors();
+            for(int i=0;i<ancestors.size();i++){
+                ancestors[i].lock()->children.push_back(result);
+            }
+            return result->id;
+        }
+
         NodeId constant_node(double* value, std::array<size_t, 4> dims){
             std::array<SymInt,4> shape {SymInt::as_polynomial(dims[0]),
                                         SymInt::as_polynomial(dims[1]),
@@ -435,53 +481,44 @@ namespace autodiff {
             return result->id;
         }
 
-        NodeId derived_node(std::shared_ptr<Operator> op) {
+        NodeId constant_node(bool* value, std::array<size_t, 4> dims){
+            std::array<SymInt,4> shape {SymInt::as_polynomial(dims[0]),
+                                        SymInt::as_polynomial(dims[1]),
+                                        SymInt::as_polynomial(dims[2]),
+                                        SymInt::as_polynomial(dims[3])};
             auto result = std::make_shared<Node>(
                     this,
                     default_device,
                     nodes.size(),
-                    "Derived Node",
-                    ad_node_type::INPUT_DERIVED,
-                    op->get_value_type(),
-                    op->get_shape(),
-                    op,
-                    op->get_gradient_level()
+                    "Constant Node",
+                    ad_node_type::CONSTANT ,
+                    ad_value_type::INTEGER,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
             );
+            result->b_value = value;
             this->nodes.push_back(result);
-            auto ancestors = op->get_ancestors();
-            for(int i=0;i<ancestors.size();i++){
-                ancestors[i].lock()->children.push_back(result);
-            }
             return result->id;
         }
 
-        std::vector<NodeId> gradient(NodeId objective, std::vector<NodeId> params){
-            std::unordered_map<NodeId, NodeId> grad_messages;
-            auto target = this->nodes[objective];
-            long n = this->nodes.size();
-            auto unity_grad = this->constant_node(1.0);
-            this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
-            grad_messages[target->id] = unity_grad;
-            this->nodes[grad_messages[target->id]]->name = "Grad of " + std::to_string(objective);
-            int j=0;
-            for(size_t i=n;i>0;i--){
-                if(grad_messages.find(i-1) != grad_messages.end()){
-                    this->nodes[i-1]->op->generate_gradients(i-1, grad_messages);
-                }
-            }
-            std::vector<NodeId> grads;
-            for(int i=0;i<params.size();i++){
-                grads.push_back(grad_messages[params[i]]);
-            }
-            return grads;
+        NodeId constant_node(bool value){
+            std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
+            auto result = std::make_shared<Node>(
+                    this,
+                    default_device,
+                    nodes.size(),
+                    "Constant Node",
+                    ad_node_type::CONSTANT ,
+                    ad_value_type::INTEGER,
+                    shape,
+                    std::make_shared<InputOperator>(this),
+                    0
+            );
+            result->bs_value = value;
+            this->nodes.push_back(result);
+            return result->id;
         }
-        std::array<SymInt,4> shape(NodeId node){
-            return this->nodes[node]->shape;
-        };
-
-        NodeId add(NodeId arg1, NodeId arg2);
-        NodeId neg(NodeId arg1);
-        NodeId mul(NodeId arg1_id, NodeId arg2_id);
 
         NodeId scalar(std::string name, ad_value_type v_type){
             std::array<SymInt,4> shape {SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
@@ -756,6 +793,11 @@ namespace autodiff {
                            this->nodes[node]->shape[1],
                            this->nodes[node]->shape[2]);
         }
+
+        // All operators
+        NodeId add(NodeId arg1, NodeId arg2);
+        NodeId neg(NodeId arg1);
+        NodeId mul(NodeId arg1_id, NodeId arg2_id);
     };
 
     class OperatorError : public std::exception{

@@ -16,7 +16,7 @@
 
 namespace symbolic {
 
-    class non_integer_division: public std::exception
+    class NonIntegerDivision: public std::exception
     {
         virtual const char* what() const throw()
         {
@@ -24,7 +24,7 @@ namespace symbolic {
         }
     };
 
-    class unrecognised_symbolic_variable: public std::exception
+    class UnrecognisedSymbolicVariable: public std::exception
     {
         virtual const char* what() const throw()
         {
@@ -54,7 +54,7 @@ namespace symbolic {
 
         SymbolicMonomial(const size_t variable): SymbolicMonomial(){
             if(variable >= N){
-                throw unrecognised_symbolic_variable();
+                throw UnrecognisedSymbolicVariable();
             }
             this->powers[variable] = 1;
         }
@@ -253,11 +253,11 @@ namespace symbolic {
         for (int i = 0; i < N; i++) {
             result.powers[i] -= rhs.powers[i];
             if(result.powers[i] > lhs.powers[i]){
-                throw non_integer_division();
+                throw NonIntegerDivision();
             }
         }
         if(rhs.coefficient == 0 or result.coefficient % rhs.coefficient != 0){
-            throw non_integer_division();
+            throw NonIntegerDivision();
         }
         result.coefficient = lhs.coefficient / rhs.coefficient;
         return result;
@@ -266,7 +266,7 @@ namespace symbolic {
     template<size_t N, typename T>
     SymbolicMonomial<N,T> operator/(const SymbolicMonomial<N,T>& lhs, int rhs) {
         if(rhs == 0 or lhs.coefficient % rhs != 0){
-            throw non_integer_division();
+            throw NonIntegerDivision();
         }
         auto result = SymbolicMonomial<N,T>(lhs);
         result.coefficient /= rhs;
@@ -276,7 +276,7 @@ namespace symbolic {
     template<size_t N, typename T>
     SymbolicMonomial<N,T> operator/(int lhs, const SymbolicMonomial<N,T>& rhs) {
         if(not rhs.is_constant() or rhs.coefficient == 0 or lhs % rhs.coefficient != 0){
-            throw non_integer_division();
+            throw NonIntegerDivision();
         }
         return as_monomial(lhs / rhs.coefficient);
     }
@@ -598,7 +598,7 @@ namespace symbolic {
             reminder =  reminder - s;
         }
         if(reminder != 0){
-            throw non_integer_division();
+            throw NonIntegerDivision();
         }
         result.simplify();
         return result;
@@ -617,7 +617,7 @@ namespace symbolic {
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator/(const SymbolicMonomial<N,T>& lhs, const SymbolicPolynomial<N,T>& rhs) {
         if(rhs.monomials.size() != 1){
-            throw non_integer_division();
+            throw NonIntegerDivision();
         }
         auto result = SymbolicPolynomial<N,T>();
         result.monomials.push_back(lhs / rhs.monomials[0]);
@@ -627,7 +627,7 @@ namespace symbolic {
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator/(const SymbolicPolynomial<N,T>& lhs, const int rhs) {
         if(rhs == 0){
-            throw non_integer_division();
+            throw NonIntegerDivision();
         }
         auto result = SymbolicPolynomial<N,T>();
         for(int i=0;i<lhs.monomials.size();i++){
@@ -640,7 +640,7 @@ namespace symbolic {
     template<const size_t N, typename T>
     SymbolicPolynomial<N,T> operator/(const int lhs, const SymbolicPolynomial<N,T> rhs) {
         if(rhs.monomials.size() != 1){
-            throw non_integer_division();
+            throw NonIntegerDivision();
         }
         auto result = SymbolicPolynomial<N,T>();
         result.monomials.push_back(lhs / rhs.monomials[0]);
