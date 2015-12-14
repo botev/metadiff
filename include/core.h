@@ -22,100 +22,6 @@ namespace autodiff {
     enum ad_float_type {f16, c16, f32, c32, f64, c64};
     enum ad_integer_type {s8, u8, s16, u16, s32, u32, s64, u64};
 
-    std::string to_string(ad_node_type const & type){
-        switch(type){
-            case ad_node_type::CONSTANT: return "CONSTANT";
-            case ad_node_type::INPUT : return "INPUT";
-            case ad_node_type::SHARED_INPUT : return "SHARED";
-            case ad_node_type::INPUT_DERIVED: return "DERIVED";
-            case ad_node_type::SYMBOLIC_INTEGER: return "SYMBOLIC_INTEGER";
-        }
-        return "UNREACHABLE";
-    }
-
-    std::string to_string(ad_value_type const & type){
-        switch(type){
-            case ad_value_type::FLOAT: return "FLOAT";
-            case ad_value_type::INTEGER: return "INTEGER";
-            case ad_value_type::BOOLEAN: return "BOOLEAN";
-        }
-        return "UNREACHABLE";
-    }
-
-    std::string to_string(ad_device_type const & type){
-        switch(type){
-            case ad_device_type::CPU: return "CPU";
-            case ad_device_type::GPU: return "GPU";
-        }
-        return "UNREACHABLE";
-    }
-
-    std::string to_string(ad_implicit_broadcast const & type){
-        switch(type){
-            case ad_implicit_broadcast::RAISE: return "Raise";
-            case ad_implicit_broadcast::WARN: return "Warn";
-            case ad_implicit_broadcast::QUIET: return "Quiet";
-        }
-        return "UNREACHABLE";
-    }
-
-    std::string to_string(ad_float_type const & type){
-        switch(type){
-            case ad_float_type::f16: return "f16";
-            case ad_float_type::c16: return "c16";
-            case ad_float_type::f32: return "f32";
-            case ad_float_type::c32: return "c32";
-            case ad_float_type::f64: return "f64";
-            case ad_float_type::c64: return "c64";
-        }
-        return "UNREACHABLE";
-    }
-
-    std::string to_string(ad_integer_type const & type){
-        switch(type){
-            case ad_integer_type::s8: return "s8";
-            case ad_integer_type::u8: return "u8";
-            case ad_integer_type::s16: return "s16";
-            case ad_integer_type::u16: return "u16";
-            case ad_integer_type::s32: return "s32";
-            case ad_integer_type::u32: return "u32";
-            case ad_integer_type::s64: return "s64";
-            case ad_integer_type::u64: return "u64";
-        }
-        return "UNREACHABLE";
-    }
-
-
-    std::ostream & operator<<(std::ostream & f, ad_node_type const & type) {
-        f << to_string(type);
-        return f;
-    }
-
-    std::ostream & operator<<(std::ostream & f, ad_value_type const & type) {
-        f << to_string(type);
-        return f;
-    }
-
-    std::ostream & operator<<(std::ostream & f, ad_device_type const & type) {
-        f << to_string(type);
-        return f;
-    }
-
-    std::ostream & operator<<(std::ostream & f, ad_implicit_broadcast const & type) {
-        f << to_string(type);
-        return f;
-    }
-
-    std::ostream & operator<<(std::ostream & f, ad_float_type const & type) {
-        f << to_string(type);
-        return f;
-    }
-
-    std::ostream & operator<<(std::ostream & f, ad_integer_type const & type) {
-        f << to_string(type);
-        return f;
-    }
-
     class Device{
     public:
         ad_device_type type;
@@ -130,15 +36,6 @@ namespace autodiff {
                 id(id)
         {};
     };
-
-    std::string to_string(Device const & device){
-        return autodiff::to_string(device.type) + "[" + std::to_string(device.id) + "]";
-    }
-
-    std::ostream & operator<<(std::ostream & f, Device const & device) {
-        f << autodiff::to_string(device);
-        return f;
-    }
 
     class SharedVariable{
     public:
@@ -419,7 +316,6 @@ namespace autodiff {
         }
 
         Node constant_node(double *value, std::array<size_t, 4> dims) {
-            std::array<SymInt, 4> shape{dims[0], dims[1], dims[2], dims[3]};
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
@@ -427,7 +323,7 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::FLOAT,
-                    shape,
+                    std::array<SymInt,4> {dims[0], dims[1], dims[2], dims[3]},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
@@ -437,7 +333,6 @@ namespace autodiff {
         }
 
         Node constant_node(double value) {
-            std::array<SymInt, 4> shape{SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
@@ -445,7 +340,7 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::FLOAT,
-                    shape,
+                    std::array<SymInt,4> {1, 1, 1, 1},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
@@ -455,7 +350,6 @@ namespace autodiff {
         }
 
         Node constant_node(int *value, std::array<size_t, 4> dims) {
-            std::array<SymInt, 4> shape{dims[0], dims[1], dims[2], dims[3]};
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
@@ -463,7 +357,7 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    shape,
+                    std::array<SymInt,4> {dims[0], dims[1], dims[2], dims[3]},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
@@ -473,7 +367,6 @@ namespace autodiff {
         }
 
         Node constant_node(int value) {
-            std::array<SymInt, 4> shape{SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
@@ -481,7 +374,7 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    shape,
+                    std::array<SymInt,4> {1, 1, 1, 1},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
@@ -491,7 +384,6 @@ namespace autodiff {
         }
 
         Node constant_node(bool *value, std::array<size_t, 4> dims) {
-            std::array<SymInt, 4> shape{dims[0], dims[1], dims[2], dims[3]};
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
@@ -499,7 +391,7 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    shape,
+                    std::array<SymInt,4> {dims[0], dims[1], dims[2], dims[3]},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
@@ -509,7 +401,6 @@ namespace autodiff {
         }
 
         Node constant_node(bool value) {
-            std::array<SymInt, 4> shape{SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
@@ -517,7 +408,7 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    shape,
+                    std::array<SymInt,4> {1, 1, 1, 1},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
@@ -778,8 +669,7 @@ namespace autodiff {
         Node tensor3(ad_value_type v_type,
                      std::array<SymInt, 3> shape,
                      std::string name = "InputTensor3") {
-            std::array<SymInt, 4> shape_t{shape[0], shape[1], shape[2], SymInt::one()};
-            return tensor(v_type, shape_t, name);
+            return tensor(v_type, {shape[0], shape[1], shape[2], 1}, name);
         }
 
 //        Node tensor3(ad_value_type v_type,
@@ -798,7 +688,7 @@ namespace autodiff {
                                   shape0,
                                   shape1,
                                   shape2,
-                                  SymInt::one()
+                                  1
                           },
                           name);
         }
@@ -913,6 +803,9 @@ namespace autodiff {
 
         Node tensor3_as(Node node,
                         std::string name = "InputTensor3") {
+            if(not node.is_tensor3()){
+                throw "Node with id '" + std::to_string(node.id) + "' is not a tensor3.";
+            }
             return tensor3(this->nodes[node.id]->v_type,
                            this->nodes[node.id]->shape[0],
                            this->nodes[node.id]->shape[1],
@@ -996,6 +889,9 @@ namespace autodiff {
 
         Node matrix_as(Node node,
                        std::string name = "InputMatrix") {
+            if(not node.is_matrix()){
+                throw "Node with id '" + std::to_string(node.id) + "' is not a matrix.";
+            }
             return matrix(this->nodes[node.id]->v_type,
                           this->nodes[node.id]->shape[0],
                           this->nodes[node.id]->shape[1],
@@ -1044,6 +940,9 @@ namespace autodiff {
 
         Node vector_as(Node node,
                        std::string name = "InputVector") {
+            if(not node.is_vector()){
+                throw "Node with id '" + std::to_string(node.id) + "' is not a vector.";
+            }
             return vector(this->nodes[node.id]->v_type,
                           this->nodes[node.id]->shape[0],
                           name);
@@ -1189,6 +1088,108 @@ namespace autodiff {
     typedef std::shared_ptr<GraphInternal> Graph;
     Graph create_graph(){
         return std::make_shared<GraphInternal>();
+    }
+
+    std::string to_string(ad_node_type const & type){
+        switch(type){
+            case ad_node_type::CONSTANT: return "CONSTANT";
+            case ad_node_type::INPUT : return "INPUT";
+            case ad_node_type::SHARED_INPUT : return "SHARED";
+            case ad_node_type::INPUT_DERIVED: return "DERIVED";
+            case ad_node_type::SYMBOLIC_INTEGER: return "SYMBOLIC_INTEGER";
+        }
+        return "UNREACHABLE";
+    }
+
+    std::string to_string(ad_value_type const & type){
+        switch(type){
+            case ad_value_type::FLOAT: return "FLOAT";
+            case ad_value_type::INTEGER: return "INTEGER";
+            case ad_value_type::BOOLEAN: return "BOOLEAN";
+        }
+        return "UNREACHABLE";
+    }
+
+    std::string to_string(ad_device_type const & type){
+        switch(type){
+            case ad_device_type::CPU: return "CPU";
+            case ad_device_type::GPU: return "GPU";
+        }
+        return "UNREACHABLE";
+    }
+
+    std::string to_string(ad_implicit_broadcast const & type){
+        switch(type){
+            case ad_implicit_broadcast::RAISE: return "Raise";
+            case ad_implicit_broadcast::WARN: return "Warn";
+            case ad_implicit_broadcast::QUIET: return "Quiet";
+        }
+        return "UNREACHABLE";
+    }
+
+    std::string to_string(ad_float_type const & type){
+        switch(type){
+            case ad_float_type::f16: return "f16";
+            case ad_float_type::c16: return "c16";
+            case ad_float_type::f32: return "f32";
+            case ad_float_type::c32: return "c32";
+            case ad_float_type::f64: return "f64";
+            case ad_float_type::c64: return "c64";
+        }
+        return "UNREACHABLE";
+    }
+
+    std::string to_string(ad_integer_type const & type){
+        switch(type){
+            case ad_integer_type::s8: return "s8";
+            case ad_integer_type::u8: return "u8";
+            case ad_integer_type::s16: return "s16";
+            case ad_integer_type::u16: return "u16";
+            case ad_integer_type::s32: return "s32";
+            case ad_integer_type::u32: return "u32";
+            case ad_integer_type::s64: return "s64";
+            case ad_integer_type::u64: return "u64";
+        }
+        return "UNREACHABLE";
+    }
+
+    std::string to_string(Device const & device){
+        return autodiff::to_string(device.type) + "[" + std::to_string(device.id) + "]";
+    }
+
+    std::ostream & operator<<(std::ostream & f, ad_node_type const & type) {
+        f << to_string(type);
+        return f;
+    }
+
+    std::ostream & operator<<(std::ostream & f, ad_value_type const & type) {
+        f << to_string(type);
+        return f;
+    }
+
+    std::ostream & operator<<(std::ostream & f, ad_device_type const & type) {
+        f << to_string(type);
+        return f;
+    }
+
+    std::ostream & operator<<(std::ostream & f, ad_implicit_broadcast const & type) {
+        f << to_string(type);
+        return f;
+    }
+
+    std::ostream & operator<<(std::ostream & f, ad_float_type const & type) {
+        f << to_string(type);
+        return f;
+    }
+
+    std::ostream & operator<<(std::ostream & f, ad_integer_type const & type) {
+        f << to_string(type);
+        return f;
+    }
+
+    std::ostream & operator<<(std::ostream & f, Device const & device) {
+        f << autodiff::to_string(device);
+        return f;
     }
 }
 

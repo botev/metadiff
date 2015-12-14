@@ -23,13 +23,13 @@ TYPED_TEST(SymbolicTest, MonomialConstructor){
     EXPECT_THAT(one.powers, testing::ElementsAre(0, 0, 0, 0, 0));
 
     // Monomial with 1 variable
-    auto x = Monomial(0);
+    auto x = Monomial::new_variable(0);
     EXPECT_EQ(x.coefficient, 1);
     EXPECT_FALSE(x.is_constant());
     EXPECT_THAT(x.powers, testing::ElementsAre(1, 0, 0, 0, 0));
 
     // From constant
-    auto two = Monomial::as_monomial(2);
+    auto two = Monomial(2);
     EXPECT_EQ(two.coefficient, 2);
     EXPECT_TRUE(two.is_constant());
     EXPECT_THAT(two.powers, testing::ElementsAre(0, 0, 0, 0, 0));
@@ -42,21 +42,21 @@ TYPED_TEST(SymbolicTest, MonomialConstructor){
     EXPECT_THAT(two_x2.powers, testing::ElementsAre(2, 0, 0, 0, 0));
 
     // Test for exception
-    EXPECT_THROW(Monomial(N+0), symbolic::UnrecognisedSymbolicVariable);
+    EXPECT_THROW(Monomial::new_variable(N+0), symbolic::UnrecognisedSymbolicVariable);
 }
 
 TYPED_TEST(SymbolicTest, MonomialEquality) {
     typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
     // Equality with integers
-    auto two = Monomial::as_monomial(2);
+    auto two = Monomial(2);
     EXPECT_EQ(two, 2);
     EXPECT_EQ(2, two);
     EXPECT_NE(two, 1);
     EXPECT_NE(1, two);
 
     // Not equality between 'x' and a constant
-    auto two_2 = Monomial::as_monomial(2);
-    auto x = Monomial(1);
+    auto two_2 = Monomial(2);
+    auto x = Monomial::new_variable(0);
     EXPECT_EQ(two, two_2);
     EXPECT_EQ(two_2, two);
     EXPECT_NE(two, x);
@@ -70,16 +70,16 @@ TYPED_TEST(SymbolicTest, MonomialEquality) {
     EXPECT_FALSE(symbolic::up_to_coefficient(0, x));
 
     // Up to coefficient equality for 'x' and '10x'
-    auto ten_x = Monomial(1) * 10;
+    auto ten_x = Monomial::new_variable(0) * 10;
     EXPECT_TRUE(symbolic::up_to_coefficient(x, ten_x));
     EXPECT_TRUE(symbolic::up_to_coefficient(ten_x, x));
 }
 
 TYPED_TEST(SymbolicTest, MonomialProductAndDivision) {
     typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
-    auto x = Monomial(0);
-    auto y = Monomial(1);
-    auto z = Monomial(2);
+    auto x = Monomial::new_variable(0);
+    auto y = Monomial::new_variable(1);
+    auto z = Monomial::new_variable(2);
     auto composite = 2 * x * y * z;
 
     // Verify inner structure
@@ -109,22 +109,22 @@ TYPED_TEST(SymbolicTest, PolynomialConstructor) {
     EXPECT_TRUE(zero.is_constant());
 
     // Polynomial with 1 variable
-    auto x = Polynomial(0);
+    auto x = Polynomial::new_variable(0);
     EXPECT_EQ(x.monomials.size(), 1);
     EXPECT_EQ(x.monomials[0].coefficient, 1);
     EXPECT_FALSE(x.is_constant());
     EXPECT_THAT(x.monomials[0].powers, testing::ElementsAre(1, 0, 0, 0, 0));
 
     // From constant
-    auto two = Polynomial::as_polynomial(2);
+    auto two = Polynomial(2);
     EXPECT_EQ(two.monomials.size(), 1);
     EXPECT_EQ(two.monomials[0].coefficient, 2);
     EXPECT_TRUE(two.is_constant());
     EXPECT_THAT(two.monomials[0].powers, testing::ElementsAre(0, 0, 0, 0, 0));
 
     // From monomial
-    auto x_monomial = Monomial(0);
-    x = Polynomial::as_polynomial(x_monomial);
+    auto x_monomial = Monomial::new_variable(0);
+    x = Polynomial(x_monomial);
     EXPECT_EQ(x.monomials.size(), 1);
     EXPECT_EQ(x.monomials[0].coefficient, 1);
     EXPECT_FALSE(x.is_constant());
@@ -139,22 +139,22 @@ TYPED_TEST(SymbolicTest, PolynomialConstructor) {
     EXPECT_THAT(two_x.monomials[0].powers, testing::ElementsAre(1, 0, 0, 0, 0));
 
     // Test for exception
-    EXPECT_THROW(Polynomial(N+0), symbolic::UnrecognisedSymbolicVariable);
+    EXPECT_THROW(Polynomial::new_variable(N+0), symbolic::UnrecognisedSymbolicVariable);
 }
 
 TYPED_TEST(SymbolicTest, PolynomialEquality) {
     typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
     typedef symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
     // Equality with integers
-    auto two = Polynomial::as_polynomial(2);
+    auto two = Polynomial(2);
     EXPECT_EQ(two, 2);
     EXPECT_EQ(2, two);
     EXPECT_NE(two, 1);
     EXPECT_NE(1, two);
 
     // Not equality between 'x' and a constant
-    auto two_2 = Polynomial::as_polynomial(2);
-    auto x = Polynomial(0);
+    auto two_2 = Polynomial(2);
+    auto x = Polynomial::new_variable(0);
     EXPECT_EQ(two, two_2);
     EXPECT_EQ(two_2, two);
     EXPECT_NE(two, x);
@@ -163,18 +163,18 @@ TYPED_TEST(SymbolicTest, PolynomialEquality) {
     EXPECT_NE(x, two_2);
 
     // Equality with 'x' as monomial
-    auto x_monomial = Monomial(0);
+    auto x_monomial = Monomial::new_variable(0);
     EXPECT_EQ(x, x_monomial);
     EXPECT_EQ(x_monomial, x);
 
     // Non equality with 'y' as monomial
-    auto y_monomial = Monomial(1);
+    auto y_monomial = Monomial::new_variable(1);
     EXPECT_NE(x, y_monomial);
     EXPECT_NE(y_monomial, x);
 
     // Equality and non equality between polynomials
-    auto x_again = Polynomial(0);
-    auto y = Polynomial(1);
+    auto x_again = Polynomial::new_variable(0);
+    auto y = Polynomial::new_variable(1);
     EXPECT_EQ(x, x_again);
     EXPECT_EQ(x_again, x);
     EXPECT_NE(x, y);
@@ -186,9 +186,9 @@ TYPED_TEST(SymbolicTest, PolynomialAddition) {
     typedef symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
 
     // Compare x + y + 2
-    auto x_monomial = Monomial(0);
-    auto x = Polynomial(0);
-    auto y = Polynomial(1);
+    auto x_monomial = Monomial::new_variable(0);
+    auto x = Polynomial::new_variable(0);
+    auto y = Polynomial::new_variable(1);
     auto x_plus_y = x + y + 1;
     auto x_plus_y_2 = x_monomial + y + 1;
     EXPECT_FALSE(x_plus_y.is_constant());
@@ -209,18 +209,17 @@ TYPED_TEST(SymbolicTest, PolynomialAddition) {
     }
 
     // Check subtraction
-    auto two = two_x_plus_y - 2 * Polynomial(0) - 2 * Polynomial(1);
+    auto two = two_x_plus_y - 2 * Polynomial::new_variable(0) - 2 * Polynomial::new_variable(1);
     EXPECT_EQ(two, 2);
     EXPECT_EQ(2, two);
     EXPECT_TRUE(two.is_constant());
 }
 
 TYPED_TEST(SymbolicTest, PolynomialProductAndDivision) {
-    // TODO
     typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
     typedef symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
-    auto x = Polynomial(0);
-    auto y = Polynomial(1);
+    auto x = Polynomial::new_variable(0);
+    auto y = Polynomial::new_variable(1);
     auto xy_plus_x_square_plus_one = x * y + x * x + 1;
     auto xy_plus_y_square_plus_two = x * y + y * y + 2;
     // x^3y  + 2x^2y^2 + 2x^2 + xy^3 + 3xy + y^2 + 2
