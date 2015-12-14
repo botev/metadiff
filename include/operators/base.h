@@ -9,6 +9,50 @@
 
 namespace autodiff {
 
+    class BroadcastOperator : public Operator {
+    public:
+        std::weak_ptr<NodeInternal> p1;
+        Shape to_shape;
+        BroadcastOperator(std::weak_ptr<GraphInternal> graph,
+                          std::weak_ptr<NodeInternal> p1,
+                          Shape to_shape):
+                Operator(graph, "Broadcast"),
+                p1(p1),
+                to_shape(to_shape){
+            auto parent = p1.lock();
+            for(int i=0;i<4;i++){
+                if(parent->shape[i] != 1 and parent->shape[i] != to_shape[i]){
+                    // TODO proper exception
+                    throw "wtv";
+                }
+            }
+        }
+
+        ad_value_type get_value_type(){
+            return p1.lock()->v_type;
+        }
+
+        unsigned short get_gradient_level(){
+            return p1.lock()->grad_level;
+        }
+
+        Shape get_shape(){
+            return to_shape;
+        }
+
+        std::vector<std::weak_ptr<NodeInternal>> get_parents(){
+            return {p1};
+        }
+
+        std::vector<std::weak_ptr<NodeInternal>> get_arguments(){
+            return {};
+        }
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages){
+            //TODO sum operator
+        };
+    };
+
     class Add : public Operator {
     public:
         std::weak_ptr<NodeInternal> p1;

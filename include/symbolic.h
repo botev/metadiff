@@ -32,6 +32,14 @@ namespace symbolic {
         }
     };
 
+    class NonAConstant: public std::exception
+    {
+        virtual const char* what() const throw()
+        {
+            return "Trying to evaluate a non constant monomial/polynomial without specified values";
+        }
+    };
+
     template<const size_t N, typename T>
     class SymbolicMonomial {
         static_assert(std::numeric_limits<T>::is_integer, "X can be only instantiated with integer types");
@@ -56,7 +64,7 @@ namespace symbolic {
             this->coefficient = value;
         }
 
-        static SymbolicMonomial new_variable(const size_t variable){
+        static SymbolicMonomial variable(const size_t variable){
             if(variable >= N){
                 throw UnrecognisedSymbolicVariable();
             }
@@ -88,6 +96,13 @@ namespace symbolic {
                 value += pow(values[i], this->powers[i]);
             }
             return value * this->coefficient;
+        }
+
+        int eval(){
+            if(not is_constant()){
+                throw NonAConstant();
+            }
+            return coefficient;
         }
 
         std::string to_string() const{
@@ -303,8 +318,8 @@ namespace symbolic {
             }
         }
 
-        static SymbolicPolynomial new_variable(const size_t variable){
-            return SymbolicPolynomial(SymbolicMonomial<N,T>::new_variable(variable));
+        static SymbolicPolynomial variable(const size_t variable){
+            return SymbolicPolynomial(SymbolicMonomial<N,T>::variable(variable));
         }
 
         bool is_constant() const{
@@ -340,6 +355,17 @@ namespace symbolic {
                 value += monomials[i].eval(values);
             }
             return value;
+        }
+
+        int eval(){
+            if(not is_constant()){
+                throw NonAConstant();
+            }
+            if(monomials.size() == 0){
+                return 0;
+            } else {
+                return monomials[0].coefficient;
+            }
         }
 
         std::string to_string() const{

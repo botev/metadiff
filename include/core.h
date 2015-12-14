@@ -13,7 +13,9 @@
 
 namespace autodiff {
     const size_t N = 100;
+
     typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
+    typedef std::array<SymInt,4> Shape;
 
     enum ad_node_type{CONSTANT, INPUT, SHARED_INPUT, INPUT_DERIVED, SYMBOLIC_INTEGER};
     enum ad_value_type{FLOAT, INTEGER, BOOLEAN};
@@ -37,31 +39,57 @@ namespace autodiff {
         {};
     };
 
+    class ConstValue{
+    public:
+        // For different type of values
+        void* pointer;
+        double num_value;
+        // Symbolic value
+        SymInt value;
+        ConstValue(){};
+        ConstValue(void * pointer):
+                pointer(pointer)
+        {};
+        ConstValue(double num_value):
+                num_value(num_value)
+        {};
+        ConstValue(SymInt value):
+                value(value)
+        {};
+    };
+
     class SharedVariable{
     public:
         SharedVariable(){};
     };
 
-
     class GraphInternal;
     class NodeInternal;
+    typedef std::weak_ptr<NodeInternal> NodeInPtr;
+    typedef std::vector<NodeInPtr> NodeInVec;
+    typedef std::weak_ptr<GraphInternal> GraphInPtr;
+    typedef std::shared_ptr<GraphInternal> Graph;
+    Graph create_graph(){
+        return std::make_shared<GraphInternal>();
+    }
 
     class Operator{
     public:
-        std::weak_ptr<GraphInternal> graph;
+        GraphInPtr graph;
         const std::string name;
-        Operator(std::weak_ptr<GraphInternal> graph, std::string name):
+        Operator(GraphInPtr graph, std::string name):
                 graph(graph),
                 name(name)
         {};
+
         virtual void generate_gradients(size_t current, std::unordered_map<size_t , size_t>& messages) = 0;
         virtual ad_value_type get_value_type() = 0;
         virtual unsigned short get_gradient_level() = 0;
-        virtual std::array<SymInt,4> get_shape() = 0;
-        virtual std::vector<std::weak_ptr<NodeInternal>> get_parents() = 0;
-        virtual std::vector<std::weak_ptr<NodeInternal>> get_arguments() = 0;
+        virtual Shape get_shape() = 0;
+        virtual NodeInVec get_parents() = 0;
+        virtual NodeInVec get_arguments() = 0;
 
-        std::vector<std::weak_ptr<NodeInternal>> get_ancestors(){
+        NodeInVec get_ancestors(){
             auto parents = this->get_parents();
             auto arguments = this->get_arguments();
             for(int i=0; i<arguments.size();i++){
@@ -73,36 +101,32 @@ namespace autodiff {
 
     class NodeInternal{
     public:
-        std::weak_ptr<GraphInternal> graph;
+        GraphInPtr graph;
         Device device;
         size_t id;
         std::string name;
         ad_node_type type;
         ad_value_type v_type;
-        std::array<SymInt,4> shape;
+        Shape shape;
         std::shared_ptr<Operator> op;
-        std::vector<std::weak_ptr<NodeInternal>> children;
+        NodeInVec children;
         unsigned short grad_level;
+        ConstValue value;
 
-        // Only for constant nodes
-        double *f_value;
-        double fs_value;
-        int *i_value;
-        int is_value;
-        bool *b_value;
-        bool bs_value;
-
-        // Only for symbolic integers
-        SymInt integer_value;
-
-        NodeInternal(std::weak_ptr<GraphInternal> graph, Device device):
+        NodeInternal(GraphInPtr graph, Device device):
                 graph(graph),
                 device(device)
         {}
 
-        NodeInternal(std::weak_ptr<GraphInternal> graph, Device device, size_t id, std::string name,
-                     ad_node_type type, ad_value_type v_type, std::array<SymInt,4> shape,
-                     std::shared_ptr<Operator> op, unsigned short grad_level):
+        NodeInternal(GraphInPtr graph,
+                     Device device,
+                     size_t id,
+                     std::string name,
+                     ad_node_type type,
+                     ad_value_type v_type,
+                     Shape shape,
+                     std::shared_ptr<Operator> op,
+                     unsigned short grad_level):
                 graph(graph),
                 device(device),
                 id(id),
@@ -204,14 +228,14 @@ namespace autodiff {
 
     class Node{
     public:
-        std::weak_ptr<GraphInternal> graph;
+        GraphInPtr graph;
         size_t id;
-        Node(std::weak_ptr<GraphInternal> graph, size_t id):
+        Node(GraphInPtr graph, size_t id):
                 graph(graph),
                 id(id)
         {};
 
-        std::array<SymInt,4> shape();
+        Shape shape();
         bool is_scalar();
         bool is_vector();
         bool is_vector_strict();
@@ -224,7 +248,7 @@ namespace autodiff {
 
     class InputOperator : public Operator {
     public:
-        InputOperator(std::weak_ptr<GraphInternal> graph): Operator(graph, "Input"){}
+        InputOperator(GraphInPtr graph): Operator(graph, "Input"){}
 
         ad_value_type get_value_type(){
             return ad_value_type::FLOAT;
@@ -234,16 +258,16 @@ namespace autodiff {
             return 0;
         }
 
-        std::array<SymInt,4> get_shape(){
-            return std::array<SymInt,4>{0, 0, 0, 0};
+        Shape get_shape(){
+            return Shape{0, 0, 0, 0};
         }
 
-        std::vector<std::weak_ptr<NodeInternal>> get_parents(){
-            return std::vector<std::weak_ptr<NodeInternal>> {};
+        NodeInVec get_parents(){
+            return NodeInVec {};
         }
 
-        std::vector<std::weak_ptr<NodeInternal>> get_arguments(){
-            return std::vector<std::weak_ptr<NodeInternal>> {};
+        NodeInVec get_arguments(){
+            return NodeInVec {};
         }
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages){};
@@ -260,9 +284,9 @@ namespace autodiff {
         size_t sym_integer_count;
 
         GraphInternal() {
+            // TODO Have a better preference of devices available in order
             name = "Function";
             sym_integer_count = 0;
-            // TODO Check if GPU is available and use that instead
             default_device = Device(CPU, 0);
             f_type = ad_float_type::f32;
             i_type = ad_integer_type::s32;
@@ -271,19 +295,18 @@ namespace autodiff {
 
         SymInt get_new_symbolic_integer() {
             this->sym_integer_count++;
-            return SymInt::new_variable(this->sym_integer_count - 1);
+            return SymInt::variable(this->sym_integer_count - 1);
         }
 
         std::vector<Node> gradient(Node objective, std::vector<Node> params) {
             std::unordered_map<size_t, size_t> grad_messages;
             auto target = this->nodes[objective.id];
             long n = this->nodes.size();
-            auto unity_grad = this->constant_node(1.0).id;
+            auto unity_grad = this->constant_node(1).id;
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
             grad_messages[target->id] = unity_grad;
             this->nodes[grad_messages[target->id]]->name = "Grad of " + std::to_string(objective.id);
-            int j = 0;
-            for (size_t i = n; i > 0; i--) {
+            for (auto i = n; i > 0; i--) {
                 if (grad_messages.find(i - 1) != grad_messages.end()) {
                     this->nodes[i - 1]->op->generate_gradients(i - 1, grad_messages);
                 }
@@ -308,7 +331,7 @@ namespace autodiff {
                     op->get_gradient_level()
             );
             this->nodes.push_back(result);
-            auto ancestors = op->get_ancestors();
+            NodeInVec ancestors = op->get_ancestors();
             for (int i = 0; i < ancestors.size(); i++) {
                 ancestors[i].lock()->children.push_back(result);
             }
@@ -323,11 +346,11 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::FLOAT,
-                    std::array<SymInt,4> {dims[0], dims[1], dims[2], dims[3]},
+                    Shape {dims[0], dims[1], dims[2], dims[3]},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
-            result->f_value = value;
+            result->value.pointer = value;
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
@@ -340,11 +363,11 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::FLOAT,
-                    std::array<SymInt,4> {1, 1, 1, 1},
+                    Shape {1, 1, 1, 1},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
-            result->fs_value = value;
+            result->value.num_value = value;
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
@@ -357,11 +380,11 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    std::array<SymInt,4> {dims[0], dims[1], dims[2], dims[3]},
+                    Shape {dims[0], dims[1], dims[2], dims[3]},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
-            result->i_value = value;
+            result->value.pointer = value;
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
@@ -374,11 +397,11 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    std::array<SymInt,4> {1, 1, 1, 1},
+                    Shape {1, 1, 1, 1},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
-            result->is_value = value;
+            result->value.num_value = value;
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
@@ -391,11 +414,11 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    std::array<SymInt,4> {dims[0], dims[1], dims[2], dims[3]},
+                    Shape {dims[0], dims[1], dims[2], dims[3]},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
-            result->b_value = value;
+            result->value.pointer = value;
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
@@ -408,11 +431,11 @@ namespace autodiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
-                    std::array<SymInt,4> {1, 1, 1, 1},
+                    Shape {1, 1, 1, 1},
                     std::make_shared<InputOperator>(shared_from_this()),
                     0
             );
-            result->bs_value = value;
+            result->value.num_value = value;
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
@@ -955,7 +978,7 @@ namespace autodiff {
         }
     };
 
-    std::array<SymInt,4> Node::shape(){
+    Shape Node::shape(){
         return this->graph.lock()->nodes[id]->shape;
     }
 
@@ -992,9 +1015,9 @@ namespace autodiff {
     public:
         std::string name;
         std::vector<size_t> input_ids;
-        std::vector<std::array<SymInt,4>> input_shapes;
+        std::vector<Shape> input_shapes;
         OperatorError(std::string name,
-                      std::vector<std::weak_ptr<NodeInternal>> inputs):
+                      NodeInVec inputs):
                 name(name)
         {
             for(int i=0;i < inputs.size(); i++){
@@ -1012,7 +1035,7 @@ namespace autodiff {
     {
     public:
         IncompatibleShapes(std::string name,
-                           std::vector<std::weak_ptr<NodeInternal>> inputs) :
+                           NodeInVec inputs) :
                 OperatorError(name, inputs)
         {}
         std::string get_message() const
@@ -1046,7 +1069,7 @@ namespace autodiff {
     public:
         std::vector<size_t> dims;
         ImplicitBroadcast(std::string name,
-                          std::vector<std::weak_ptr<NodeInternal>> inputs,
+                          NodeInVec inputs,
                           std::vector<size_t> dims) :
                 OperatorError(name, inputs),
                 dims(dims)
@@ -1084,11 +1107,6 @@ namespace autodiff {
             return msg.c_str();
         }
     };
-
-    typedef std::shared_ptr<GraphInternal> Graph;
-    Graph create_graph(){
-        return std::make_shared<GraphInternal>();
-    }
 
     std::string to_string(ad_node_type const & type){
         switch(type){
