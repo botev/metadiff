@@ -17,7 +17,7 @@ namespace autodiff {
     typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
     typedef std::array<SymInt,4> Shape;
 
-    enum ad_node_type{CONSTANT, INPUT, SHARED_INPUT, INPUT_DERIVED, SYMBOLIC_INTEGER};
+    enum ad_node_type{SYMBOLIC_INTEGER, CONSTANT, INPUT, SHARED_INPUT, INPUT_DERIVED, CONSTANT_DERIVED};
     enum ad_value_type{FLOAT, INTEGER, BOOLEAN};
     enum ad_device_type {CPU, GPU};
     enum ad_implicit_broadcast {RAISE, WARN, QUIET};
@@ -40,6 +40,7 @@ namespace autodiff {
     };
 
     class ConstValue{
+        // TODO properly
     public:
         // For different type of values
         void* pointer;
@@ -59,6 +60,7 @@ namespace autodiff {
     };
 
     class SharedVariable{
+        // TODO properly
     public:
         SharedVariable(){};
     };
@@ -244,11 +246,18 @@ namespace autodiff {
         bool is_tensor3();
         bool is_tensor3_strict();
         bool is_tensor4_strict();
+
+        Node sum(std::vector<size_t> axes);
+        Node sum();
+
+        Node broadcast(Shape shape);
+        Node broadcast_to(Node other);
+
     };
 
-    class InputOperator : public Operator {
+    class Input : public Operator {
     public:
-        InputOperator(GraphInPtr graph): Operator(graph, "Input"){}
+        Input(GraphInPtr graph): Operator(graph, "Input"){}
 
         ad_value_type get_value_type(){
             return ad_value_type::FLOAT;
@@ -270,7 +279,7 @@ namespace autodiff {
             return NodeInVec {};
         }
 
-        void generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages){};
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages);
     };
 
     class GraphInternal : public std::enable_shared_from_this<GraphInternal> {
@@ -304,8 +313,8 @@ namespace autodiff {
             long n = this->nodes.size();
             auto unity_grad = this->constant_node(1).id;
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
+            this->nodes[unity_grad]->name = "Grad of " + std::to_string(objective.id);
             grad_messages[target->id] = unity_grad;
-            this->nodes[grad_messages[target->id]]->name = "Grad of " + std::to_string(objective.id);
             for (auto i = n; i > 0; i--) {
                 if (grad_messages.find(i - 1) != grad_messages.end()) {
                     this->nodes[i - 1]->op->generate_gradients(i - 1, grad_messages);
@@ -318,13 +327,22 @@ namespace autodiff {
             return grads;
         }
 
-        size_t derived_node(std::shared_ptr<Operator> op) {
+        NodeInPtr derived_node(std::shared_ptr<Operator> op) {
+            auto parents = op->get_parents();
+            ad_node_type type = CONSTANT_DERIVED;
+            for(int i=0;i<parents.size();i++){
+                auto parent_type = parents[i].lock()->type;
+                if(parent_type == INPUT or parent_type == INPUT_DERIVED or parent_type == SHARED_INPUT){
+                    type = INPUT_DERIVED;
+                    break;
+                }
+            }
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Derived Node",
-                    ad_node_type::INPUT_DERIVED,
+                    type,
                     op->get_value_type(),
                     op->get_shape(),
                     op,
@@ -335,7 +353,7 @@ namespace autodiff {
             for (int i = 0; i < ancestors.size(); i++) {
                 ancestors[i].lock()->children.push_back(result);
             }
-            return result->id;
+            return result;
         }
 
         Node constant_node(double *value, std::array<size_t, 4> dims) {
@@ -347,7 +365,7 @@ namespace autodiff {
                     ad_node_type::CONSTANT,
                     ad_value_type::FLOAT,
                     Shape {dims[0], dims[1], dims[2], dims[3]},
-                    std::make_shared<InputOperator>(shared_from_this()),
+                    std::make_shared<Input>(shared_from_this()),
                     0
             );
             result->value.pointer = value;
@@ -364,7 +382,7 @@ namespace autodiff {
                     ad_node_type::CONSTANT,
                     ad_value_type::FLOAT,
                     Shape {1, 1, 1, 1},
-                    std::make_shared<InputOperator>(shared_from_this()),
+                    std::make_shared<Input>(shared_from_this()),
                     0
             );
             result->value.num_value = value;
@@ -381,7 +399,7 @@ namespace autodiff {
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
                     Shape {dims[0], dims[1], dims[2], dims[3]},
-                    std::make_shared<InputOperator>(shared_from_this()),
+                    std::make_shared<Input>(shared_from_this()),
                     0
             );
             result->value.pointer = value;
@@ -398,7 +416,7 @@ namespace autodiff {
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
                     Shape {1, 1, 1, 1},
-                    std::make_shared<InputOperator>(shared_from_this()),
+                    std::make_shared<Input>(shared_from_this()),
                     0
             );
             result->value.num_value = value;
@@ -415,7 +433,7 @@ namespace autodiff {
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
                     Shape {dims[0], dims[1], dims[2], dims[3]},
-                    std::make_shared<InputOperator>(shared_from_this()),
+                    std::make_shared<Input>(shared_from_this()),
                     0
             );
             result->value.pointer = value;
@@ -432,7 +450,7 @@ namespace autodiff {
                     ad_node_type::CONSTANT,
                     ad_value_type::INTEGER,
                     Shape {1, 1, 1, 1},
-                    std::make_shared<InputOperator>(shared_from_this()),
+                    std::make_shared<Input>(shared_from_this()),
                     0
             );
             result->value.num_value = value;
@@ -451,19 +469,12 @@ namespace autodiff {
                     ad_node_type::INPUT,
                     v_type,
                     shape,
-                    std::make_shared<InputOperator>(shared_from_this()),
+                    std::make_shared<Input>(shared_from_this()),
                     0
             );
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
-
-//        Node tensor(ad_value_type v_type,
-//                    std::array<size_t, 4> shape,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape_t{shape[0], shape[1], shape[2], SymInt::one()};
-//            return tensor(v_type, shape_t, name);
-//        }
 
         Node tensor(ad_value_type v_type,
                     SymInt shape0,
@@ -477,201 +488,6 @@ namespace autodiff {
                                         shape3};
             return tensor(v_type, shape, name);
         }
-
-//        Node tensor(ad_value_type v_type,
-//                    SymInt shape0,
-//                    SymInt shape1,
-//                    SymInt shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{shape0,
-//                                        shape1,
-//                                        shape2,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    SymInt shape0,
-//                    SymInt shape1,
-//                    size_t shape2,
-//                    SymInt shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{shape0,
-//                                        shape1,
-//                                        shape3,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    SymInt shape0,
-//                    SymInt shape1,
-//                    size_t shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{shape0,
-//                                        shape1,
-//                                        shape2,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    SymInt shape0,
-//                    size_t shape1,
-//                    SymInt shape2,
-//                    SymInt shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{shape0,
-//                                        shape1,
-//                                        shape2,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    SymInt shape0,
-//                    size_t shape1,
-//                    SymInt shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{shape0,
-//                                        shape1,
-//                                        shape2,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    SymInt shape0,
-//                    size_t shape1,
-//                    size_t shape2,
-//                    SymInt shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{shape0,
-//                                        shape1,
-//                                        shape2,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    SymInt shape0,
-//                    size_t shape1,
-//                    size_t shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{shape0,
-//                                        shape1,
-//                                        SymInt::as_polynomial(shape2),
-//                                        SymInt::as_polynomial(shape3)};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    SymInt shape1,
-//                    SymInt shape2,
-//                    SymInt shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        shape1,
-//                                        shape2,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    SymInt shape1,
-//                    SymInt shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        shape1,
-//                                        shape2,
-//                                        SymInt::as_polynomial(shape3)};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    SymInt shape1,
-//                    size_t shape2,
-//                    SymInt shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        shape1,
-//                                        SymInt::as_polynomial(shape2),
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    SymInt shape1,
-//                    size_t shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        shape1,
-//                                        SymInt::as_polynomial(shape2),
-//                                        SymInt::as_polynomial(shape3)};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    size_t shape1,
-//                    SymInt shape2,
-//                    SymInt shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        SymInt::as_polynomial(shape1),
-//                                        shape2,
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    size_t shape1,
-//                    SymInt shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        SymInt::as_polynomial(shape1),
-//                                        shape2,
-//                                        SymInt::as_polynomial(shape3)};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    size_t shape1,
-//                    size_t shape2,
-//                    SymInt shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        SymInt::as_polynomial(shape1),
-//                                        SymInt::as_polynomial(shape2),
-//                                        shape3};
-//            return tensor(v_type, shape, name);
-//        }
-//
-//        Node tensor(ad_value_type v_type,
-//                    size_t shape0,
-//                    size_t shape1,
-//                    size_t shape2,
-//                    size_t shape3,
-//                    std::string name = "InputTensor") {
-//            std::array<SymInt, 4> shape{SymInt::as_polynomial(shape0),
-//                                        SymInt::as_polynomial(shape1),
-//                                        SymInt::as_polynomial(shape2),
-//                                        SymInt::as_polynomial(shape3)};
-//            return tensor(v_type, shape, name);
-//        }
 
         Node tensor(ad_value_type v_type,
                     std::string name = "InputTensor") {
@@ -695,13 +511,6 @@ namespace autodiff {
             return tensor(v_type, {shape[0], shape[1], shape[2], 1}, name);
         }
 
-//        Node tensor3(ad_value_type v_type,
-//                     std::array<size_t, 3> shape,
-//                     std::string name = "InputTensor3") {
-//            std::array<SymInt, 4> shape_t{shape[0], shape[1], shape[2], SymInt::one()};
-//            return tensor(v_type, shape_t, name);
-//        }
-
         Node tensor3(ad_value_type v_type,
                      SymInt shape0,
                      SymInt shape1,
@@ -715,105 +524,6 @@ namespace autodiff {
                           },
                           name);
         }
-
-//        Node tensor3(ad_value_type v_type,
-//                     SymInt shape0,
-//                     SymInt shape1,
-//                     size_t shape2,
-//                     std::string name = "InputTensor3") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  shape2,
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node tensor3(ad_value_type v_type,
-//                     SymInt shape0,
-//                     size_t shape1,
-//                     SymInt shape2,
-//                     std::string name = "InputTensor3") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  shape2,
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node tensor3(ad_value_type v_type,
-//                     SymInt shape0,
-//                     size_t shape1,
-//                     size_t shape2,
-//                     std::string name = "InputTensor3") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  shape2,
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node tensor3(ad_value_type v_type,
-//                     size_t shape0,
-//                     SymInt shape1,
-//                     SymInt shape2,
-//                     std::string name = "InputTensor3") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  shape2,
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node tensor3(ad_value_type v_type,
-//                     size_t shape0,
-//                     SymInt shape1,
-//                     size_t shape2,
-//                     std::string name = "InputTensor3") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  shape2,
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node tensor3(ad_value_type v_type,
-//                     size_t shape0,
-//                     size_t shape1,
-//                     SymInt shape2,
-//                     std::string name = "InputTensor3") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  shape2,
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node tensor3(ad_value_type v_type,
-//                     size_t shape0,
-//                     size_t shape1,
-//                     size_t shape2,
-//                     std::string name = "InputTensor3") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  shape2,
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-
 
         Node tensor3(ad_value_type v_type,
                      std::string name = "InputTensor3") {
@@ -843,13 +553,6 @@ namespace autodiff {
             return tensor(v_type, shape_t, name);
         }
 
-//        Node matrix(ad_value_type v_type,
-//                    std::array<size_t, 2> shape,
-//                    std::string name = "InputMatrix") {
-//            std::array<SymInt, 4> shape_t{shape[0], shape[1], SymInt::one(), SymInt::one()};
-//            return tensor(v_type, shape_t, name);
-//        }
-
         Node matrix(ad_value_type v_type,
                     SymInt shape0,
                     SymInt shape1,
@@ -862,45 +565,6 @@ namespace autodiff {
                           },
                           name);
         }
-
-//        Node matrix(ad_value_type v_type,
-//                    SymInt shape0,
-//                    size_t shape1,
-//                    std::string name = "InputMatrix") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  SymInt::one(),
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node matrix(ad_value_type v_type,
-//                    size_t shape0,
-//                    SymInt shape1,
-//                    std::string name = "InputMatrix") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  SymInt::one(),
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
-//
-//        Node matrix(ad_value_type v_type,
-//                    size_t shape0,
-//                    size_t shape1,
-//                    std::string name = "InputMatrix") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  shape1,
-//                                  SymInt::one(),
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
 
         Node matrix(ad_value_type v_type,
                     std::string name = "InputMatrix") {
@@ -928,31 +592,12 @@ namespace autodiff {
             return tensor(v_type, shape_t, name);
         }
 
-//        Node square_matrix(ad_value_type v_type,
-//                           size_t shape,
-//                           std::string name = "InputMatrix") {
-//            std::array<SymInt, 4> shape_t{shape, shape, SymInt::one(), SymInt::one()};
-//            return tensor(v_type, shape_t, name);
-//        }
-
         Node vector(ad_value_type v_type,
                     SymInt shape,
                     std::string name = "InputVector") {
             std::array<SymInt, 4> shape_t{shape, SymInt::one(), SymInt::one(), SymInt::one()};
             return tensor(v_type, shape_t, name);
         }
-
-//        Node vector(ad_value_type v_type,
-//                    size_t shape0,
-//                    std::string name = "InputVector") {
-//            return tensor(v_type, std::array<SymInt, 4>{
-//                                  shape0,
-//                                  SymInt::one(),
-//                                  SymInt::one(),
-//                                  SymInt::one()
-//                          },
-//                          name);
-//        }
 
         Node vector(ad_value_type v_type,
                     std::string name = "InputVector") {
@@ -975,6 +620,19 @@ namespace autodiff {
                     std::string name = "InputScalar") {
             std::array<SymInt, 4> shape_t{SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
             return tensor(v_type, shape_t, name);
+        }
+    };
+
+    void Input::generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages){
+        auto graph = this->graph.lock();
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+        auto my_grad = graph->nodes[messages[current]];
+        if(my_grad->name == "Derived Node"){
+            my_grad->name = "Grad of " + std::to_string(current);
+        } else {
+            my_grad->name += "|Grad of " + std::to_string(current);
         }
     };
 
@@ -1011,11 +669,66 @@ namespace autodiff {
         return this->graph.lock()->nodes[id]->is_tensor4_strict();
     }
 
+    // <broadcast 1, broadcast 2>
+    Shape verify_shapes(NodeInVec node_ptrs){
+        Shape max_shape  = node_ptrs[0].lock()->shape;
+        for(int i=1; i<node_ptrs.size();i++){
+            auto node_shape = node_ptrs[i].lock()->shape;
+            bool max = false;
+            for(int j=0;j<4;j++){
+                if(node_shape[j] != 1 and max_shape[j] == 1){
+                    max = true;
+                    break;
+                }
+            }
+            if(max){
+                for(int j=0;j<4;j++) {
+                    if(node_shape[j] == 1 and max_shape[j] != 1){
+                        throw 0;
+                    } else if(node_shape[j] != 1 and max_shape[j] != 1 and node_shape[j] != max_shape[j]){
+                        throw 1;
+                    }
+                }
+                max_shape = node_shape;
+            }
+        }
+        return max_shape;
+    }
+
+    std::array<bool,2> verify_shapes(NodeInPtr node0_ptr, NodeInPtr node1_ptr){
+        auto node0 = node0_ptr.lock();
+        auto node1 = node1_ptr.lock();
+        if(node0->shape == node1->shape or node0->is_scalar() or node1->is_scalar()){
+            return {false, false};
+        }
+        bool broadcast0 = false;
+        bool broadcast1 = false;
+        for(int i=0; i<4; i++){
+            if(node0->shape[i] == node1->shape[i]){
+                continue;
+            } else if(node0->shape[i] == 1 and node1->shape[i] != 1){
+                broadcast0 = true;
+            } else if(node0->shape[i] != 1 and node1->shape[i] == 1){
+                broadcast1 = true;
+            } else {
+                return {true, true};
+            }
+        }
+        return {broadcast0, broadcast1};
+    }
+
     class OperatorError : public std::exception{
     public:
         std::string name;
         std::vector<size_t> input_ids;
         std::vector<Shape> input_shapes;
+        OperatorError(std::string name,
+                      std::vector<size_t> input_ids,
+                      std::vector<Shape> input_shapes):
+                name(name),
+                input_ids(input_ids),
+                input_shapes(input_shapes)
+        {};
         OperatorError(std::string name,
                       NodeInVec inputs):
                 name(name)
@@ -1035,7 +748,56 @@ namespace autodiff {
     {
     public:
         IncompatibleShapes(std::string name,
+                           std::vector<size_t> input_ids,
+                           std::vector<Shape> input_shapes):
+                OperatorError(name, input_ids, input_shapes)
+        {}
+
+        IncompatibleShapes(std::string name,
                            NodeInVec inputs) :
+                OperatorError(name, inputs)
+        {}
+        std::string get_message() const
+        {
+            std::string id_msg;
+            std::string shape_msg;
+            for(auto i=0;i<input_ids.size();i++){
+                id_msg += std::to_string(input_ids[i]);
+                if(i < input_ids.size() - 1){
+                    id_msg += ", ";
+                }
+            }
+            for(auto i=0;i<input_shapes.size();i++){
+                shape_msg += "[";
+                for(auto j=0; j<4; j++){
+                    shape_msg += input_shapes[i][j].to_string();
+                    if(j < 3){
+                        shape_msg += ", ";
+                    }
+                }
+                shape_msg += "]";
+                if(i < input_ids.size() - 1){
+                    shape_msg += ", ";
+                }
+            }
+            std::string msg = "\nIncomaptible dimensions in operator '" + name + "'\n" +
+                              "Input ids: " + id_msg + "\n" +
+                              "Input shapes: " + shape_msg;
+            return msg.c_str();
+        }
+    };
+
+    class ImplicitBroadcast: public OperatorError
+    {
+    public:
+        ImplicitBroadcast(std::string name,
+                          std::vector<size_t> input_ids,
+                          std::vector<Shape> input_shapes):
+                OperatorError(name, input_ids, input_shapes)
+        {}
+
+        ImplicitBroadcast(std::string name,
+                          NodeInVec inputs) :
                 OperatorError(name, inputs)
         {}
         std::string get_message() const
@@ -1057,23 +819,40 @@ namespace autodiff {
                     shape_msg += ", ";
                 }
             }
-            std::string msg = "\nIncomaptible dimensions in operator '" + name + "'\n" +
+//            std::string dim_msg;
+//            for(int i=0;i<dims.size();i++){
+//                dim_msg += std::to_string(dims[i]);
+//                if(i < dims.size() - 1){
+//                    dim_msg += ", ";
+//                }
+//            }
+            std::string msg = "\nImplicit broadcast in operator '" + name + "'\n" +
+                              //                              "along dimensions " + dim_msg + "\n" +
                               "Input ids: " + id_msg + "\n" +
                               "Input shapes: " + shape_msg;
             return msg.c_str();
         }
     };
 
-    class ImplicitBroadcast: public OperatorError
+    class InvalidArguments: public OperatorError
     {
     public:
-        std::vector<size_t> dims;
-        ImplicitBroadcast(std::string name,
-                          NodeInVec inputs,
-                          std::vector<size_t> dims) :
+        std::string argument_string;
+        InvalidArguments(std::string name,
+                         std::vector<size_t> input_ids,
+                         std::vector<Shape> input_shapes,
+                         std::string argument_string):
+                OperatorError(name, input_ids, input_shapes),
+                argument_string(argument_string)
+        {};
+
+        InvalidArguments(std::string name,
+                         NodeInVec inputs,
+                         std::string argument_string):
                 OperatorError(name, inputs),
-                dims(dims)
-        {}
+                argument_string(argument_string)
+        {};
+
         std::string get_message() const
         {
             std::string id_msg;
@@ -1093,28 +872,68 @@ namespace autodiff {
                     shape_msg += ", ";
                 }
             }
-            std::string dim_msg;
-            for(int i=0;i<dims.size();i++){
-                dim_msg += std::to_string(dims[i]);
-                if(i < dims.size() - 1){
-                    dim_msg += ", ";
+            std::string msg = "\nInvalid arguments in operator '" + name + "'\n" +
+                              "Input ids: " + id_msg + "\n" +
+                              "Input shapes: " + shape_msg + "\n" +
+                              "Arguments: " + argument_string + "\n";
+            return msg.c_str();
+        }
+    };
+
+    class UnkownError: public OperatorError
+    {
+    public:
+        std::string err_string;
+        UnkownError(std::string name,
+                    std::vector<size_t> input_ids,
+                    std::vector<Shape> input_shapes,
+                    std::string err_string):
+                OperatorError(name, input_ids, input_shapes),
+                err_string(err_string)
+        {};
+
+        UnkownError(NodeInVec inputs,
+                    std::string argument_string):
+                OperatorError(name, inputs),
+                err_string(err_string)
+        {};
+
+        std::string get_message() const
+        {
+            std::string id_msg;
+            std::string shape_msg;
+            for(auto i=0;i<input_ids.size();i++){
+                id_msg += std::to_string(input_ids[i]);
+                shape_msg += "[";
+                for(auto j=0; j<4; j++){
+                    shape_msg += input_shapes[i][j].to_string();
+                    if(j < 3){
+                        shape_msg += ", ";
+                    }
+                }
+                shape_msg += "]";
+                if(i < input_ids.size() - 1){
+                    id_msg += ", ";
+                    shape_msg += ", ";
                 }
             }
-            std::string msg = "\nImplicit broadcast in operator '" + name + "' " +
-                              "along dimensions " + dim_msg + "\n" +
+            std::string msg = "\nUnkown error in operator '" + name + "'\n" +
                               "Input ids: " + id_msg + "\n" +
-                              "Input shapes: " + shape_msg;
+                              "Input shapes: " + shape_msg + "\n" +
+                              "Error message: " + err_string + "\n";
             return msg.c_str();
         }
     };
 
     std::string to_string(ad_node_type const & type){
         switch(type){
+            case ad_node_type::SYMBOLIC_INTEGER: return "SYMBOLIC_INTEGER";
             case ad_node_type::CONSTANT: return "CONSTANT";
             case ad_node_type::INPUT : return "INPUT";
             case ad_node_type::SHARED_INPUT : return "SHARED";
             case ad_node_type::INPUT_DERIVED: return "DERIVED";
-            case ad_node_type::SYMBOLIC_INTEGER: return "SYMBOLIC_INTEGER";
+            case ad_node_type::CONSTANT_DERIVED: return "CONSTANT_DERIVED";
+
         }
         return "UNREACHABLE";
     }

@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     //auto s4 = graph->neg(s2);
     auto s = s1 + s2;
 
-    auto s_f = s + i2;
+    auto s_f = (s + i2).sum();
 
     {
         auto grads = graph->gradient(s_f, {i1 ,i2});
