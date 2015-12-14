@@ -313,7 +313,8 @@ namespace autodiff {
             long n = this->nodes.size();
             auto unity_grad = this->constant_node(1).id;
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
-            this->nodes[unity_grad]->name = "Grad of " + std::to_string(objective.id);
+//            this->nodes[unity_grad]->name = "Grad of " + std::to_string(objective.id);
+            this->nodes[unity_grad]->name = "";
             grad_messages[target->id] = unity_grad;
             for (auto i = n; i > 0; i--) {
                 if (grad_messages.find(i - 1) != grad_messages.end()) {
