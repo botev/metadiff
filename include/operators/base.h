@@ -580,13 +580,13 @@ namespace autodiff {
                     // If my node computed p1 * p2
                     // Gradient msg to p1 is p2 * dE and to p2 is p1 * dE
                     auto op = std::make_shared<Mul>(graph, my_grad, other_parent);
-                    auto parent_grad = graph->derived_node(op);
+                    auto parent_grad = graph->derived_node(op).lock();
                     if (messages.find(parent->id) != messages.end()) {
                         auto prev_msg = graph->nodes[messages[parent->id]];
-                        auto op = std::make_shared<Add>(graph, prev_msg, my_grad);
+                        auto op = std::make_shared<Add>(graph, prev_msg, parent_grad);
                         messages[parent->id] = graph->derived_node(op).lock()->id;
                     } else {
-                        messages[parent->id] = my_grad->id;
+                        messages[parent->id] = parent_grad->id;
                     }
                     check = false;
                 }
@@ -604,13 +604,13 @@ namespace autodiff {
                     std::shared_ptr<Operator> op = std::make_shared<Div>(graph, parent);
                     auto parent_inv = graph->derived_node(op);
                     op = std::make_shared<Mul>(graph, NodeInVec{my_grad, this_node, parent_inv});
-                    auto parent_grad = graph->derived_node(op);
+                    auto parent_grad = graph->derived_node(op).lock();
                     if (messages.find(parent->id) != messages.end()) {
                         auto prev_msg = graph->nodes[messages[parent->id]];
-                        auto op = std::make_shared<Add>(graph, prev_msg, my_grad);
+                        auto op = std::make_shared<Add>(graph, prev_msg, parent_grad);
                         messages[parent->id] = graph->derived_node(op).lock()->id;
                     } else {
-                        messages[parent->id] = my_grad->id;
+                        messages[parent->id] = parent_grad->id;
                     }
                     check = false;
                 }

@@ -52,18 +52,17 @@ int main(int argc, char *argv[])
 //    auto c2 = graph->scalar(autodiff::ad_value_type::FLOAT);
     auto c1 = graph->constant_node(0.5);
     auto c2 = graph->constant_node(1.5);
-    auto d = graph->tensor(autodiff::ad_value_type::FLOAT, {autodiff::SymInt(2), 3, 4, 5});
 
     auto i1 = graph->matrix(autodiff::ad_value_type::FLOAT);
     auto i2 = graph->vector(autodiff::ad_value_type::FLOAT, i1.shape()[0]);
 
-    auto s1 = c1 + i1;
-    auto s2 = c2 + i2;
+    auto s1 = i1*c1 + c2;
+    auto s2 = i2*c2 + c1;
 
     //auto s4 = graph->neg(s2);
-    auto s = s1 + s2;
+    auto s = autodiff::square(s1 + s2);
 
-    auto s_f = (s + i2).sum();
+    auto s_f = s.sum();
 
     {
         auto grads = graph->gradient(s_f, {i1 ,i2});
