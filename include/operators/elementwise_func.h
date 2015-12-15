@@ -127,6 +127,321 @@ namespace autodiff {
             }
         }
     };
+
+    class Sin: public ElementwiseUnary {
+    public:
+        Sin(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Sin", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
+    class Cos: public ElementwiseUnary {
+    public:
+        Cos(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Cos", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
+    void Sin::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+        auto graph = this->graph.lock();
+
+        // Check for any incoming messages
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+
+        // Get the gradient with respect to this node
+        auto my_grad = graph->nodes[messages[current]];
+        update_grad_name(my_grad, current);
+
+        // Check for any surprises
+        auto parent = this->parent.lock();
+        if(parent->is_constant()) {
+            throw_grad_type_error();
+        }
+
+        // Node computes f = sin(p)
+        // => dE/dp = dE * cos(p)
+        std::shared_ptr<Operator> op = std::make_shared<Cos>(graph, parent);
+        auto cos_parent = graph->derived_node(op).lock();
+        op = std::make_shared<Mul>(graph, my_grad, cos_parent);
+        auto parent_grad = graph->derived_node(op).lock();
+        parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+        send_grad_message(graph, parent->id, parent_grad->id, messages);
+    };
+
+    void Cos::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+        auto graph = this->graph.lock();
+
+        // Check for any incoming messages
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+
+        // Get the gradient with respect to this node
+        auto my_grad = graph->nodes[messages[current]];
+        update_grad_name(my_grad, current);
+
+        // Check for any surprises
+        auto parent = this->parent.lock();
+        if(parent->is_constant()) {
+            throw_grad_type_error();
+        }
+
+        // Node computes f = cos(p)
+        // => dE/dp = - dE * sin(p)
+        std::shared_ptr<Operator> op = std::make_shared<Sin>(graph, parent);
+        auto sin_parent = graph->derived_node(op).lock();
+        op = std::make_shared<Mul>(graph, my_grad, sin_parent);
+        auto minus_grad = graph->derived_node(op).lock();
+        op = std::make_shared<Neg>(graph, minus_grad);
+        auto parent_grad = graph->derived_node(op).lock();
+        parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+        send_grad_message(graph, parent->id, parent_grad->id, messages);
+    };
+
+    class Tan: public ElementwiseUnary {
+    public:
+        Tan(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Tan", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+            auto graph = this->graph.lock();
+
+            // Check for any incoming messages
+            if(messages.find(current) == messages.end()){
+                return;
+            }
+
+            // Get the gradient with respect to this node
+            auto my_grad = graph->nodes[messages[current]];
+            update_grad_name(my_grad, current);
+
+            // Check for any surprises
+            auto parent = this->parent.lock();
+            if(parent->is_constant()) {
+                throw_grad_type_error();
+            }
+
+            // Node computes f = tan(p)
+            // => dE/dp = dE / (cos(p)^2)
+            auto this_node = graph->nodes[current];
+            std::shared_ptr<Operator> op = std::make_shared<Cos>(graph, parent);
+            auto cos_parent = graph->derived_node(op).lock();
+            op = std::make_shared<Square>(graph, cos_parent);
+            auto cos_parent_sqr = graph->derived_node(op).lock();
+            op = std::make_shared<Div>(graph, cos_parent_sqr);
+            auto cos_parent_sqr_inv = graph->derived_node(op).lock();
+            op = std::make_shared<Mul>(graph, my_grad, cos_parent_sqr_inv);
+            auto parent_grad = graph->derived_node(op).lock();
+            parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+            send_grad_message(graph, parent->id, parent_grad->id, messages);
+        };
+    };
+
+    class Cot: public ElementwiseUnary {
+    public:
+        Cot(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Cot", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+            auto graph = this->graph.lock();
+
+            // Check for any incoming messages
+            if(messages.find(current) == messages.end()){
+                return;
+            }
+
+            // Get the gradient with respect to this node
+            auto my_grad = graph->nodes[messages[current]];
+            update_grad_name(my_grad, current);
+
+            // Check for any surprises
+            auto parent = this->parent.lock();
+            if(parent->is_constant()) {
+                throw_grad_type_error();
+            }
+
+            // Node computes f = cot(p)
+            // => dE/dp = - dE / (sin(p)^2)
+            auto this_node = graph->nodes[current];
+            std::shared_ptr<Operator> op = std::make_shared<Sin>(graph, parent);
+            auto sin_parent = graph->derived_node(op).lock();
+            op = std::make_shared<Square>(graph, sin_parent);
+            auto sin_parent_sqr = graph->derived_node(op).lock();
+            op = std::make_shared<Div>(graph, sin_parent_sqr);
+            auto sin_parent_sqr_inv = graph->derived_node(op).lock();
+            op = std::make_shared<Mul>(graph, my_grad, sin_parent_sqr_inv);
+            auto minus_grad = graph->derived_node(op).lock();
+            op = std::make_shared<Neg>(graph, minus_grad);
+            auto parent_grad = graph->derived_node(op).lock();
+            parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+            send_grad_message(graph, parent->id, parent_grad->id, messages);
+        };
+    };
+
+    class SinH: public ElementwiseUnary {
+    public:
+        SinH(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("SinH", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
+    class CosH: public ElementwiseUnary {
+    public:
+        CosH(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("CosH", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
+    void SinH::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+        auto graph = this->graph.lock();
+
+        // Check for any incoming messages
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+
+        // Get the gradient with respect to this node
+        auto my_grad = graph->nodes[messages[current]];
+        update_grad_name(my_grad, current);
+
+        // Check for any surprises
+        auto parent = this->parent.lock();
+        if(parent->is_constant()) {
+            throw_grad_type_error();
+        }
+
+        // Node computes f = sinh(p)
+        // => dE/dp = dE * cosh(p)
+        std::shared_ptr<Operator> op = std::make_shared<CosH>(graph, parent);
+        auto cosh_parent = graph->derived_node(op).lock();
+        op = std::make_shared<Mul>(graph, my_grad, cosh_parent);
+        auto parent_grad = graph->derived_node(op).lock();
+        parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+        send_grad_message(graph, parent->id, parent_grad->id, messages);
+    };
+
+    void CosH::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+        auto graph = this->graph.lock();
+
+        // Check for any incoming messages
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+
+        // Get the gradient with respect to this node
+        auto my_grad = graph->nodes[messages[current]];
+        update_grad_name(my_grad, current);
+
+        // Check for any surprises
+        auto parent = this->parent.lock();
+        if(parent->is_constant()) {
+            throw_grad_type_error();
+        }
+
+        // Node computes f = cosh(p)
+        // => dE/dp = dE * sinh(p)
+        std::shared_ptr<Operator> op = std::make_shared<SinH>(graph, parent);
+        auto sinh_parent = graph->derived_node(op).lock();
+        op = std::make_shared<Mul>(graph, my_grad, sinh_parent);
+        auto parent_grad = graph->derived_node(op).lock();
+        parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+        send_grad_message(graph, parent->id, parent_grad->id, messages);
+    };
+
+
+    class TanH: public ElementwiseUnary {
+    public:
+        TanH(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("TanH", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+            auto graph = this->graph.lock();
+
+            // Check for any incoming messages
+            if(messages.find(current) == messages.end()){
+                return;
+            }
+
+            // Get the gradient with respect to this node
+            auto my_grad = graph->nodes[messages[current]];
+            update_grad_name(my_grad, current);
+
+            // Check for any surprises
+            auto parent = this->parent.lock();
+            if(parent->is_constant()) {
+                throw_grad_type_error();
+            }
+
+            // Node computes f = tanh(p)
+            // => dE/dp = dE * (1 - f^2)
+            auto this_node = graph->nodes[current];
+            std::shared_ptr<Operator> op = std::make_shared<Square>(graph, this_node);
+            auto this_node_sqr = graph->derived_node(op).lock();
+            op = std::make_shared<Neg>(graph, this_node_sqr);
+            auto minus_this_node_sqr = graph->derived_node(op).lock();
+            auto one = graph->nodes[graph->constant_node(1).id];
+            op = std::make_shared<Add>(graph, minus_this_node_sqr, one);
+            auto one_minus_this_node_sqr = graph->derived_node(op).lock();
+            op = std::make_shared<Mul>(graph, my_grad, one_minus_this_node_sqr);
+            auto parent_grad = graph->derived_node(op).lock();
+            parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+            send_grad_message(graph, parent->id, parent_grad->id, messages);
+        };
+    };
+
+    class CotH: public ElementwiseUnary {
+    public:
+        CotH(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("CotH", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+            auto graph = this->graph.lock();
+
+            // Check for any incoming messages
+            if(messages.find(current) == messages.end()){
+                return;
+            }
+
+            // Get the gradient with respect to this node
+            auto my_grad = graph->nodes[messages[current]];
+            update_grad_name(my_grad, current);
+
+            // Check for any surprises
+            auto parent = this->parent.lock();
+            if(parent->is_constant()) {
+                throw_grad_type_error();
+            }
+
+            // Node computes f = coth(p)
+            // => dE/dp = dE * (1 - f^2)
+            auto this_node = graph->nodes[current];
+            std::shared_ptr<Operator> op = std::make_shared<Square>(graph, this_node);
+            auto this_node_sqr = graph->derived_node(op).lock();
+            op = std::make_shared<Neg>(graph, this_node_sqr);
+            auto minus_this_node_sqr = graph->derived_node(op).lock();
+            auto one = graph->nodes[graph->constant_node(1).id];
+            op = std::make_shared<Add>(graph, minus_this_node_sqr, one);
+            auto one_minus_this_node_sqr = graph->derived_node(op).lock();
+            op = std::make_shared<Mul>(graph, my_grad, one_minus_this_node_sqr);
+            auto parent_grad = graph->derived_node(op).lock();
+            parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+            send_grad_message(graph, parent->id, parent_grad->id, messages);
+        };
+    };
 }
 
 #endif //AUTODIFF_ELEMENTWISE_FUNC_H

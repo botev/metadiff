@@ -86,8 +86,9 @@ namespace autodiff {
 
         virtual void generate_gradients(size_t current, std::unordered_map<size_t , size_t>& messages) = 0;
         virtual ad_value_type get_value_type() = 0;
-        virtual unsigned short get_gradient_level() = 0;
         virtual Shape get_shape() = 0;
+        virtual ad_node_type get_node_type() = 0;
+        virtual unsigned short get_gradient_level() = 0;
         virtual NodeInVec get_parents() = 0;
         virtual NodeInVec get_arguments() = 0;
 
@@ -269,12 +270,16 @@ namespace autodiff {
             return ad_value_type::FLOAT;
         }
 
-        unsigned short get_gradient_level(){
-            return 0;
-        }
-
         Shape get_shape(){
             return Shape{0, 0, 0, 0};
+        }
+
+        ad_node_type get_node_type(){
+            return INPUT;
+        };
+
+        unsigned short get_gradient_level(){
+            return 0;
         }
 
         NodeInVec get_parents(){
@@ -336,20 +341,12 @@ namespace autodiff {
 
         NodeInPtr derived_node(std::shared_ptr<Operator> op) {
             auto parents = op->get_parents();
-            ad_node_type type = CONSTANT_DERIVED;
-            for(int i=0;i<parents.size();i++){
-                auto parent_type = parents[i].lock()->type;
-                if(parent_type == INPUT or parent_type == INPUT_DERIVED or parent_type == SHARED_INPUT){
-                    type = INPUT_DERIVED;
-                    break;
-                }
-            }
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Derived Node",
-                    type,
+                    op->get_node_type(),
                     op->get_value_type(),
                     op->get_shape(),
                     op,
@@ -900,7 +897,7 @@ namespace autodiff {
         {};
 
         UnkownError(NodeInVec inputs,
-                    std::string argument_string):
+                    std::string err_string):
                 OperatorError(name, inputs),
                 err_string(err_string)
         {};

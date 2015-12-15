@@ -46,12 +46,22 @@ namespace autodiff {
             return parent.lock()->v_type;
         }
 
-        unsigned short get_gradient_level(){
-            return parent.lock()->grad_level;
-        }
-
         Shape get_shape(){
             return to_shape;
+        }
+
+        ad_node_type get_node_type(){
+            auto parent_type = parent.lock()->type;
+            switch (parent_type) {
+                case INPUT: return INPUT_DERIVED;
+                case SHARED_INPUT: return INPUT_DERIVED;
+                case SYMBOLIC_INTEGER: return CONSTANT;
+                default: return parent_type;
+            }
+        };
+
+        unsigned short get_gradient_level(){
+            return parent.lock()->grad_level;
         }
 
         NodeInVec get_parents(){
@@ -131,9 +141,15 @@ namespace autodiff {
             return parent.lock()->v_type;
         }
 
-        unsigned short get_gradient_level(){
-            return parent.lock()->grad_level;
-        }
+        ad_node_type get_node_type(){
+            auto parent_type = parent.lock()->type;
+            switch (parent_type) {
+                case INPUT: return INPUT_DERIVED;
+                case SHARED_INPUT: return INPUT_DERIVED;
+                case SYMBOLIC_INTEGER: return CONSTANT;
+                default: return parent_type;
+            }
+        };
 
         Shape get_shape(){
             auto p_shape = parent.lock()->shape;
@@ -141,6 +157,10 @@ namespace autodiff {
                 p_shape[axes[i]] = 1;
             }
             return p_shape;
+        }
+
+        unsigned short get_gradient_level(){
+            return parent.lock()->grad_level;
         }
 
         NodeInVec get_parents(){
@@ -212,6 +232,37 @@ namespace autodiff {
             return top_type;
         };
 
+        ad_node_type get_node_type(){
+            bool constant_derived = false;
+            bool constant = false;
+            for(int i=0;i<parents.size();i++){
+                auto parent_type = parents[i].lock()->type;
+                if(parent_type == INPUT
+                   or parent_type == INPUT_DERIVED
+                   or parent_type == SHARED_INPUT){
+                    return INPUT_DERIVED;
+                }
+                if(parent_type == CONSTANT_DERIVED){
+                    constant_derived = true;
+                }
+                if(parent_type == CONSTANT){
+                    constant = true;
+                }
+            }
+            if(constant_derived){
+                return CONSTANT_DERIVED;
+            }
+            else if(constant){
+                return CONSTANT;
+            } else {
+                return SYMBOLIC_INTEGER;
+            }
+        };
+
+        std::array<SymInt,4> get_shape(){
+            return shape;
+        }
+
         unsigned short get_gradient_level(){
             unsigned short max_grad_level = 0;
             for(int i=0;i<parents.size();i++){
@@ -222,10 +273,6 @@ namespace autodiff {
             }
             return max_grad_level;
         };
-
-        std::array<SymInt,4> get_shape(){
-            return shape;
-        }
 
         NodeInVec get_arguments() {
             return NodeInVec {};
@@ -295,19 +342,40 @@ namespace autodiff {
                 return FLOAT;
             } else if(parent1_v_type == INTEGER or parent2_v_type == INTEGER) {
                 return INTEGER;
+            } else {
+                return BOOLEAN;
             }
-            return BOOLEAN;
         };
+
+        ad_node_type get_node_type(){
+            auto parent1_type = parent1.lock()->type;
+            auto parent2_type = parent1.lock()->type;
+            if(parent1_type == INPUT
+               or parent1_type == SHARED_INPUT
+               or parent1_type == INPUT_DERIVED
+               or parent2_type == INPUT
+               or parent2_type == SHARED_INPUT
+               or parent2_type == INPUT_DERIVED){
+                return INPUT_DERIVED;
+            }
+            if(parent1_type == CONSTANT_DERIVED or parent2_type == CONSTANT_DERIVED){
+                return CONSTANT_DERIVED;
+            }
+            if(parent1_type == CONSTANT or parent2_type == CONSTANT){
+                return CONSTANT;
+            }
+            return SYMBOLIC_INTEGER;
+        };
+
+        std::array<SymInt,4> get_shape(){
+            return shape;
+        }
 
         unsigned short get_gradient_level(){
             auto parent1_grad_level = parent1.lock()->grad_level;
             auto parent2_grad_level = parent2.lock()->grad_level;
             return parent1_grad_level > parent2_grad_level ? parent1_grad_level : parent2_grad_level;
         };
-
-        std::array<SymInt,4> get_shape(){
-            return shape;
-        }
 
         NodeInVec get_arguments() {
             return NodeInVec {};
@@ -316,8 +384,8 @@ namespace autodiff {
         void throw_grad_type_error(){
             throw UnkownError({parent1, parent2},
                               "Gradient message present, but parents are " +
-                                      to_string(parent1.lock()->type) + ", " +
-                                      to_string(parent2.lock()->type));
+                              to_string(parent1.lock()->type) + ", " +
+                              to_string(parent2.lock()->type));
         }
     };
 
@@ -339,13 +407,23 @@ namespace autodiff {
             return parent.lock()->v_type;
         };
 
-        unsigned short get_gradient_level(){
-            return parent.lock()->grad_level;
+        ad_node_type get_node_type(){
+            auto parent_type = parent.lock()->type;
+            switch (parent_type) {
+                case INPUT: return INPUT_DERIVED;
+                case SHARED_INPUT: return INPUT_DERIVED;
+                case SYMBOLIC_INTEGER: return CONSTANT;
+                default: return parent_type;
+            }
         };
 
         std::array<SymInt,4> get_shape(){
             return parent.lock()->shape;
         }
+
+        unsigned short get_gradient_level(){
+            return parent.lock()->grad_level;
+        };
 
         NodeInVec get_arguments() {
             return NodeInVec {};
@@ -394,7 +472,7 @@ namespace autodiff {
             }
 
             if(check){
-               throw_grad_type_error();
+                throw_grad_type_error();
             }
         };
     };
