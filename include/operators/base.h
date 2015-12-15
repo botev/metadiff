@@ -13,16 +13,16 @@ namespace autodiff {
     public:
         NodeInPtr parent;
         Shape to_shape;
-        Broadcast(std::weak_ptr<GraphInternal> graph,
+        Broadcast(GraphInPtr graph,
                   NodeInPtr parent,
                   Shape to_shape):
                 Operator(graph, "Broadcast"),
                 parent(parent),
                 to_shape(to_shape){
-            auto parent = parent.lock();
+            auto parent_shape = parent.lock()->shape;
             for(int i=0;i<4;i++){
-                if(parent->shape[i] != 1 and parent->shape[i] != to_shape[i]){
-                    throw IncompatibleShapes(name, {parent->id}, {parent->shape, to_shape});
+                if(parent_shape[i] != 1 and parent_shape[i] != to_shape[i]){
+                    throw IncompatibleShapes(name, {parent.lock()->id}, {parent_shape, to_shape});
                 }
             }
         }
@@ -76,7 +76,7 @@ namespace autodiff {
         NodeInPtr parent;
         std::vector<size_t> axes;
 
-        Sum(std::weak_ptr<GraphInternal> graph,
+        Sum(GraphInPtr graph,
             NodeInPtr parent,
             std::vector<size_t> axes):
                 Operator(graph, "Sum"),
@@ -154,7 +154,7 @@ namespace autodiff {
         NodeInVec parents;
         Shape shape;
         ElementwiseNary(std::string const name,
-                        std::weak_ptr<GraphInternal> graph,
+                        GraphInPtr graph,
                         NodeInVec parents) :
                 Operator(graph, name){
             try{
@@ -219,10 +219,10 @@ namespace autodiff {
 
     class ElementwiseBinary : public ElementwiseNary{
         ElementwiseBinary(std::string name,
-                          std::weak_ptr<GraphInternal> graph,
-                          NodeInPtr p1,
-                          NodeInPtr p2) :
-                ElementwiseNary(name, graph, {p1, p2})
+                          GraphInPtr graph,
+                          NodeInPtr parent1,
+                          NodeInPtr parent2) :
+                ElementwiseNary(name, graph, {parent1, parent2})
         {}
     };
 
@@ -230,7 +230,7 @@ namespace autodiff {
     public:
         NodeInPtr parent;
         ElementwiseUnary(std::string const name,
-                         std::weak_ptr<GraphInternal> graph,
+                         GraphInPtr graph,
                          NodeInPtr parent):
                 Operator(graph, name),
                 parent(parent)
@@ -258,14 +258,14 @@ namespace autodiff {
     };
 
 
-    class ElementwiseAddition : public ElementwiseNary {
+    class Add : public ElementwiseNary {
     public:
-        ElementwiseAddition(std::weak_ptr<GraphInternal> graph, NodeInVec parents) :
+        Add(GraphInPtr graph, NodeInVec parents) :
                 ElementwiseNary("Add", graph, parents)
         {}
 
-        ElementwiseAddition(std::weak_ptr<GraphInternal> graph, NodeInPtr p1, NodeInPtr p2) :
-                ElementwiseNary("Add", graph, {p1, p2})
+        Add(GraphInPtr graph, NodeInPtr parent1, NodeInPtr parent2) :
+                ElementwiseNary("Add", graph, {parent1, parent2})
         {}
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -295,7 +295,7 @@ namespace autodiff {
                     // Add it to the already existing message to the parent on make this the first
                     if (messages.find(parent->id) != messages.end()) {
                         auto prev_msg = graph->nodes[messages[parent->id]];
-                        auto op = std::make_shared<ElementwiseAddition>(graph, prev_msg, my_grad);
+                        auto op = std::make_shared<Add>(graph, prev_msg, my_grad);
                         messages[parent->id] = graph->derived_node(op).lock()->id;
                     } else {
                         messages[parent->id] = my_grad->id;
@@ -323,7 +323,7 @@ namespace autodiff {
         for(int i=0;i<nodes.size();i++){
             nodes_in.push_back(graph->nodes[nodes[i].id]);
         }
-        auto op = std::make_shared<ElementwiseAddition>(graph, nodes_in);
+        auto op = std::make_shared<Add>(graph, nodes_in);
         return Node(graph, graph->derived_node(op).lock()->id);
     };
 
@@ -333,6 +333,10 @@ namespace autodiff {
 
     Node operator+(Node node1, Node node2){
         return add({node1, node2});
+    };
+
+    Node operator+(Node node){
+        return node;
     };
 
     void Broadcast::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -361,6 +365,7 @@ namespace autodiff {
         }
 
         // Generate the parent's gradient message
+        // If this node computed any broadcast(p, shape), the gradient is sum(dE, axes)
         auto op = std::make_shared<Sum>(this->graph, my_grad, this->get_axes());
         auto parent_grad = graph->derived_node(op).lock();
         parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -368,7 +373,7 @@ namespace autodiff {
         // Add it to the already existing message to the parent on make this the first
         if (messages.find(parent->id) != messages.end()) {
             auto prev_msg = graph->nodes[messages[parent->id]];
-            auto op = std::make_shared<ElementwiseAddition>(graph, prev_msg, parent_grad);
+            auto op = std::make_shared<Add>(graph, prev_msg, parent_grad);
             messages[parent->id] = graph->derived_node(op).lock()->id;
         } else {
             messages[parent->id] = parent_grad->id;
@@ -401,6 +406,7 @@ namespace autodiff {
         }
 
         // Generate the parent's gradient message
+        // If this node computed any sum(p), the gradient is broadcast(dE, p.shape)
         auto op = std::make_shared<Broadcast>(this->graph, my_grad, parent->shape);
         auto parent_grad = graph->derived_node(op).lock();
         parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -408,7 +414,7 @@ namespace autodiff {
         // Add it to the already existing message to the parent on make this the first
         if (messages.find(parent->id) != messages.end()) {
             auto prev_msg = graph->nodes[messages[parent->id]];
-            auto op = std::make_shared<ElementwiseAddition>(graph, prev_msg, parent_grad);
+            auto op = std::make_shared<Add>(graph, prev_msg, parent_grad);
             messages[parent->id] = graph->derived_node(op).lock()->id;
         } else {
             messages[parent->id] = parent_grad->id;
@@ -417,7 +423,7 @@ namespace autodiff {
 
     class Neg : public ElementwiseUnary {
     public:
-        Neg(std::weak_ptr<GraphInternal> graph, NodeInPtr parent) :
+        Neg(GraphInPtr graph, NodeInPtr parent) :
                 ElementwiseUnary("Neg", graph, parent)
         {};
 
@@ -447,6 +453,7 @@ namespace autodiff {
             }
 
             // Generate the parent's gradient message
+            // If this node computes -p the gradient is -dE
             auto op = std::make_shared<Neg>(graph, my_grad);
             auto parent_grad = graph->derived_node(op).lock();
             parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -454,7 +461,7 @@ namespace autodiff {
             // Add it to the already existing message to the parent on make this the first
             if (messages.find(parent->id) != messages.end()) {
                 auto prev_msg = graph->nodes[messages[parent->id]];
-                auto op = std::make_shared<ElementwiseAddition>(graph, prev_msg, parent_grad);
+                auto op = std::make_shared<Add>(graph, prev_msg, parent_grad);
                 messages[parent->id] = graph->derived_node(op).lock()->id;
             } else {
                 messages[parent->id] = parent_grad->id;
@@ -477,141 +484,242 @@ namespace autodiff {
         return add({node1, neg(node2)});
     }
 
-    class Mul : public Operator {
+    class Mul : public ElementwiseNary {
     public:
-        NodeInPtr p1;
-        NodeInPtr p2;
+        Mul(GraphInPtr graph, NodeInVec parents) :
+                ElementwiseNary("Mul", graph, parents)
+        {};
 
-        Mul(std::weak_ptr<GraphInternal> graph, NodeInPtr p1, NodeInPtr p2) :
-                Operator(graph, "MUL"),
-                p1(p1), p2(p2) { }
+        Mul(GraphInPtr graph, NodeInPtr p1, NodeInPtr p2) :
+                ElementwiseNary("Mul", graph, {p1, p2})
+        {};
 
-        NodeInVec get_parents() {
-            return NodeInVec {p1, p2};
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
+    Node mul(std::vector<Node> nodes){
+        auto graph = nodes[0].graph.lock();
+        NodeInVec nodes_in;
+        for(int i=0;i<nodes.size();i++){
+            nodes_in.push_back(graph->nodes[nodes[i].id]);
         }
-
-        NodeInVec get_arguments() {
-            return NodeInVec {};
-        }
-
-        ad_value_type get_value_type(){
-            return ad_value_type::FLOAT ;
-        }
-
-        unsigned short get_gradient_level(){
-            auto p1 = this->p1.lock();
-            auto p2 = this->p1.lock();
-            if(p1->grad_level > p2->grad_level){
-                return p1->grad_level;
-            } else{
-                return p2->grad_level;
-            }
-        }
-
-        std::array<SymInt,4> get_shape(){
-            auto graph = this->graph.lock();
-            auto p1 = this->p1.lock();
-            auto p2 = this->p2.lock();
-            if(p1->is_scalar()){
-                return p2->shape;
-            } else if(p2->is_scalar()){
-                return p1->shape;
-            } else if(p1->shape == p2->shape) {
-                return p1->shape;
-            } else{
-                std::array<SymInt,4> shape;
-                std::vector<size_t> dims;
-                bool err = false;
-                for(int i=0; i<4; i++){
-                    if(p1->shape[i] != p2->shape[i]){
-                        if(p1->shape[i] == 1){
-                            dims.push_back(i);
-                            shape[i] = p2->shape[i];
-                        } else if(p2->shape[i] == 1){
-                            dims.push_back(i);
-                            shape[i] = p1->shape[i];
-                        } else {
-                            err = true;
-                        }
-                    } else {
-                        shape[i] = p1->shape[i];
-                    }
-                }
-                if(err){
-                    throw IncompatibleShapes(this->name, {p1, p2});
-                } else if(dims.size() == 0){
-                    return shape;
-                } else if(graph->broadcast == ad_implicit_broadcast::RAISE){
-                    throw ImplicitBroadcast(this->name, this->get_parents());
-                } else if(graph->broadcast == ad_implicit_broadcast::WARN){
-                    auto msg = ImplicitBroadcast(this->name, this->get_parents());
-                    std::cout << "WARNING:" << msg.get_message() << std::endl;
-                    return shape;
-                } else {
-                    return shape;
-                }
-            }
-        }
-
-        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
-            auto graph = this->graph.lock();
-            if(messages.find(current) == messages.end()){
-                return;
-            }
-            auto gradient = graph->nodes[messages[current]];
-            auto p1 = this->p1.lock();
-            auto p2 = this->p2.lock();
-            if(p1->type != ad_node_type::CONSTANT
-               and p1->type != ad_node_type::SYMBOLIC_INTEGER
-               and p1->type != ad_node_type::CONSTANT_DERIVED) {
-                auto op = std::make_shared<Mul>(graph, gradient, p2);
-                auto p1_message = graph->derived_node(op).lock();
-                p1_message->name = "Grad Msg [" + std::to_string(current) + "->" + std::to_string(p1->id) + "]";
-                p1_message->grad_level = gradient->grad_level;
-                if (messages.find(p1->id) != messages.end()) {
-                    auto message = graph->nodes[messages[p1->id]];
-                    auto add_op = std::make_shared<ElementwiseAddition>(graph, p1_message, message);
-                    auto new_message = graph->derived_node(add_op).lock();
-                    new_message->grad_level = gradient->grad_level;
-                    messages[p1->id] = new_message->id;
-                    new_message->name = "Grad of " + std::to_string(p1->id);
-                    new_message->grad_level = gradient->grad_level;
-                } else {
-                    messages[p1->id] = p1_message->id;
-                }
-            }
-            if(p2->type != ad_node_type::CONSTANT
-               and p2->type != ad_node_type::SYMBOLIC_INTEGER
-               and p2->type != ad_node_type::CONSTANT_DERIVED) {
-                auto op = std::make_shared<Mul>(graph, gradient, p1);
-                auto p2_message = graph->derived_node(op).lock();
-                p2_message->name = "Grad Msg [" + std::to_string(current) + "->" + std::to_string(p2->id) + "]";
-                p2_message->grad_level = gradient->grad_level;
-                if (messages.find(p2->id) != messages.end()) {
-                    auto message = graph->nodes[messages[p2->id]];
-                    auto add_op = std::make_shared<ElementwiseAddition>(graph, p2_message, message);
-                    auto new_message = graph->derived_node(add_op).lock();
-                    messages[p2->id] = new_message->id;
-                    new_message->name = "Grad of " + std::to_string(p1->id);
-                    new_message->grad_level = gradient->grad_level;
-                } else {
-                    messages[p2->id] = p2_message->id;
-                }
-            }
-        };
+        auto op = std::make_shared<Mul>(graph, nodes_in);
+        return Node(graph, graph->derived_node(op).lock()->id);
     };
 
     Node mul(Node node1, Node node2){
-        auto graph = node1.graph.lock();
-        auto arg1 = graph->nodes[node1.id];
-        auto arg2 = graph->nodes[node2.id];
-        auto op = std::make_shared<Mul>(node1.graph, arg1, arg2);
-        return Node(node1.graph, graph->derived_node(op).lock()->id);
+        return mul({node1, node2});
     }
 
     Node operator*(Node node1, Node node2){
-        return mul(node1, node2);
+        return mul({node1, node2});
     };
+
+    class Div : public ElementwiseUnary {
+    public:
+        Div(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Div", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
+    Node div(Node node1, Node node2){
+        auto graph = node2.graph.lock();
+        auto op = std::make_shared<Div>(node2.graph, graph->nodes[node2.id]);
+        auto node2_div = graph->derived_node(op);
+        return mul({node1, Node(graph, node2_div.lock()->id)});
+    }
+
+    Node operator/(Node node1, Node node2){
+        return div(node1, node2);
+    };
+
+    class Square : public ElementwiseUnary {
+    public:
+        Square(GraphInPtr graph, NodeInPtr parent) :
+        ElementwiseUnary("Square", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
+    Node square(Node node){
+        auto graph = node.graph.lock();
+        auto op = std::make_shared<Square>(node.graph, graph->nodes[node.id]);
+        return Node(node.graph, graph->derived_node(op).lock()->id);
+    }
+
+    void Mul::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+        auto graph = this->graph.lock();
+
+        // Check for any incoming messages
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+
+        // Get the gradient with respect to this node, alter the name
+        auto my_grad = graph->nodes[messages[current]];
+        if(my_grad->name == "Derived Node" or my_grad->name == ""){
+            my_grad->name = "Grad of " + std::to_string(current);
+        } else {
+            my_grad->name += "|Grad of " + std::to_string(current);
+        }
+
+        // Check for any surprises
+        bool check = true;
+        if(parents.size() == 2){
+            // Special case when only two parents
+            for(int i=0;i<2;i++){
+                auto parent = parents[i].lock();
+                auto other_parent = parents[1-i].lock();
+                if(parent->type != ad_node_type::CONSTANT
+                   and parent->type != ad_node_type::SYMBOLIC_INTEGER
+                   and parent->type != ad_node_type::CONSTANT_DERIVED) {
+                    // Generate the parent's gradient message
+                    // If my node computed p1 * p2
+                    // Gradient msg to p1 is p2 * dE and to p2 is p1 * dE
+                    auto op = std::make_shared<Mul>(graph, my_grad, other_parent);
+                    auto parent_grad = graph->derived_node(op);
+                    if (messages.find(parent->id) != messages.end()) {
+                        auto prev_msg = graph->nodes[messages[parent->id]];
+                        auto op = std::make_shared<Add>(graph, prev_msg, my_grad);
+                        messages[parent->id] = graph->derived_node(op).lock()->id;
+                    } else {
+                        messages[parent->id] = my_grad->id;
+                    }
+                    check = false;
+                }
+            }
+        } else {
+            auto this_node = graph->nodes[current];
+            for(int i=0;i<parents.size();i++){
+                auto parent = parents[i].lock();
+                if(parent->type != ad_node_type::CONSTANT
+                   and parent->type != ad_node_type::SYMBOLIC_INTEGER
+                   and parent->type != ad_node_type::CONSTANT_DERIVED) {
+                    // Generate the parent's gradient message
+                    // If my node computed p_1 * p_2 * p-3 ... * p_n = P
+                    // Gradient msg to p_i is P * dE / p_i
+                    std::shared_ptr<Operator> op = std::make_shared<Div>(graph, parent);
+                    auto parent_inv = graph->derived_node(op);
+                    op = std::make_shared<Mul>(graph, NodeInVec{my_grad, this_node, parent_inv});
+                    auto parent_grad = graph->derived_node(op);
+                    if (messages.find(parent->id) != messages.end()) {
+                        auto prev_msg = graph->nodes[messages[parent->id]];
+                        auto op = std::make_shared<Add>(graph, prev_msg, my_grad);
+                        messages[parent->id] = graph->derived_node(op).lock()->id;
+                    } else {
+                        messages[parent->id] = my_grad->id;
+                    }
+                    check = false;
+                }
+            }
+        }
+        if(check){
+            std::string type_str;
+            for(int i=0;i<parents.size();i++){
+                type_str += to_string(parents[i].lock()->type);
+                if(i < parents.size() - 1){
+                    type_str += ", ";
+                }
+            }
+            throw UnkownError(parents, "Gradient message present, but parents are " + type_str);
+        }
+    }
+
+    void Div::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+        auto graph = this->graph.lock();
+
+        // Check for any incoming messages
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+
+        // Get the gradient with respect to this node, alter the name
+        auto my_grad = graph->nodes[messages[current]];
+        if(my_grad->name == "Derived Node" or my_grad->name == ""){
+            my_grad->name = "Grad of " + std::to_string(current);
+        } else {
+            my_grad->name += "|Grad of " + std::to_string(current);
+        }
+
+        // Check for any surprises
+        auto parent = this->parent.lock();
+        if(parent->type == ad_node_type::CONSTANT
+           and parent->type == ad_node_type::SYMBOLIC_INTEGER
+           and parent->type == ad_node_type::CONSTANT_DERIVED) {
+            throw UnkownError({parent},
+                              "Gradient message present, but parent is " + to_string(parent->type));
+        }
+
+        // Generate the parent's gradient message
+        // If my node computed p^-1
+        // Gradient msg to p is (-((p^2)^-1)) * dE
+        auto parent_node = graph->nodes[parent->id];
+        std::shared_ptr<Operator> op = std::make_shared<Square>(graph, parent);
+        auto parent_sqr = graph->derived_node(op);
+        op = std::make_shared<Div>(graph, parent_sqr);
+        auto parent_sqr_inv = graph->derived_node(op);
+        op = std::make_shared<Neg>(graph, parent_sqr_inv);
+        auto minus_parent_sqr_inv = graph->derived_node(op);
+        op = std::make_shared<Mul>(graph, my_grad, minus_parent_sqr_inv);
+        auto parent_grad = graph->derived_node(op).lock();
+        parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+
+        // Add it to the already existing message to the parent on make this the first
+        if (messages.find(parent->id) != messages.end()) {
+            auto prev_msg = graph->nodes[messages[parent->id]];
+            auto op = std::make_shared<Add>(graph, prev_msg, parent_grad);
+            messages[parent->id] = graph->derived_node(op).lock()->id;
+        } else {
+            messages[parent->id] = parent_grad->id;
+        }
+    }
+
+    void Square::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+        auto graph = this->graph.lock();
+
+        // Check for any incoming messages
+        if(messages.find(current) == messages.end()){
+            return;
+        }
+
+        // Get the gradient with respect to this node, alter the name
+        auto my_grad = graph->nodes[messages[current]];
+        if(my_grad->name == "Derived Node" or my_grad->name == ""){
+            my_grad->name = "Grad of " + std::to_string(current);
+        } else {
+            my_grad->name += "|Grad of " + std::to_string(current);
+        }
+
+        // Check for any surprises
+        auto parent = this->parent.lock();
+        if(parent->type == ad_node_type::CONSTANT
+           and parent->type == ad_node_type::SYMBOLIC_INTEGER
+           and parent->type == ad_node_type::CONSTANT_DERIVED) {
+            throw UnkownError({parent},
+                              "Gradient message present, but parent is " + to_string(parent->type));
+        }
+
+        // Generate the parent's gradient message
+        // If my node computed p^2
+        // Gradient msg to p is 2 * p * dE
+        auto parent_node = graph->nodes[parent->id];
+        auto two = graph->nodes[graph->constant_node(2.0).id];
+        auto op = std::make_shared<Mul>(graph, NodeInVec {my_grad, two, parent});
+        auto parent_grad = graph->derived_node(op).lock();
+        parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+
+        // Add it to the already existing message to the parent on make this the first
+        if (messages.find(parent->id) != messages.end()) {
+            auto prev_msg = graph->nodes[messages[parent->id]];
+            auto op = std::make_shared<Add>(graph, prev_msg, parent_grad);
+            messages[parent->id] = graph->derived_node(op).lock()->id;
+        } else {
+            messages[parent->id] = parent_grad->id;
+        }
+    }
 
 }
 
