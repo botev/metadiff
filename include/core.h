@@ -62,7 +62,10 @@ namespace metadiff {
     class SharedVariable{
         // TODO properly
     public:
-        SharedVariable(){};
+        Shape shape;
+        SharedVariable(Shape shape):
+                shape(shape)
+        {};
     };
 
     class GraphInternal;

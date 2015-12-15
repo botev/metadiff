@@ -26,14 +26,15 @@ namespace metadiff {
             auto node = node_ptr.lock();
             if (std::find(targets.begin(), targets.end(), node->id) != targets.end()) {
                 return "#ff0000";
-            } else if (node->type == ad_node_type::INPUT) {
-                return "#00ff00";
-            } else if (node->type == ad_node_type::SHARED_INPUT) {
-                return "#ffa500";
-            } else if (node->type == ad_node_type::CONSTANT) {
-                return "#ffff00";
             } else {
-                return "#0000ff";
+                switch(node->type){
+                    case INPUT: return "#00ff00";
+                    case SHARED_INPUT:  return "#006400";
+                    case INPUT_DERIVED: return "#0000ff";
+                    case CONSTANT: return "#ffff00";
+                    case CONSTANT_DERIVED: return "#ffa500";
+                    default: return "#800080";
+                }
             }
         }
 
