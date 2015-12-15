@@ -7,7 +7,7 @@
 
 #include "autodiff.h"
 
-namespace autodiff {
+namespace metadiff {
 
     // Helper function for boilerplate code
     void update_grad_name(std::shared_ptr<NodeInternal> my_grad, size_t current){
@@ -96,6 +96,14 @@ namespace autodiff {
         return broadcast(graph.lock()->nodes[other.id]->shape);
     }
 
+    Node broadcast(Node node, Shape shape){
+        return node.broadcast(shape);
+    }
+
+    Node broadcast_to(Node node, Node other) {
+        return node.broadcast_to(other);
+    }
+
     class Sum : public Operator {
     public:
         NodeInPtr parent;
@@ -180,8 +188,8 @@ namespace autodiff {
         return Node(this->graph, graph->derived_node(op).lock()->id);
     }
 
-    Node Node::sum() {
-        return sum({0, 1, 2, 3});
+    Node sum(Node node, std::vector<size_t> axes={0, 1, 2, 3}){
+        return node.sum(axes);
     }
 
     class ElementwiseNary : public Operator{

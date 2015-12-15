@@ -36,31 +36,34 @@
 //    af_print(B);
 //}
 //
+namespace md = metadiff;
+namespace sym = metadiff::symbolic;
+
 int main(int argc, char *argv[])
 {
 //    af::dim4 dims(1, 1, 1, 1);
 //    auto c1_v = af::constant(0.5, dims, f32);
 //    auto c2_v = af::constant(1.5, dims, f32);
 
-    auto graph = autodiff::create_graph();
-    graph->broadcast = autodiff::ad_implicit_broadcast::WARN;
+    auto graph = md::create_graph();
+    graph->broadcast = md::ad_implicit_broadcast::WARN;
 
 //    auto c1 = graph->constant_node(af::constant(0.5, dims, f32));
 //    auto c2 = graph->constant_node(af::constant(1.5, dims, f32));
 
-//    auto c1 = graph->scalar(autodiff::ad_value_type::FLOAT);
-//    auto c2 = graph->scalar(autodiff::ad_value_type::FLOAT);
+//    auto c1 = graph->scalar(md::ad_value_type::FLOAT);
+//    auto c2 = graph->scalar(md::ad_value_type::FLOAT);
     auto c1 = graph->constant_node(0.5);
     auto c2 = graph->constant_node(1.5);
 
-    auto i1 = graph->matrix(autodiff::ad_value_type::FLOAT);
-    auto i2 = graph->vector(autodiff::ad_value_type::FLOAT, i1.shape()[0]);
+    auto i1 = graph->matrix(md::ad_value_type::FLOAT);
+    auto i2 = graph->vector(md::ad_value_type::FLOAT, i1.shape()[0]);
 
     auto s1 = i1*c1 + c2;
     auto s2 = i2*c2 + c1;
 
     //auto s4 = graph->neg(s2);
-    auto s = autodiff::square(s1 + s2);
+    auto s = md::square(s1 + s2);
 
     auto s_f = s.sum();
 
@@ -74,11 +77,11 @@ int main(int argc, char *argv[])
             auto node = graph->nodes[i];
 //            std::cout << node->id << ", " << node->grad_level << std::endl;
         }
-        autodiff::dagre::dagre_to_file("test_full.html", graph, grads);
+        md::dagre::dagre_to_file("test_full.html", graph, grads);
     }
 
-    auto t_a = symbolic::SymbolicMonomial<10, unsigned int>(0);
-    auto t_b = symbolic::SymbolicMonomial<10, unsigned int>(1);
+    auto t_a = sym::SymbolicMonomial<10, unsigned int>(0);
+    auto t_b = sym::SymbolicMonomial<10, unsigned int>(1);
     auto t_c = 2*t_b*t_a*t_a;
     auto t_p = t_c + t_a;
     auto t_p2 = t_c - 2;

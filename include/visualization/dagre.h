@@ -7,7 +7,7 @@
 
 #include "stdio.h"
 
-namespace autodiff {
+namespace metadiff {
     namespace dagre {
         std::string node_name_html(std::weak_ptr<const NodeInternal> node_ptr) {
             auto node = node_ptr.lock();
@@ -62,8 +62,8 @@ namespace autodiff {
             child_id_str += "]";
             names.push_back("'" + state_name + "': {\n"
                     "\t\tdescription: \"Name: " + node->name + " <br> "
-                                    "Device: " + autodiff::to_string(node->device) + " <br> "
-                                    "Value type: " + autodiff::to_string(node->v_type) + " <br> "
+                                    "Device: " + to_string(node->device) + " <br> "
+                                    "Value type: " + to_string(node->v_type) + " <br> "
                                     "Shape: [" + node->shape[0].to_string() + ", " +
                                     node->shape[1].to_string() + ", " + node->shape[2].to_string() + ", " +
                                     node->shape[3].to_string() + "] <br> "
@@ -93,7 +93,7 @@ namespace autodiff {
             edges.push_back("g.setParent('" + state_name + "', 'grad_" + std::to_string(node->grad_level) + "');");
         }
 
-        void dagre_to_file(std::string file_name, autodiff::Graph graph, std::vector<Node> target_nodes) {
+        void dagre_to_file(std::string file_name, Graph graph, std::vector<Node> target_nodes) {
             std::vector<size_t> targets;
             for(size_t i=0;i<target_nodes.size();i++){
                 targets.push_back(target_nodes[i].id);

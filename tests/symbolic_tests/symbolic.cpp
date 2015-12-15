@@ -15,7 +15,7 @@ typedef testing::Types<unsigned short, unsigned int, unsigned long> Integers;
 TYPED_TEST_CASE(SymbolicTest, Integers);
 
 TYPED_TEST(SymbolicTest, MonomialConstructor){
-    typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
+    typedef metadiff::symbolic::SymbolicMonomial<N, TypeParam> Monomial;
     // Constant monomial 1
     auto one = Monomial();
     EXPECT_EQ(one.coefficient, 1);
@@ -42,11 +42,11 @@ TYPED_TEST(SymbolicTest, MonomialConstructor){
     EXPECT_THAT(two_x2.powers, testing::ElementsAre(2, 0, 0, 0, 0));
 
     // Test for exception
-    EXPECT_THROW(Monomial::variable(N + 0), symbolic::UnrecognisedSymbolicVariable);
+    EXPECT_THROW(Monomial::variable(N + 0), metadiff::symbolic::UnrecognisedSymbolicVariable);
 }
 
 TYPED_TEST(SymbolicTest, MonomialEquality) {
-    typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
+    typedef metadiff::symbolic::SymbolicMonomial<N, TypeParam> Monomial;
     // Equality with integers
     auto two = Monomial(2);
     EXPECT_EQ(two, 2);
@@ -65,18 +65,18 @@ TYPED_TEST(SymbolicTest, MonomialEquality) {
     EXPECT_NE(x, two_2);
 
     // Up to coefficient equality for constants
-    EXPECT_TRUE(symbolic::up_to_coefficient(0, two));
-    EXPECT_TRUE(symbolic::up_to_coefficient(0, two_2));
-    EXPECT_FALSE(symbolic::up_to_coefficient(0, x));
+    EXPECT_TRUE(metadiff::symbolic::up_to_coefficient(0, two));
+    EXPECT_TRUE(metadiff::symbolic::up_to_coefficient(0, two_2));
+    EXPECT_FALSE(metadiff::symbolic::up_to_coefficient(0, x));
 
     // Up to coefficient equality for 'x' and '10x'
     auto ten_x = Monomial::variable(0) * 10;
-    EXPECT_TRUE(symbolic::up_to_coefficient(x, ten_x));
-    EXPECT_TRUE(symbolic::up_to_coefficient(ten_x, x));
+    EXPECT_TRUE(metadiff::symbolic::up_to_coefficient(x, ten_x));
+    EXPECT_TRUE(metadiff::symbolic::up_to_coefficient(ten_x, x));
 }
 
 TYPED_TEST(SymbolicTest, MonomialProductAndDivision) {
-    typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
+    typedef metadiff::symbolic::SymbolicMonomial<N, TypeParam> Monomial;
     auto x = Monomial::variable(0);
     auto y = Monomial::variable(1);
     auto z = Monomial::variable(2);
@@ -94,15 +94,15 @@ TYPED_TEST(SymbolicTest, MonomialProductAndDivision) {
     EXPECT_EQ(composite / z, 2 * x * y);
 
     // Check for errors on non integer division
-    EXPECT_THROW(composite / 4, symbolic::NonIntegerDivision);
-    EXPECT_THROW(composite / (x * x), symbolic::NonIntegerDivision);
-    EXPECT_THROW(composite / (y * y), symbolic::NonIntegerDivision);
-    EXPECT_THROW(composite / (z * z), symbolic::NonIntegerDivision);
+    EXPECT_THROW(composite / 4, metadiff::symbolic::NonIntegerDivision);
+    EXPECT_THROW(composite / (x * x), metadiff::symbolic::NonIntegerDivision);
+    EXPECT_THROW(composite / (y * y), metadiff::symbolic::NonIntegerDivision);
+    EXPECT_THROW(composite / (z * z), metadiff::symbolic::NonIntegerDivision);
 }
 
 TYPED_TEST(SymbolicTest, PolynomialConstructor) {
-    typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
-    typedef symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
+    typedef metadiff::symbolic::SymbolicMonomial<N, TypeParam> Monomial;
+    typedef metadiff::symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
     // Constant polynomial 0
     auto zero = Polynomial();
     EXPECT_EQ(zero.monomials.size(), 0);
@@ -139,12 +139,12 @@ TYPED_TEST(SymbolicTest, PolynomialConstructor) {
     EXPECT_THAT(two_x.monomials[0].powers, testing::ElementsAre(1, 0, 0, 0, 0));
 
     // Test for exception
-    EXPECT_THROW(Polynomial::variable(N + 0), symbolic::UnrecognisedSymbolicVariable);
+    EXPECT_THROW(Polynomial::variable(N + 0), metadiff::symbolic::UnrecognisedSymbolicVariable);
 }
 
 TYPED_TEST(SymbolicTest, PolynomialEquality) {
-    typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
-    typedef symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
+    typedef metadiff::symbolic::SymbolicMonomial<N, TypeParam> Monomial;
+    typedef metadiff::symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
     // Equality with integers
     auto two = Polynomial(2);
     EXPECT_EQ(two, 2);
@@ -182,8 +182,8 @@ TYPED_TEST(SymbolicTest, PolynomialEquality) {
 }
 
 TYPED_TEST(SymbolicTest, PolynomialAddition) {
-    typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
-    typedef symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
+    typedef metadiff::symbolic::SymbolicMonomial<N, TypeParam> Monomial;
+    typedef metadiff::symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
 
     // Compare x + y + 2
     auto x_monomial = Monomial::variable(0);
@@ -205,7 +205,7 @@ TYPED_TEST(SymbolicTest, PolynomialAddition) {
     EXPECT_FALSE(two_x_plus_y.is_constant());
     for(int i=0;i<3;i++) {
         EXPECT_EQ(two_x_plus_y.monomials[i].coefficient, 2);
-        EXPECT_TRUE(symbolic::up_to_coefficient(two_x_plus_y.monomials[i], x_plus_y.monomials[i]));
+        EXPECT_TRUE(metadiff::symbolic::up_to_coefficient(two_x_plus_y.monomials[i], x_plus_y.monomials[i]));
     }
 
     // Check subtraction
@@ -216,8 +216,8 @@ TYPED_TEST(SymbolicTest, PolynomialAddition) {
 }
 
 TYPED_TEST(SymbolicTest, PolynomialProductAndDivision) {
-    typedef symbolic::SymbolicMonomial<N, TypeParam> Monomial;
-    typedef symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
+    typedef metadiff::symbolic::SymbolicMonomial<N, TypeParam> Monomial;
+    typedef metadiff::symbolic::SymbolicPolynomial<N, TypeParam> Polynomial;
     auto x = Polynomial::variable(0);
     auto y = Polynomial::variable(1);
     auto xy_plus_x_square_plus_one = x * y + x * x + 1;
@@ -245,7 +245,7 @@ TYPED_TEST(SymbolicTest, PolynomialProductAndDivision) {
     EXPECT_EQ(product / xy_plus_y_square_plus_two, xy_plus_x_square_plus_one);
 
     // Test for exception
-    EXPECT_THROW(product / x*x, symbolic::NonIntegerDivision);
+    EXPECT_THROW(product / x*x, metadiff::symbolic::NonIntegerDivision);
 }
 
 int main(int argc, char **argv) {

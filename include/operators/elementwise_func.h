@@ -4,7 +4,7 @@
 
 #ifndef AUTODIFF_ELEMENTWISE_FUNC_H
 #define AUTODIFF_ELEMENTWISE_FUNC_H
-namespace autodiff {
+namespace metadiff {
 
     class Exp: public ElementwiseUnary {
     public:
@@ -40,6 +40,17 @@ namespace autodiff {
         };
     };
 
+    Node Node::exp() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Exp>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node exp(Node node){
+        return node.exp();
+    }
+
     class Log: public ElementwiseUnary {
     public:
         Log(GraphInPtr graph, NodeInPtr parent) :
@@ -74,6 +85,17 @@ namespace autodiff {
             send_grad_message(graph, parent->id, parent_grad->id, messages);
         };
     };
+
+    Node Node::log() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Log>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node log(Node node){
+        return node.log();
+    }
 
     class Pow : public ElementwiseBinary {
     public:
@@ -128,6 +150,30 @@ namespace autodiff {
         }
     };
 
+    Node pow(Node node1, Node node2){
+        auto graph = node1.graph.lock();
+        auto arg1 = graph->nodes[node1.id];
+        auto arg2 = graph->nodes[node2.id];
+        auto op = std::make_shared<Pow>(graph, arg1, arg2);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node pow(Node node1, double node2){
+        auto graph = node1.graph.lock();
+        auto arg1 = graph->nodes[node1.id];
+        auto arg2 = graph->nodes[graph->constant_node(node2).id];
+        auto op = std::make_shared<Pow>(graph, arg1, arg2);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node pow(double node1, Node node2){
+        auto graph = node2.graph.lock();
+        auto arg1 = graph->nodes[graph->constant_node(node1).id];
+        auto arg2 = graph->nodes[node2.id];
+        auto op = std::make_shared<Pow>(graph, arg1, arg2);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
     class Sin: public ElementwiseUnary {
     public:
         Sin(GraphInPtr graph, NodeInPtr parent) :
@@ -136,6 +182,17 @@ namespace autodiff {
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
     };
+
+    Node Node::sin() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Sin>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node sin(Node node){
+        return node.sin();
+    }
 
     class Cos: public ElementwiseUnary {
     public:
@@ -146,6 +203,16 @@ namespace autodiff {
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
     };
 
+    Node Node::cos(){
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Cos>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node cos(Node node){
+        return node.cos();
+    }
     void Sin::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
         auto graph = this->graph.lock();
 
@@ -244,6 +311,17 @@ namespace autodiff {
         };
     };
 
+    Node Node::tan() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Tan>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node tan(Node node){
+        return node.tan();
+    }
+
     class Cot: public ElementwiseUnary {
     public:
         Cot(GraphInPtr graph, NodeInPtr parent) :
@@ -286,25 +364,58 @@ namespace autodiff {
         };
     };
 
-    class SinH: public ElementwiseUnary {
+    Node Node::cot() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Cot>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node cot(Node node){
+        return node.cot();
+    }
+
+    class Sinh: public ElementwiseUnary {
     public:
-        SinH(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("SinH", graph, parent)
+        Sinh(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Sinh", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
     };
 
-    class CosH: public ElementwiseUnary {
+    Node Node::sinh() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Sinh>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node sinh(Node node){
+        return node.sinh();
+    }
+
+    class Cosh: public ElementwiseUnary {
     public:
-        CosH(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("CosH", graph, parent)
+        Cosh(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Cosh", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
     };
 
-    void SinH::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+    Node Node::cosh() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Cosh>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node cosh(Node node){
+        return node.cosh();
+    }
+
+    void Sinh::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
         auto graph = this->graph.lock();
 
         // Check for any incoming messages
@@ -324,7 +435,7 @@ namespace autodiff {
 
         // Node computes f = sinh(p)
         // => dE/dp = dE * cosh(p)
-        std::shared_ptr<Operator> op = std::make_shared<CosH>(graph, parent);
+        std::shared_ptr<Operator> op = std::make_shared<Cosh>(graph, parent);
         auto cosh_parent = graph->derived_node(op).lock();
         op = std::make_shared<Mul>(graph, my_grad, cosh_parent);
         auto parent_grad = graph->derived_node(op).lock();
@@ -332,7 +443,7 @@ namespace autodiff {
         send_grad_message(graph, parent->id, parent_grad->id, messages);
     };
 
-    void CosH::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+    void Cosh::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
         auto graph = this->graph.lock();
 
         // Check for any incoming messages
@@ -352,7 +463,7 @@ namespace autodiff {
 
         // Node computes f = cosh(p)
         // => dE/dp = dE * sinh(p)
-        std::shared_ptr<Operator> op = std::make_shared<SinH>(graph, parent);
+        std::shared_ptr<Operator> op = std::make_shared<Sinh>(graph, parent);
         auto sinh_parent = graph->derived_node(op).lock();
         op = std::make_shared<Mul>(graph, my_grad, sinh_parent);
         auto parent_grad = graph->derived_node(op).lock();
@@ -361,10 +472,10 @@ namespace autodiff {
     };
 
 
-    class TanH: public ElementwiseUnary {
+    class Tanh: public ElementwiseUnary {
     public:
-        TanH(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("TanH", graph, parent)
+        Tanh(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Tanh", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -402,10 +513,21 @@ namespace autodiff {
         };
     };
 
-    class CotH: public ElementwiseUnary {
+    Node Node::tanh() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Tanh>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node tanh(Node node){
+        return node.cot();
+    }
+
+    class Coth: public ElementwiseUnary {
     public:
-        CotH(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("CotH", graph, parent)
+        Coth(GraphInPtr graph, NodeInPtr parent) :
+                ElementwiseUnary("Coth", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -442,6 +564,17 @@ namespace autodiff {
             send_grad_message(graph, parent->id, parent_grad->id, messages);
         };
     };
+
+    Node Node::coth() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Coth>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node coth(Node node){
+        return node.coth();
+    }
 }
 
 #endif //AUTODIFF_ELEMENTWISE_FUNC_H

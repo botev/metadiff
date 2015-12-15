@@ -11,7 +11,7 @@
 #include "memory"
 #include <unordered_map>
 
-namespace autodiff {
+namespace metadiff {
     const size_t N = 100;
 
     typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
@@ -254,12 +254,25 @@ namespace autodiff {
         bool is_tensor3_strict();
         bool is_tensor4_strict();
 
-        Node sum(std::vector<size_t> axes);
-        Node sum();
+        Node sum(std::vector<size_t> axes={0,1,2,3});
 
         Node broadcast(Shape shape);
         Node broadcast_to(Node other);
 
+        Node zeros();
+        Node non_zeros();
+
+        Node exp();
+        Node log();
+        Node pow();
+        Node sin();
+        Node cos();
+        Node tan();
+        Node cot();
+        Node sinh();
+        Node cosh();
+        Node tanh();
+        Node coth();
     };
 
     class Input : public Operator {
@@ -995,7 +1008,7 @@ namespace autodiff {
     }
 
     std::string to_string(Device const & device){
-        return autodiff::to_string(device.type) + "[" + std::to_string(device.id) + "]";
+        return to_string(device.type) + "[" + std::to_string(device.id) + "]";
     }
 
     std::ostream & operator<<(std::ostream & f, ad_node_type const & type) {
@@ -1029,7 +1042,7 @@ namespace autodiff {
     }
 
     std::ostream & operator<<(std::ostream & f, Device const & device) {
-        f << autodiff::to_string(device);
+        f << to_string(device);
         return f;
     }
 }
