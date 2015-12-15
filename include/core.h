@@ -140,6 +140,12 @@ namespace autodiff {
                 shape(shape)
         {}
 
+        bool is_constant(){
+            return type == ad_node_type::CONSTANT
+                   or type == ad_node_type::SYMBOLIC_INTEGER
+                   or type == ad_node_type::CONSTANT_DERIVED;
+        }
+
         bool is_scalar(){
             for(int i=0; i < 4; i++){
                 if(shape[i] != 1){
