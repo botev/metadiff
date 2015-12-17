@@ -144,6 +144,10 @@ namespace metadiff {
                 shape(shape)
         {}
 
+        void generate_gradients(std::unordered_map<size_t , size_t>& messages){
+            this->op->generate_gradients(id, messages);
+        }
+
         bool is_constant(){
             return type == ad_node_type::CONSTANT
                    or type == ad_node_type::SYMBOLIC_INTEGER
@@ -325,6 +329,12 @@ namespace metadiff {
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages);
     };
 
+    class UnsupportedGradient : public std::exception {
+        const char* what() const throw(){
+            return "\nThe gradient operation supports only scalar values";
+        }
+    };
+
     class GraphInternal : public std::enable_shared_from_this<GraphInternal> {
     public:
         std::vector<std::shared_ptr<NodeInternal>> nodes;
@@ -350,22 +360,101 @@ namespace metadiff {
             return SymInt::variable(this->sym_integer_count - 1);
         }
 
+        void get_flow_tree(size_t target, std::vector<size_t> params,
+                           std::vector<size_t>& flow_tree,
+                           std::unordered_map<size_t, ad_node_type>& other_types){
+            // Assumes that computations are ordered
+            auto n = this->nodes.size();
+            bool target_tree[n], params_tree[n];
+            for(int i=0;i<nodes.size();i++){
+                target_tree[i] = false;
+                params_tree[i] = false;
+            }
+            for(int i=0;i<params.size();i++){
+                params_tree[params[i]] = true;
+            }
+            target_tree[target] = true;
+            for(int i=0;i<n; i++){
+                if(params_tree[i]){
+                    auto children = nodes[i]->children;
+                    for(int j=0;j<children.size();j++){
+                        params_tree[children[j].lock()->id] = true;
+                    }
+                }
+            }
+//            std::cout << "Flow tree1: ";
+//            for(int i=0;i<n ;i++){
+//                std::cout << params_tree[i] << ", ";
+//            }
+//            std::cout<< std::endl;
+
+            for(int i=nodes.size()-1;i >= 0; i--){
+                if(target_tree[i]){
+                    auto ancestors = nodes[i]->op->get_ancestors();
+                    for(int j=0;j<ancestors.size();j++){
+                        target_tree[ancestors[j].lock()->id] = true;
+                    }
+                }
+            }
+//            std::cout << "Flow tree2: ";
+//            for(int i=0;i<n ;i++){
+//                std::cout << target_tree[i] << ", ";
+//            }
+//            std::cout<< std::endl;
+            for(size_t i=0;i<nodes.size(); i++) {
+                if(target_tree[i] and params_tree[i]){
+                    // Add to flow tree
+                    flow_tree.push_back(i);
+                } else {
+                    // Make them temporary constant so that no gradient messages are passed
+                    other_types[i] = nodes[i]->type;
+                    nodes[i]->type = CONSTANT;
+                }
+            }
+        }
+
         std::vector<Node> gradient(Node objective, std::vector<Node> params) {
+            if(not nodes[objective.id]->is_scalar()){
+                throw UnsupportedGradient();
+            }
             std::unordered_map<size_t, size_t> grad_messages;
+
+            // Extract the parameter ids
+            std::vector<size_t> param_ids;
+            for(int i=0;i<params.size();i++){
+                param_ids.push_back(params[i].id);
+            }
+
+            // Extract the flow tree between params and objective
+            std::vector<size_t> flow_tree;
+            std::unordered_map<size_t, ad_node_type> other_types;
+            get_flow_tree(objective.id, param_ids, flow_tree, other_types);
+            long n = flow_tree.size();
+
+            // Send the first message as 1 to the objective
             auto target = this->nodes[objective.id];
-            long n = this->nodes.size();
             auto unity_grad = this->constant_node(1).id;
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
             this->nodes[unity_grad]->name = "";
             grad_messages[target->id] = unity_grad;
+
+            // Send all gradient messages
             for (auto i = n; i > 0; i--) {
-                if (grad_messages.find(i - 1) != grad_messages.end()) {
-                    this->nodes[i - 1]->op->generate_gradients(i - 1, grad_messages);
+                auto node_id = flow_tree[i-1];
+                if (grad_messages.find(node_id) != grad_messages.end()) {
+                    this->nodes[node_id]->generate_gradients(grad_messages);
                 }
             }
+
+            // Extract the gradients for each parameter
             std::vector<Node> grads;
             for (int i = 0; i < params.size(); i++) {
                 grads.push_back(Node(shared_from_this(), grad_messages[params[i].id]));
+            }
+
+            // Restore types of other inputs
+            for(auto kv : other_types) {
+                nodes[kv.first]->type = kv.second;
             }
             return grads;
         }
@@ -375,7 +464,7 @@ namespace metadiff {
         }
 
         NodeInPtr derived_node(std::shared_ptr<Operator> op,
-        int grad_level = -1) {
+                               int grad_level = -1) {
             int same_node = find_same_node(op);
             if(same_node == -1) {
                 auto parents = op->get_parents();
@@ -912,15 +1001,15 @@ namespace metadiff {
     public:
         std::string err_string;
         UnknownError(std::string name,
-                    std::vector<size_t> input_ids,
-                    std::vector<Shape> input_shapes,
-                    std::string err_string):
+                     std::vector<size_t> input_ids,
+                     std::vector<Shape> input_shapes,
+                     std::string err_string):
                 OperatorError(name, input_ids, input_shapes),
                 err_string(err_string)
         {};
 
         UnknownError(NodeInVec inputs,
-                    std::string err_string):
+                     std::string err_string):
                 OperatorError(name, inputs),
                 err_string(err_string)
         {};

@@ -6,6 +6,12 @@
 #define AUTODIFF_ELEMENTWISE_FUNC_H
 namespace metadiff {
 
+    class ConstantConvert: public UnaryOperator {
+        ConstantConvert(GraphInPtr graph, NodeInPtr parent) :
+            UnaryOperator("Const", graph, parent)
+        {};
+    };
+
     class Exp: public UnaryOperator {
     public:
         Exp(GraphInPtr graph, NodeInPtr parent) :
