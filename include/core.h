@@ -148,13 +148,13 @@ namespace metadiff {
             this->op->generate_gradients(id, messages);
         }
 
-        bool is_constant(){
+        bool is_constant() const{
             return type == ad_node_type::CONSTANT
                    or type == ad_node_type::SYMBOLIC_INTEGER
                    or type == ad_node_type::CONSTANT_DERIVED;
         }
 
-        bool is_scalar(){
+        bool is_scalar() const{
             for(int i=0; i < 4; i++){
                 if(shape[i] != 1){
                     return false;
@@ -163,7 +163,7 @@ namespace metadiff {
             return true;
         }
 
-        bool is_vector(){
+        bool is_vector() const{
             for(int i=1; i < 4; i++){
                 if(shape[i] != 1){
                     return false;
@@ -172,7 +172,7 @@ namespace metadiff {
             return true;
         }
 
-        bool is_vector_strict(){
+        bool is_vector_strict() const{
             for(int i=0; i < 1; i++){
                 if(shape[i] == 1){
                     return false;
@@ -186,7 +186,7 @@ namespace metadiff {
             return true;
         }
 
-        bool is_matrix(){
+        bool is_matrix() const{
             for(int i=2; i < 4; i++){
                 if(shape[i] != 1){
                     return false;
@@ -195,7 +195,7 @@ namespace metadiff {
             return true;
         }
 
-        bool is_matrix_strict(){
+        bool is_matrix_strict() const{
             for(int i=0; i < 2; i++){
                 if(shape[i] == 1){
                     return false;
@@ -209,7 +209,7 @@ namespace metadiff {
             return true;
         }
 
-        bool is_tensor3(){
+        bool is_tensor3() const{
             for(int i=3; i < 4; i++){
                 if(shape[i] != 1){
                     return false;
@@ -218,7 +218,7 @@ namespace metadiff {
             return true;
         }
 
-        bool is_tensor3_strict(){
+        bool is_tensor3_strict() const{
             for(int i=0; i < 3; i++){
                 if(shape[i] == 1){
                     return false;
@@ -232,7 +232,7 @@ namespace metadiff {
             return true;
         }
 
-        bool is_tensor4_strict(){
+        bool is_tensor4_strict() const{
             for(int i=0; i < 4; i++){
                 if(shape[i] == 1){
                     return false;

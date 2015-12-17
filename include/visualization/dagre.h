@@ -11,14 +11,24 @@ namespace metadiff {
     namespace dagre {
         std::string node_name_html(std::weak_ptr<const NodeInternal> node_ptr) {
             auto node = node_ptr.lock();
-            if (node->type == ad_node_type::INPUT) {
-                return "INPUT[" + std::to_string(node->id) + "]";
-            } else if (node->type == ad_node_type::SHARED_INPUT) {
-                return "SHARED[" + std::to_string(node->id) + "]";
-            } else if (node->type == ad_node_type::CONSTANT and not node->op) {
-                return "CONST[" + std::to_string(node->id) + "]";
-            } else if(node->type == ad_node_type::SYMBOLIC_INTEGER){
+            if(node->type == ad_node_type::SYMBOLIC_INTEGER){
                 return "SYMINT[" + std::to_string(node->id) + "]";
+            } else if (node->type == ad_node_type::CONSTANT) {
+                if(node->is_scalar()){
+                    std::string value;
+                    switch (node->v_type){
+                        case FLOAT: value = std::to_string(node->value.num_value); break;
+                        case INTEGER: value = std::to_string(((int) node->value.num_value)); break;
+                        case BOOLEAN: value = std::to_string(((bool) node->value.num_value)); break;
+                    }
+                    return value + "[" + std::to_string(node->id) + "]";
+                } else {
+                    return "CONST[" + std::to_string(node->id) + "]";
+                }
+            } else if (node->type == ad_node_type::INPUT) {
+                return node->name +  "[" + std::to_string(node->id) + "]";
+            } else if (node->type == ad_node_type::SHARED_INPUT) {
+                return node->name + "SHARED[" + std::to_string(node->id) + "]";
             } else {
                 return node->op->name + "[" + std::to_string(node->id) + "]";
             }
@@ -64,12 +74,12 @@ namespace metadiff {
             }
             child_id_str += "]";
             names.push_back("'" + state_name + "': {\n"
-                    "\t\tdescription: \"Name: " + node->name + " <br> "
+                    "\t\tdescription: \"Type: " + to_string(node->type) + " <br> "
                                     "Device: " + to_string(node->device) + " <br> "
                                     "Value type: " + to_string(node->v_type) + " <br> "
                                     "Shape: [" + node->shape[0].to_string() + ", " +
-                                    node->shape[1].to_string() + ", " + node->shape[2].to_string() + ", " +
-                                    node->shape[3].to_string() + "] <br> "
+                            node->shape[1].to_string() + ", " + node->shape[2].to_string() + ", " +
+                            node->shape[3].to_string() + "] <br> "
                                     "Gradient Level:" + std::to_string(node->grad_level) + " <br> "
                                     "Parents: " + anc_id_str + " <br> "
                                     "Children: " + child_id_str +
@@ -119,7 +129,7 @@ namespace metadiff {
                     "<!DOCTYPE html>\n"
                     "<!-- saved from url=(0065)http://cpettitt.github.io/project/dagre-d3/latest/demo/hover.html -->\n"
                     "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><meta charset=\"utf-8\">\n"
-                    << "<title>Function Graph</title>\n"
+            << "<title>Function Graph</title>\n"
                     "\n"
                     "<link rel=\"stylesheet\" href=\"../html_files/demo.css\">\n"
                     "<script src=\"../html_files/d3.v3.min.js\" charset=\"utf-8\"></script>\n"
