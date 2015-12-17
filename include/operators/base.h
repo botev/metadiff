@@ -293,6 +293,15 @@ namespace metadiff {
             return NodeInVec {};
         }
 
+        bool all_parent_const(){
+            for(int i=0;i<parents.size();i++){
+                if(not parents[i].lock()->is_constant()){
+                    return false;
+                }
+            }
+            return true;
+        }
+
         void throw_grad_type_error(){
             std::string type_str;
             for(int i=0;i<parents.size();i++){
@@ -508,7 +517,10 @@ namespace metadiff {
             update_grad_name(my_grad, current);
 
             // Check for any surprises
-            bool check = true;
+            if(all_parent_const()){
+                throw_grad_type_error();
+            }
+
             for(int i=0;i<parents.size();i++){
                 auto parent = parents[i].lock();
                 if (not parent->is_constant()){
@@ -516,12 +528,7 @@ namespace metadiff {
                     // => dE/dp_i = dE/df
                     auto parent_grad = my_grad;
                     send_grad_message(graph, parent->id, parent_grad->id, messages);
-                    check = false;
                 }
-            }
-
-            if(check){
-                throw_grad_type_error();
             }
         };
     };
@@ -728,7 +735,10 @@ namespace metadiff {
         update_grad_name(my_grad, current);
 
         // Check for any surprises
-        bool check = true;
+        if(all_parent_const()){
+            throw_grad_type_error();
+        }
+
         if(parents.size() == 2){
             // Special case when only two parents
             for(int i=0;i<2;i++){
@@ -740,7 +750,6 @@ namespace metadiff {
                     auto op = std::make_shared<Mul>(graph, my_grad, other_parent);
                     auto parent_grad = graph->derived_node(op).lock();
                     send_grad_message(graph, parent->id, parent_grad->id, messages);
-                    check = false;
                 }
             }
         } else {
@@ -757,12 +766,8 @@ namespace metadiff {
                     op = std::make_shared<Mul>(graph, this_node_times_grad, parent_inv);
                     auto parent_grad = graph->derived_node(op).lock();
                     send_grad_message(graph, parent->id, parent_grad->id, messages);
-                    check = false;
                 }
             }
-        }
-        if(check){
-            throw_grad_type_error();
         }
     }
 

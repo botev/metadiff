@@ -160,36 +160,57 @@ namespace metadiff{
             auto my_grad = graph->nodes[messages[current]];
             update_grad_name(my_grad, current);
 
-            // TODO
-//            // Check for any surprises
-//            auto parent1 = this->parent1.lock();
-//            auto parent2 = this->parent2.lock();
-//            if (parent1->is_constant() and parent2->is_constant()) {
-//                throw UnknownError({parent1, parent2},
-//                                  "Gradient message present, but parents are " +
-//                                  to_string(parent1->type) + ", " +
-//                                  to_string(parent2->type));
-//            }
-//
-//            // Node computes f = p_1 MM p_2
-//            // => dE/dp_1 = dE MM p_2^T
-//            // => dE/dp_2 = p_1^T MM dE
-//            if(not parent1->is_constant()){
-//                std::shared_ptr<Operator> op = std::make_shared<Transpose>(graph, parent2);
-//                auto parent2_tr = graph->derived_node(op);
-//                op = std::make_shared<MatrixMultiplication>(graph, my_grad, parent2_tr);
-//                auto parent_grad = graph->derived_node(op).lock();
-//                parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent1->id);
-//                send_grad_message(graph, parent1->id, parent_grad->id, messages);
-//            }
-//            if(not parent2->is_constant()){
-//                std::shared_ptr<Operator> op = std::make_shared<Transpose>(graph, parent1);
-//                auto parent1_tr = graph->derived_node(op);
-//                op = std::make_shared<MatrixMultiplication>(graph, parent1_tr, my_grad);
-//                auto parent_grad = graph->derived_node(op).lock();
-//                parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent1->id);
-//                send_grad_message(graph, parent2->id, parent_grad->id, messages);
-//            }
+            // Check for any surprises
+            if(all_parent_const()){
+                throw_grad_type_error();
+            }
+
+            // Node computes f = p_1 dot p_2 dot ... dot p_n
+            // dE/dp_i = (p_1 dot ... dot p_{i-1})^T dE (p_{i+1} dot ... dot p_n)^T
+            for(int i=0;i<parents.size();i++) {
+                auto parent = parents[i].lock();
+                if (not parent->is_constant()) {
+                    std::vector<NodeInPtr> left_nodes;
+                    std::vector<NodeInPtr> right_nodes;
+                    for (int p = 0; p < i; p++) {
+                        left_nodes.push_back(parents[p]);
+                    }
+                    for (int p = i + 1; p < parents.size(); p++) {
+                        right_nodes.push_back(parents[p]);
+                    }
+                    NodeInPtr left_tr;
+                    NodeInPtr right_tr;
+                    if (left_nodes.size() == 1) {
+                        auto op = std::make_shared<Transpose>(graph, left_nodes[0]);
+                        left_tr = graph->derived_node(op);
+                    } else if (left_nodes.size() > 1) {
+                        std::shared_ptr<Operator> op = std::make_shared<MatrixMultiplication>(graph, left_nodes);
+                        auto left_mul = graph->derived_node(op);
+                        op = std::make_shared<Transpose>(graph, left_mul);
+                        left_tr = graph->derived_node(op);
+                    }
+                    if (right_nodes.size() == 1) {
+                        auto op = std::make_shared<Transpose>(graph, right_nodes[0]);
+                        right_tr = graph->derived_node(op);
+                    } else if (right_nodes.size() > 1) {
+                        std::shared_ptr<Operator> op = std::make_shared<MatrixMultiplication>(graph, right_nodes);
+                        auto right_mul = graph->derived_node(op);
+                        op = std::make_shared<Transpose>(graph, right_mul);
+                        right_tr = graph->derived_node(op);
+                    }
+                    std::shared_ptr<Operator> op;
+                    if (left_tr == NULL) {
+                        op = std::make_shared<MatrixMultiplication>(graph, my_grad, right_tr);
+                    } else if (right_tr == NULL) {
+                        op = std::make_shared<MatrixMultiplication>(graph, left_tr, my_grad);
+                    } else {
+                        op = std::make_shared<MatrixMultiplication>(graph, left_tr, my_grad, right_tr);
+                    }
+                    auto parent_grad = graph->derived_node(op).lock();
+                    parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+                    send_grad_message(graph, parent->id, parent_grad->id, messages);
+                }
+            }
         }
     };
 

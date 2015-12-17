@@ -201,6 +201,7 @@ namespace metadiff {
             // Node computes f = abs(p)
             // => dE/dp = dE * (p>=0)
             auto zero = graph->nodes[graph->constant_node(0).id];
+            zero->grad_level = my_grad->grad_level;
             std::shared_ptr<Operator> op = std::make_shared<GreaterThanOrEqual>(graph, parent, zero);
             auto check = graph->derived_node(op).lock();
             op = std::make_shared<GreaterThanOrEqual>(graph, my_grad, check);
@@ -551,6 +552,7 @@ namespace metadiff {
             op = std::make_shared<Neg>(graph, this_node_sqr);
             auto minus_this_node_sqr = graph->derived_node(op).lock();
             auto one = graph->nodes[graph->constant_node(1).id];
+            one->grad_level = my_grad->grad_level;
             op = std::make_shared<Add>(graph, minus_this_node_sqr, one);
             auto one_minus_this_node_sqr = graph->derived_node(op).lock();
             op = std::make_shared<Mul>(graph, my_grad, one_minus_this_node_sqr);
@@ -603,6 +605,7 @@ namespace metadiff {
             op = std::make_shared<Neg>(graph, this_node_sqr);
             auto minus_this_node_sqr = graph->derived_node(op).lock();
             auto one = graph->nodes[graph->constant_node(1).id];
+            one->grad_level = my_grad->grad_level;
             op = std::make_shared<Add>(graph, minus_this_node_sqr, one);
             auto one_minus_this_node_sqr = graph->derived_node(op).lock();
             op = std::make_shared<Mul>(graph, my_grad, one_minus_this_node_sqr);

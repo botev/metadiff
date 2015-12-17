@@ -238,6 +238,8 @@ namespace metadiff {
         }
     };
 
+    void setDevice(GraphInPtr graph, size_t id, Device device);
+
     class Node{
     public:
         GraphInPtr graph;
@@ -246,6 +248,10 @@ namespace metadiff {
                 graph(graph),
                 id(id)
         {};
+
+        void setDevice(Device device){
+            metadiff::setDevice(graph, id, device);
+        }
 
         Shape shape();
         bool is_scalar();
@@ -696,6 +702,10 @@ namespace metadiff {
 
     bool Node::is_tensor4_strict(){
         return this->graph.lock()->nodes[id]->is_tensor4_strict();
+    }
+
+    void setDevice(GraphInPtr graph, size_t id, Device device){
+        graph.lock()->nodes[id]->device = device;
     }
 
 // <broadcast 1, broadcast 2>
