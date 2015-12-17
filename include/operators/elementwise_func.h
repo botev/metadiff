@@ -79,6 +79,7 @@ namespace metadiff {
             // => dE/dp = dE * p^(-1)
             std::shared_ptr<Operator> op = std::make_shared<Neg>(graph, parent);
             auto parent_inv = graph->derived_node(op).lock();
+            parent_inv->grad_level = my_grad->grad_level;
             op = std::make_shared<Mul>(graph, my_grad, parent_inv);
             auto parent_grad = graph->derived_node(op).lock();
             parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -134,6 +135,7 @@ namespace metadiff {
             if(not parent1->is_constant()){
                 op = std::make_shared<Div>(graph, parent1);
                 auto parent1_inv = graph->derived_node(op);
+                parent1_inv.lock()->grad_level = my_grad->grad_level;
                 op = std::make_shared<Mul>(graph, this_node_times_grad, parent1_inv);
                 auto parent_grad = graph->derived_node(op).lock();
                 parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent1->id);
@@ -142,6 +144,7 @@ namespace metadiff {
             if(not parent2->is_constant()){
                 op = std::make_shared<Log>(graph, parent1);
                 auto log_parent1 = graph->derived_node(op);
+                log_parent1.lock()->grad_level = my_grad->grad_level;
                 op = std::make_shared<Mul>(graph, this_node_times_grad, log_parent1);
                 auto parent_grad = graph->derived_node(op).lock();
                 parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent1->id);
@@ -283,6 +286,7 @@ namespace metadiff {
         // => dE/dp = dE * cos(p)
         std::shared_ptr<Operator> op = std::make_shared<Cos>(graph, parent);
         auto cos_parent = graph->derived_node(op).lock();
+        cos_parent->grad_level = my_grad->grad_level;
         op = std::make_shared<Mul>(graph, my_grad, cos_parent);
         auto parent_grad = graph->derived_node(op).lock();
         parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -311,6 +315,7 @@ namespace metadiff {
         // => dE/dp = - dE * sin(p)
         std::shared_ptr<Operator> op = std::make_shared<Sin>(graph, parent);
         auto sin_parent = graph->derived_node(op).lock();
+        sin_parent->grad_level = my_grad->grad_level;
         op = std::make_shared<Mul>(graph, my_grad, sin_parent);
         auto minus_grad = graph->derived_node(op).lock();
         op = std::make_shared<Neg>(graph, minus_grad);
@@ -348,6 +353,7 @@ namespace metadiff {
             auto this_node = graph->nodes[current];
             std::shared_ptr<Operator> op = std::make_shared<Cos>(graph, parent);
             auto cos_parent = graph->derived_node(op).lock();
+            cos_parent->grad_level = my_grad->grad_level;
             op = std::make_shared<Square>(graph, cos_parent);
             auto cos_parent_sqr = graph->derived_node(op).lock();
             op = std::make_shared<Div>(graph, cos_parent_sqr);
@@ -399,6 +405,7 @@ namespace metadiff {
             auto this_node = graph->nodes[current];
             std::shared_ptr<Operator> op = std::make_shared<Sin>(graph, parent);
             auto sin_parent = graph->derived_node(op).lock();
+            sin_parent->grad_level = my_grad->grad_level;
             op = std::make_shared<Square>(graph, sin_parent);
             auto sin_parent_sqr = graph->derived_node(op).lock();
             op = std::make_shared<Div>(graph, sin_parent_sqr);
@@ -485,6 +492,7 @@ namespace metadiff {
         // => dE/dp = dE * cosh(p)
         std::shared_ptr<Operator> op = std::make_shared<Cosh>(graph, parent);
         auto cosh_parent = graph->derived_node(op).lock();
+        cosh_parent->grad_level = my_grad->grad_level;
         op = std::make_shared<Mul>(graph, my_grad, cosh_parent);
         auto parent_grad = graph->derived_node(op).lock();
         parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -513,6 +521,7 @@ namespace metadiff {
         // => dE/dp = dE * sinh(p)
         std::shared_ptr<Operator> op = std::make_shared<Sinh>(graph, parent);
         auto sinh_parent = graph->derived_node(op).lock();
+        sinh_parent->grad_level = my_grad->grad_level;
         op = std::make_shared<Mul>(graph, my_grad, sinh_parent);
         auto parent_grad = graph->derived_node(op).lock();
         parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -549,6 +558,7 @@ namespace metadiff {
             auto this_node = graph->nodes[current];
             std::shared_ptr<Operator> op = std::make_shared<Square>(graph, this_node);
             auto this_node_sqr = graph->derived_node(op).lock();
+            this_node_sqr->grad_level  = my_grad->grad_level;
             op = std::make_shared<Neg>(graph, this_node_sqr);
             auto minus_this_node_sqr = graph->derived_node(op).lock();
             auto one = graph->nodes[graph->constant_node(1).id];
@@ -570,7 +580,7 @@ namespace metadiff {
     }
 
     Node tanh(Node node){
-        return node.cot();
+        return node.tanh();
     }
 
     class Coth: public UnaryOperator {
@@ -602,6 +612,7 @@ namespace metadiff {
             auto this_node = graph->nodes[current];
             std::shared_ptr<Operator> op = std::make_shared<Square>(graph, this_node);
             auto this_node_sqr = graph->derived_node(op).lock();
+            this_node_sqr->grad_level = my_grad->grad_level;
             op = std::make_shared<Neg>(graph, this_node_sqr);
             auto minus_this_node_sqr = graph->derived_node(op).lock();
             auto one = graph->nodes[graph->constant_node(1).id];

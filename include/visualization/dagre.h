@@ -15,8 +15,10 @@ namespace metadiff {
                 return "INPUT[" + std::to_string(node->id) + "]";
             } else if (node->type == ad_node_type::SHARED_INPUT) {
                 return "SHARED[" + std::to_string(node->id) + "]";
-            } else if (node->type == ad_node_type::CONSTANT) {
+            } else if (node->type == ad_node_type::CONSTANT and not node->op) {
                 return "CONST[" + std::to_string(node->id) + "]";
+            } else if(node->type == ad_node_type::SYMBOLIC_INTEGER){
+                return "SYMINT[" + std::to_string(node->id) + "]";
             } else {
                 return node->op->name + "[" + std::to_string(node->id) + "]";
             }

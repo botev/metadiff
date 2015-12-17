@@ -95,11 +95,14 @@ namespace metadiff {
 
         ad_node_type get_node_type(){
             auto parent_type = parent.lock()->type;
-            switch (parent_type) {
-                case INPUT: return INPUT_DERIVED;
-                case SHARED_INPUT: return INPUT_DERIVED;
-                case SYMBOLIC_INTEGER: return CONSTANT;
-                default: return parent_type;
+            if(parent_type == INPUT
+               or parent_type == SHARED_INPUT
+               or parent_type == INPUT_DERIVED){
+                return INPUT_DERIVED;
+            } else if (parent_type == CONSTANT_DERIVED or parent_type == SYMBOLIC_INTEGER){
+                return CONSTANT_DERIVED;
+            } else {
+                return CONSTANT;
             }
         };
 
@@ -443,6 +446,7 @@ namespace metadiff {
                         GraphInPtr graph,
                         NodeInVec parents) :
                 NaryOperator(name, graph, parents){
+            this->parents.clear();
             shape = verify_elementwise_shapes(name, parents);
             for(int i=0;i<parents.size();i++){
                 auto parent = parents[i].lock();
@@ -501,7 +505,7 @@ namespace metadiff {
         {}
 
         Add(GraphInPtr graph, NodeInPtr parent1, NodeInPtr parent2) :
-                ElementwiseNary("Add", graph, {parent1, parent2})
+                Add(graph, {parent1, parent2})
         {}
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -549,10 +553,6 @@ namespace metadiff {
 
     Node operator+(Node node1, Node node2){
         return add({node1, node2});
-    };
-
-    Node operator+(Node node){
-        return node;
     };
 
     void Broadcast::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -826,6 +826,7 @@ namespace metadiff {
         // => dE/dp = 2 * dE * p
         auto parent_node = graph->nodes[parent->id];
         auto two = graph->nodes[graph->constant_node(2).id];
+        two->grad_level = my_grad->grad_level;
         auto op = std::make_shared<Mul>(graph, NodeInVec {my_grad, two, parent});
         auto parent_grad = graph->derived_node(op).lock();
         parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
