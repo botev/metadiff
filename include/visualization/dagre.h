@@ -93,7 +93,7 @@ namespace metadiff {
                         "g.setEdge({v:'" + anc_names[i] + "', w:'" + state_name + "', name:'" + std::to_string(i) +
                         "'}, {label: \"" + std::to_string(i) + "\"});");
             }
-            edges.push_back("g.setParent('" + state_name + "', 'grad_" + std::to_string(node->grad_level) + "');");
+//            edges.push_back("g.setParent('" + state_name + "', 'grad_" + std::to_string(node->grad_level) + "');");
         }
 
         void dagre_to_file(std::string file_name, Graph graph, std::vector<Node> target_nodes) {
