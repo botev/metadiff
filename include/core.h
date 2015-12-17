@@ -370,25 +370,36 @@ namespace metadiff {
             return grads;
         }
 
-        NodeInPtr derived_node(std::shared_ptr<Operator> op) {
-            auto parents = op->get_parents();
-            auto result = std::make_shared<NodeInternal>(
-                    shared_from_this(),
-                    default_device,
-                    nodes.size(),
-                    "Derived Node",
-                    op->get_node_type(),
-                    op->get_value_type(),
-                    op->get_shape(),
-                    op,
-                    op->get_gradient_level()
-            );
-            this->nodes.push_back(result);
-            NodeInVec ancestors = op->get_ancestors();
-            for (int i = 0; i < ancestors.size(); i++) {
-                ancestors[i].lock()->children.push_back(result);
+        int find_same_node(std::shared_ptr<Operator> op){
+            return -1;
+        }
+
+        NodeInPtr derived_node(std::shared_ptr<Operator> op,
+        int grad_level = -1) {
+            int same_node = find_same_node(op);
+            if(same_node == -1) {
+                auto parents = op->get_parents();
+                grad_level = grad_level == -1 ? op->get_gradient_level() : grad_level;
+                auto result = std::make_shared<NodeInternal>(
+                        shared_from_this(),
+                        default_device,
+                        nodes.size(),
+                        "Derived Node",
+                        op->get_node_type(),
+                        op->get_value_type(),
+                        op->get_shape(),
+                        op,
+                        grad_level
+                );
+                this->nodes.push_back(result);
+                NodeInVec ancestors = op->get_ancestors();
+                for (int i = 0; i < ancestors.size(); i++) {
+                    ancestors[i].lock()->children.push_back(result);
+                }
+                return result;
+            } else {
+                return nodes[same_node];
             }
-            return result;
         }
 
         Node constant_node(double *value, std::array<size_t, 4> dims) {

@@ -193,7 +193,7 @@ namespace metadiff{
                         std::shared_ptr<Operator> op = std::make_shared<MatrixMultiplication>(graph, left_nodes);
                         auto left_mul = graph->derived_node(op);
                         op = std::make_shared<Transpose>(graph, left_mul);
-                        left_tr = graph->derived_node(op);
+                        left_tr = graph->derived_node(op, my_grad->grad_level);
                     }
                     if (right_nodes.size() == 1) {
                         auto op = std::make_shared<Transpose>(graph, right_nodes[0]);
@@ -202,19 +202,15 @@ namespace metadiff{
                         std::shared_ptr<Operator> op = std::make_shared<MatrixMultiplication>(graph, right_nodes);
                         auto right_mul = graph->derived_node(op);
                         op = std::make_shared<Transpose>(graph, right_mul);
-                        right_tr = graph->derived_node(op);
+                        right_tr = graph->derived_node(op, my_grad->grad_level);
                     }
                     std::shared_ptr<Operator> op;
 
                     if (not left_tr.lock()) {
-                        right_tr.lock()->grad_level = my_grad->grad_level;
                         op = std::make_shared<MatrixMultiplication>(graph, my_grad, right_tr);
                     } else if (not right_tr.lock()) {
-                        left_tr.lock()->grad_level = my_grad->grad_level;
                         op = std::make_shared<MatrixMultiplication>(graph, left_tr, my_grad);
                     } else {
-                        left_tr.lock()->grad_level = my_grad->grad_level;
-                        right_tr.lock()->grad_level = my_grad->grad_level;
                         op = std::make_shared<MatrixMultiplication>(graph, NodeInVec {left_tr, my_grad, right_tr});
                     }
                     auto parent_grad = graph->derived_node(op).lock();
@@ -272,8 +268,7 @@ namespace metadiff{
             // => dE/dp_1 = - f^T dot dE dot f^T
             auto this_node = graph->nodes[current];
             std::shared_ptr<Operator> op = std::make_shared<Transpose>(graph, this_node);
-            auto this_node_tr = graph->derived_node(op).lock();
-            this_node_tr->grad_level = my_grad->grad_level;
+            auto this_node_tr = graph->derived_node(op, my_grad->grad_level).lock();
             op = std::make_shared<MatrixMultiplication>(graph, NodeInVec {this_node_tr, my_grad, this_node_tr});
             auto minus_grad = graph->derived_node(op).lock();
             op = std::make_shared<Neg>(graph, minus_grad);
@@ -334,10 +329,9 @@ namespace metadiff{
             // => dE/dp_1 = dE * f * p_1^(-1)^T
             auto this_node = graph->nodes[current];
             std::shared_ptr<Operator> op = std::make_shared<MatrixInverse>(graph, parent);
-            auto parent_inv = graph->derived_node(op).lock();
-            parent_inv->grad_level = my_grad->grad_level;
+            auto parent_inv = graph->derived_node(op, my_grad->grad_level).lock();
             op = std::make_shared<Transpose>(graph, parent_inv);
-            auto parent_inv_tr = graph->derived_node(op).lock();
+            auto parent_inv_tr = graph->derived_node(op, my_grad->grad_level).lock();
             op = std::make_shared<Mul>(graph, NodeInVec {my_grad, this_node, parent_inv_tr});
             auto parent_grad = graph->derived_node(op).lock();
             parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
@@ -395,8 +389,7 @@ namespace metadiff{
             // Node computes f = logdet(p_1)
             // => dE/dp_1 = dE * p_1^(-1)^T
             std::shared_ptr<Operator> op = std::make_shared<MatrixInverse>(graph, parent);
-            auto parent_inv = graph->derived_node(op).lock();
-            parent_inv->grad_level = my_grad->grad_level;
+            auto parent_inv = graph->derived_node(op, my_grad->grad_level).lock();
             op = std::make_shared<Transpose>(graph, parent_inv);
             auto parent_inv_tr = graph->derived_node(op).lock();
             op = std::make_shared<Mul>(graph, my_grad, parent_inv_tr);
@@ -461,8 +454,7 @@ namespace metadiff{
             // Node computes f = trace(p_1)
             // => dE/dp_1 = dE * eye
             std::shared_ptr<Operator> op = std::make_shared<Eye>(graph, parent->shape[0]);
-            auto identity = graph->derived_node(op).lock();
-            identity->grad_level = my_grad->grad_level;
+            auto identity = graph->derived_node(op, my_grad->grad_level).lock();
             op = std::make_shared<Mul>(graph, my_grad, identity);
             auto parent_grad = graph->derived_node(op).lock();
             parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
