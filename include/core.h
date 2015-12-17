@@ -82,9 +82,9 @@ namespace metadiff {
     public:
         GraphInPtr graph;
         const std::string name;
-        Operator(GraphInPtr graph, std::string name):
-                graph(graph),
-                name(name)
+        Operator(std::string name, GraphInPtr graph):
+                name(name),
+                graph(graph)
         {};
 
         virtual void generate_gradients(size_t current, std::unordered_map<size_t , size_t>& messages) = 0;
@@ -264,10 +264,13 @@ namespace metadiff {
 
         Node zeros();
         Node non_zeros();
+        Node is_nan();
+        Node is_inf();
 
         Node exp();
         Node log();
         Node pow();
+        Node abs();
         Node sin();
         Node cos();
         Node tan();
@@ -276,11 +279,18 @@ namespace metadiff {
         Node cosh();
         Node tanh();
         Node coth();
+
+        Node transpose();
+        Node diag();
+        Node minv();
+        Node det();
+        Node logdet();
+        Node trace();
     };
 
     class Input : public Operator {
     public:
-        Input(GraphInPtr graph): Operator(graph, "Input"){}
+        Input(GraphInPtr graph): Operator("Input", graph){}
 
         ad_value_type get_value_type(){
             return ad_value_type::FLOAT;
@@ -340,7 +350,6 @@ namespace metadiff {
             long n = this->nodes.size();
             auto unity_grad = this->constant_node(1).id;
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
-//            this->nodes[unity_grad]->name = "Grad of " + std::to_string(objective.id);
             this->nodes[unity_grad]->name = "";
             grad_messages[target->id] = unity_grad;
             for (auto i = n; i > 0; i--) {
@@ -689,53 +698,30 @@ namespace metadiff {
         return this->graph.lock()->nodes[id]->is_tensor4_strict();
     }
 
-    // <broadcast 1, broadcast 2>
-    Shape verify_shapes(NodeInVec node_ptrs){
-        Shape max_shape  = node_ptrs[0].lock()->shape;
-        for(int i=1; i<node_ptrs.size();i++){
-            auto node_shape = node_ptrs[i].lock()->shape;
-            bool max = false;
-            for(int j=0;j<4;j++){
-                if(node_shape[j] != 1 and max_shape[j] == 1){
-                    max = true;
-                    break;
-                }
-            }
-            if(max){
-                for(int j=0;j<4;j++) {
-                    if(node_shape[j] == 1 and max_shape[j] != 1){
-                        throw 0;
-                    } else if(node_shape[j] != 1 and max_shape[j] != 1 and node_shape[j] != max_shape[j]){
-                        throw 1;
-                    }
-                }
-                max_shape = node_shape;
-            }
-        }
-        return max_shape;
-    }
+// <broadcast 1, broadcast 2>
 
-    std::array<bool,2> verify_shapes(NodeInPtr node0_ptr, NodeInPtr node1_ptr){
-        auto node0 = node0_ptr.lock();
-        auto node1 = node1_ptr.lock();
-        if(node0->shape == node1->shape or node0->is_scalar() or node1->is_scalar()){
-            return {false, false};
-        }
-        bool broadcast0 = false;
-        bool broadcast1 = false;
-        for(int i=0; i<4; i++){
-            if(node0->shape[i] == node1->shape[i]){
-                continue;
-            } else if(node0->shape[i] == 1 and node1->shape[i] != 1){
-                broadcast0 = true;
-            } else if(node0->shape[i] != 1 and node1->shape[i] == 1){
-                broadcast1 = true;
-            } else {
-                return {true, true};
-            }
-        }
-        return {broadcast0, broadcast1};
-    }
+
+//    std::array<bool,2> verify_shapes(NodeInPtr node0_ptr, NodeInPtr node1_ptr){
+//        auto node0 = node0_ptr.lock();
+//        auto node1 = node1_ptr.lock();
+//        if(node0->shape == node1->shape or node0->is_scalar() or node1->is_scalar()){
+//            return {false, false};
+//        }
+//        bool broadcast0 = false;
+//        bool broadcast1 = false;
+//        for(int i=0; i<4; i++){
+//            if(node0->shape[i] == node1->shape[i]){
+//                continue;
+//            } else if(node0->shape[i] == 1 and node1->shape[i] != 1){
+//                broadcast0 = true;
+//            } else if(node0->shape[i] != 1 and node1->shape[i] == 1){
+//                broadcast1 = true;
+//            } else {
+//                return {true, true};
+//            }
+//        }
+//        return {broadcast0, broadcast1};
+//    }
 
     class OperatorError : public std::exception{
     public:
@@ -900,11 +886,11 @@ namespace metadiff {
         }
     };
 
-    class UnkownError: public OperatorError
+    class UnknownError: public OperatorError
     {
     public:
         std::string err_string;
-        UnkownError(std::string name,
+        UnknownError(std::string name,
                     std::vector<size_t> input_ids,
                     std::vector<Shape> input_shapes,
                     std::string err_string):
@@ -912,7 +898,7 @@ namespace metadiff {
                 err_string(err_string)
         {};
 
-        UnkownError(NodeInVec inputs,
+        UnknownError(NodeInVec inputs,
                     std::string err_string):
                 OperatorError(name, inputs),
                 err_string(err_string)

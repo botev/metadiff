@@ -6,10 +6,10 @@
 #define AUTODIFF_ELEMENTWISE_FUNC_H
 namespace metadiff {
 
-    class Exp: public ElementwiseUnary {
+    class Exp: public UnaryOperator {
     public:
         Exp(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Exp", graph, parent)
+                UnaryOperator("Exp", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -51,10 +51,10 @@ namespace metadiff {
         return node.exp();
     }
 
-    class Log: public ElementwiseUnary {
+    class Log: public UnaryOperator {
     public:
         Log(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Log", graph, parent)
+                UnaryOperator("Log", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -174,10 +174,57 @@ namespace metadiff {
         return Node(graph, graph->derived_node(op).lock()->id);
     }
 
-    class Sin: public ElementwiseUnary {
+    class Abs: public UnaryOperator {
+    public:
+        Abs(GraphInPtr graph, NodeInPtr parent) :
+                UnaryOperator("Abs", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+            auto graph = this->graph.lock();
+
+            // Check for any incoming messages
+            if(messages.find(current) == messages.end()){
+                return;
+            }
+
+            // Get the gradient with respect to this node
+            auto my_grad = graph->nodes[messages[current]];
+            update_grad_name(my_grad, current);
+
+            // Check for any surprises
+            auto parent = this->parent.lock();
+            if(parent->is_constant()) {
+                throw_grad_type_error();
+            }
+
+            // Node computes f = abs(p)
+            // => dE/dp = dE * (p>=0)
+            auto zero = graph->nodes[graph->constant_node(0).id];
+            std::shared_ptr<Operator> op = std::make_shared<GreaterThanOrEqual>(graph, parent, zero);
+            auto check = graph->derived_node(op).lock();
+            op = std::make_shared<GreaterThanOrEqual>(graph, my_grad, check);
+            auto parent_grad = graph->derived_node(op).lock();
+            parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+            send_grad_message(graph, parent->id, parent_grad->id, messages);
+        };
+    };
+
+    Node Node::abs() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Abs>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node abs(Node node){
+        return node.abs();
+    }
+
+    class Sin: public UnaryOperator {
     public:
         Sin(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Sin", graph, parent)
+                UnaryOperator("Sin", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
@@ -194,10 +241,10 @@ namespace metadiff {
         return node.sin();
     }
 
-    class Cos: public ElementwiseUnary {
+    class Cos: public UnaryOperator {
     public:
         Cos(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Cos", graph, parent)
+                UnaryOperator("Cos", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
@@ -271,10 +318,10 @@ namespace metadiff {
         send_grad_message(graph, parent->id, parent_grad->id, messages);
     };
 
-    class Tan: public ElementwiseUnary {
+    class Tan: public UnaryOperator {
     public:
         Tan(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Tan", graph, parent)
+                UnaryOperator("Tan", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -322,10 +369,10 @@ namespace metadiff {
         return node.tan();
     }
 
-    class Cot: public ElementwiseUnary {
+    class Cot: public UnaryOperator {
     public:
         Cot(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Cot", graph, parent)
+                UnaryOperator("Cot", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -375,10 +422,10 @@ namespace metadiff {
         return node.cot();
     }
 
-    class Sinh: public ElementwiseUnary {
+    class Sinh: public UnaryOperator {
     public:
         Sinh(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Sinh", graph, parent)
+                UnaryOperator("Sinh", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
@@ -395,10 +442,10 @@ namespace metadiff {
         return node.sinh();
     }
 
-    class Cosh: public ElementwiseUnary {
+    class Cosh: public UnaryOperator {
     public:
         Cosh(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Cosh", graph, parent)
+                UnaryOperator("Cosh", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
@@ -472,10 +519,10 @@ namespace metadiff {
     };
 
 
-    class Tanh: public ElementwiseUnary {
+    class Tanh: public UnaryOperator {
     public:
         Tanh(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Tanh", graph, parent)
+                UnaryOperator("Tanh", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -524,10 +571,10 @@ namespace metadiff {
         return node.cot();
     }
 
-    class Coth: public ElementwiseUnary {
+    class Coth: public UnaryOperator {
     public:
         Coth(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Coth", graph, parent)
+                UnaryOperator("Coth", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {

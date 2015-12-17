@@ -23,6 +23,49 @@ namespace metadiff {
                            size_t target_id, size_t msg_id,
                            std::unordered_map<size_t, size_t> &messages);
 
+    // Helper function to validate axes
+    bool validate_axes(std::vector<size_t> axes){
+        if(axes.size() > 4){
+            return false;
+        }
+        bool checks[4] {false, false, false, false};
+        for(int i=0;i<axes.size();i++){
+            if(axes[i] > 3){
+                return false;
+            }
+            if(checks[axes[i]]){
+                return false;
+            }
+            checks[axes[i]] = true;
+        }
+        return true;
+    }
+
+    // Helper function to verify shapes of elementwise operators
+    Shape verify_elementwise_shapes(std::string name, NodeInVec node_ptrs){
+        Shape max_shape  = node_ptrs[0].lock()->shape;
+        for(int i=1; i<node_ptrs.size();i++){
+            auto node_shape = node_ptrs[i].lock()->shape;
+            bool max = false;
+            for(int j=0;j<4;j++){
+                if(node_shape[j] != 1 and max_shape[j] == 1){
+                    max = true;
+                    break;
+                }
+            }
+            if(max){
+                for(int j=0;j<4;j++) {
+                    if(node_shape[j] == 1 and max_shape[j] != 1){
+                        throw IncompatibleShapes(name, node_ptrs);
+                    } else if(node_shape[j] != 1 and max_shape[j] != 1 and node_shape[j] != max_shape[j]){
+                        throw IncompatibleShapes(name, node_ptrs);
+                    }
+                }
+                max_shape = node_shape;
+            }
+        }
+        return max_shape;
+    }
 
     class Broadcast : public Operator {
     public:
@@ -31,7 +74,7 @@ namespace metadiff {
         Broadcast(GraphInPtr graph,
                   NodeInPtr parent,
                   Shape to_shape):
-                Operator(graph, "Broadcast"),
+                Operator("Broadcast", graph),
                 parent(parent),
                 to_shape(to_shape){
             auto parent_shape = parent.lock()->shape;
@@ -112,34 +155,20 @@ namespace metadiff {
         Sum(GraphInPtr graph,
             NodeInPtr parent,
             std::vector<size_t> axes):
-                Operator(graph, "Sum"),
+                Operator("Sum", graph),
                 parent(parent),
                 axes(axes)
         {
-            if(axes.size() == 0){
-                throw InvalidArguments(name, {parent}, "NULL");
-            }
-            bool err = false;
-            if(axes.size() > 4){
-                err = true;
-            }
-            bool checks[4] {false, false, false, false};
-            for(int i=0;i<axes.size();i++){
-                if(axes[i] > 3){
-                    err = true;
-                }
-                if(checks[axes[i]]){
-                    err = true;
-                }
-                checks[axes[i]] = true;
-            }
-            if(err){
+            if(not validate_axes(axes)){
                 std::string axes_str;
                 for(int i=0;i<axes.size();i++){
                     axes_str += std::to_string(axes[i]);
                     if(i < axes.size()-1){
                         axes_str += ", ";
                     }
+                }
+                if(axes.size() == 0){
+                    axes_str = "NULL";
                 }
                 throw InvalidArguments(name, {parent}, axes_str);
             }
@@ -192,33 +221,18 @@ namespace metadiff {
         return node.sum(axes);
     }
 
-    class ElementwiseNary : public Operator{
+    class NaryOperator: public Operator{
     public:
         NodeInVec parents;
         Shape shape;
-        ElementwiseNary(std::string const name,
-                        GraphInPtr graph,
-                        NodeInVec parents) :
-                Operator(graph, name){
-            try{
-                shape = verify_shapes(parents);
-            } catch(const int){
-                throw IncompatibleShapes(name, parents);
-            }
-            for(int i=0;i<parents.size();i++){
-                auto parent = parents[i].lock();
-                if(parent->shape == shape or parent->is_scalar()){
-                    this->parents.push_back(parents[i]);
-                } else if(graph.lock()->broadcast == ad_implicit_broadcast::RAISE){
-                    throw ImplicitBroadcast(name, parents);
-                } else{
-                    if(graph.lock()->broadcast == ad_implicit_broadcast::WARN){
-                        auto msg = ImplicitBroadcast(name, parents);
-                        std::cout << "WARNING:" << msg.get_message() << std::endl;
-                    }
-                    auto  op = std::make_shared<Broadcast>(this->graph, parents[i], shape);
-                    this->parents.push_back(graph.lock()->derived_node(op));
-                }
+        NaryOperator(std::string const name,
+                     GraphInPtr graph,
+                     NodeInVec parents) :
+                Operator(name, graph),
+                parents(parents)
+        {
+            if(parents.size() < 2){
+                throw InvalidArguments(name, parents, "Need atleast 2 parents");
             }
         };
 
@@ -242,7 +256,6 @@ namespace metadiff {
 
         ad_node_type get_node_type(){
             bool constant_derived = false;
-            bool constant = false;
             for(int i=0;i<parents.size();i++){
                 auto parent_type = parents[i].lock()->type;
                 if(parent_type == INPUT
@@ -250,20 +263,14 @@ namespace metadiff {
                    or parent_type == SHARED_INPUT){
                     return INPUT_DERIVED;
                 }
-                if(parent_type == CONSTANT_DERIVED){
+                if(parent_type == CONSTANT_DERIVED or parent_type == SYMBOLIC_INTEGER){
                     constant_derived = true;
-                }
-                if(parent_type == CONSTANT){
-                    constant = true;
                 }
             }
             if(constant_derived){
                 return CONSTANT_DERIVED;
-            }
-            else if(constant){
-                return CONSTANT;
             } else {
-                return SYMBOLIC_INTEGER;
+                return CONSTANT;
             }
         };
 
@@ -294,50 +301,24 @@ namespace metadiff {
                     type_str += ", ";
                 }
             }
-            throw UnkownError(parents, "Gradient message present, but parents are " + type_str);
+            throw UnknownError(parents, "Gradient message present, but parents are " + type_str);
         }
     };
 
-    class ElementwiseBinary : public Operator{
+    class BinaryOperator : public Operator{
     public:
         NodeInPtr parent1;
         NodeInPtr parent2;
         Shape shape;
 
-        ElementwiseBinary(std::string name,
-                          GraphInPtr graph,
-                          NodeInPtr parent1,
-                          NodeInPtr parent2) :
-                Operator(graph, name),
+        BinaryOperator(std::string const name,
+                       GraphInPtr graph,
+                       NodeInPtr parent1,
+                       NodeInPtr parent2) :
+                Operator(name, graph),
                 parent1(parent1),
                 parent2(parent2)
-        {
-            NodeInVec parents = get_parents();
-            try{
-                shape = verify_shapes({parents});
-            } catch(const int){
-                throw IncompatibleShapes(name, parents);
-            }
-            for(int i=0;i<2;i++){
-                auto parent = parents[i].lock();
-                if(parent->shape == shape or parent->is_scalar()){
-                    continue;
-                } else if(graph.lock()->broadcast == ad_implicit_broadcast::RAISE){
-                    throw ImplicitBroadcast(name, parents);
-                } else{
-                    if(graph.lock()->broadcast == ad_implicit_broadcast::WARN){
-                        auto msg = ImplicitBroadcast(name, parents);
-                        std::cout << "WARNING:" << msg.get_message() << std::endl;
-                    }
-                    auto  op = std::make_shared<Broadcast>(this->graph, parents[i], shape);
-                    if(i == 0){
-                        this->parent1 = graph.lock()->derived_node(op);
-                    } else {
-                        this->parent2 = graph.lock()->derived_node(op);
-                    }
-                }
-            }
-        }
+        {}
 
         NodeInVec get_parents() {
             return {parent1, parent2};
@@ -366,13 +347,14 @@ namespace metadiff {
                or parent2_type == INPUT_DERIVED){
                 return INPUT_DERIVED;
             }
-            if(parent1_type == CONSTANT_DERIVED or parent2_type == CONSTANT_DERIVED){
+            if(parent1_type == CONSTANT_DERIVED
+               or parent1_type == SYMBOLIC_INTEGER
+               or parent2_type == CONSTANT_DERIVED
+               or parent2_type == SYMBOLIC_INTEGER){
                 return CONSTANT_DERIVED;
-            }
-            if(parent1_type == CONSTANT or parent2_type == CONSTANT){
+            } else {
                 return CONSTANT;
             }
-            return SYMBOLIC_INTEGER;
         };
 
         std::array<SymInt,4> get_shape(){
@@ -390,20 +372,20 @@ namespace metadiff {
         }
 
         void throw_grad_type_error(){
-            throw UnkownError({parent1, parent2},
-                              "Gradient message present, but parents are " +
-                              to_string(parent1.lock()->type) + ", " +
-                              to_string(parent2.lock()->type));
+            throw UnknownError({parent1, parent2},
+                               "Gradient message present, but parents are " +
+                               to_string(parent1.lock()->type) + ", " +
+                               to_string(parent2.lock()->type));
         }
     };
 
-    class ElementwiseUnary : public Operator{
+    class UnaryOperator : public Operator{
     public:
         NodeInPtr parent;
-        ElementwiseUnary(std::string const name,
-                         GraphInPtr graph,
-                         NodeInPtr parent):
-                Operator(graph, name),
+        UnaryOperator(std::string const name,
+                      GraphInPtr graph,
+                      NodeInPtr parent):
+                Operator(name, graph),
                 parent(parent)
         {};
 
@@ -417,11 +399,14 @@ namespace metadiff {
 
         ad_node_type get_node_type(){
             auto parent_type = parent.lock()->type;
-            switch (parent_type) {
-                case INPUT: return INPUT_DERIVED;
-                case SHARED_INPUT: return INPUT_DERIVED;
-                case SYMBOLIC_INTEGER: return CONSTANT;
-                default: return parent_type;
+            if(parent_type == INPUT
+               or parent_type == SHARED_INPUT
+               or parent_type == INPUT_DERIVED){
+                return INPUT_DERIVED;
+            } else if (parent_type == CONSTANT_DERIVED or parent_type == SYMBOLIC_INTEGER){
+                return CONSTANT_DERIVED;
+            } else {
+                return CONSTANT;
             }
         };
 
@@ -438,11 +423,67 @@ namespace metadiff {
         }
 
         void throw_grad_type_error(){
-            throw UnkownError({parent},
-                              "Gradient message present, but parent is " + to_string(parent.lock()->type));
+            throw UnknownError({parent},
+                               "Gradient message present, but parent is " + to_string(parent.lock()->type));
         }
     };
 
+    class ElementwiseNary : public NaryOperator{
+    public:
+        ElementwiseNary(std::string const name,
+                        GraphInPtr graph,
+                        NodeInVec parents) :
+                NaryOperator(name, graph, parents){
+            shape = verify_elementwise_shapes(name, parents);
+            for(int i=0;i<parents.size();i++){
+                auto parent = parents[i].lock();
+                if(parent->shape == shape or parent->is_scalar()){
+                    this->parents.push_back(parents[i]);
+                } else if(graph.lock()->broadcast == ad_implicit_broadcast::RAISE){
+                    throw ImplicitBroadcast(name, parents);
+                } else{
+                    if(graph.lock()->broadcast == ad_implicit_broadcast::WARN){
+                        auto msg = ImplicitBroadcast(name, parents);
+                        std::cout << "WARNING:" << msg.get_message() << std::endl;
+                    }
+                    auto  op = std::make_shared<Broadcast>(this->graph, parents[i], shape);
+                    this->parents.push_back(graph.lock()->derived_node(op));
+                }
+            }
+        };
+    };
+
+    class ElementwiseBinary : public BinaryOperator{
+    public:
+        ElementwiseBinary(std::string const name,
+                          GraphInPtr graph,
+                          NodeInPtr parent1,
+                          NodeInPtr parent2) :
+                BinaryOperator(name, graph, parent1, parent2)
+        {
+            NodeInVec parents = get_parents();
+            shape = verify_elementwise_shapes(name, {parents});
+            for(int i=0;i<2;i++){
+                auto parent = parents[i].lock();
+                if(parent->shape == shape or parent->is_scalar()){
+                    continue;
+                } else if(graph.lock()->broadcast == ad_implicit_broadcast::RAISE){
+                    throw ImplicitBroadcast(name, parents);
+                } else{
+                    if(graph.lock()->broadcast == ad_implicit_broadcast::WARN){
+                        auto msg = ImplicitBroadcast(name, parents);
+                        std::cout << "WARNING:" << msg.get_message() << std::endl;
+                    }
+                    auto  op = std::make_shared<Broadcast>(this->graph, parents[i], shape);
+                    if(i == 0){
+                        this->parent1 = graph.lock()->derived_node(op);
+                    } else {
+                        this->parent2 = graph.lock()->derived_node(op);
+                    }
+                }
+            }
+        }
+    };
 
     class Add : public ElementwiseNary {
     public:
@@ -522,9 +563,9 @@ namespace metadiff {
         // Check for any surprises
         auto parent = this->parent.lock();
         if(parent->is_constant()){
-            throw UnkownError({parent},
-                              "Gradient message present, but parents are " +
-                              to_string(parent->type));
+            throw UnknownError({parent},
+                               "Gradient message present, but parents are " +
+                               to_string(parent->type));
         }
 
         // Node computes f = broadcast(p, shape)
@@ -550,9 +591,9 @@ namespace metadiff {
         // Check for any surprises
         auto parent = this->parent.lock();
         if(parent->is_constant()){
-            throw UnkownError({parent},
-                              "Gradient message present, but parents are " +
-                              to_string(parent->type));
+            throw UnknownError({parent},
+                               "Gradient message present, but parents are " +
+                               to_string(parent->type));
         }
 
         // Node computes f = p.sum(axes)
@@ -563,10 +604,10 @@ namespace metadiff {
         send_grad_message(graph, parent->id, parent_grad->id, messages);
     }
 
-    class Neg : public ElementwiseUnary {
+    class Neg : public UnaryOperator {
     public:
         Neg(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Neg", graph, parent)
+                UnaryOperator("Neg", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
@@ -579,9 +620,9 @@ namespace metadiff {
             // Check for any surprises
             auto parent = this->parent.lock();
             if(parent->is_constant()){
-                throw UnkownError({parent},
-                                  "Gradient message present, but parents are " +
-                                  to_string(parent->type));
+                throw UnknownError({parent},
+                                   "Gradient message present, but parents are " +
+                                   to_string(parent->type));
             }
 
             // Node computes f = -p
@@ -639,10 +680,10 @@ namespace metadiff {
         return mul({node1, node2});
     };
 
-    class Div : public ElementwiseUnary {
+    class Div : public UnaryOperator {
     public:
         Div(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Div", graph, parent)
+                UnaryOperator("Div", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
@@ -659,10 +700,10 @@ namespace metadiff {
         return div(node1, node2);
     };
 
-    class Square : public ElementwiseUnary {
+    class Square : public UnaryOperator {
     public:
         Square(GraphInPtr graph, NodeInPtr parent) :
-                ElementwiseUnary("Square", graph, parent)
+                UnaryOperator("Square", graph, parent)
         {};
 
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);

@@ -5,49 +5,19 @@
 #ifndef AUTODIFF_LOGICAL_H
 #define AUTODIFF_LOGICAL_H
 namespace metadiff {
-    class LogicalBinary : public Operator{
+
+    void throw_logical_error(NodeInVec parents){
+        throw UnknownError(parents, "The logical operator recieved a gradient message.");
+    }
+
+    class LogicalBinary : public ElementwiseBinary{
     public:
-        NodeInPtr parent1;
-        NodeInPtr parent2;
-        Shape shape;
         LogicalBinary(std::string const name,
                       GraphInPtr graph,
                       NodeInPtr parent1,
                       NodeInPtr parent2):
-                Operator(graph, name),
-                parent1(parent1),
-                parent2(parent2)
-        {
-            NodeInVec parents = get_parents();
-            try{
-                shape = verify_shapes({parents});
-            } catch(const int){
-                throw IncompatibleShapes(name, parents);
-            }
-            for(int i=0;i<2;i++){
-                auto parent = parents[i].lock();
-                if(parent->shape == shape or parent->is_scalar()){
-                    continue;
-                } else if(graph.lock()->broadcast == ad_implicit_broadcast::RAISE){
-                    throw ImplicitBroadcast(name, parents);
-                } else{
-                    if(graph.lock()->broadcast == ad_implicit_broadcast::WARN){
-                        auto msg = ImplicitBroadcast(name, parents);
-                        std::cout << "WARNING:" << msg.get_message() << std::endl;
-                    }
-                    auto  op = std::make_shared<Broadcast>(this->graph, parents[i], shape);
-                    if(i == 0){
-                        this->parent1 = graph.lock()->derived_node(op);
-                    } else {
-                        this->parent2 = graph.lock()->derived_node(op);
-                    }
-                }
-            }
-        };
-
-        NodeInVec get_parents() {
-            return {parent1, parent2};
-        };
+                ElementwiseBinary(name, graph, parent1, parent2)
+        {};
 
         ad_value_type get_value_type(){
             return BOOLEAN;
@@ -63,42 +33,22 @@ namespace metadiff {
             }
         };
 
-        std::array<SymInt,4> get_shape(){
-            return shape;
-        }
-
-        unsigned short get_gradient_level(){
-            auto parent1_grad_level = parent1.lock()->grad_level;
-            auto parent2_grad_level = parent2.lock()->grad_level;
-            return parent1_grad_level > parent2_grad_level ? parent1_grad_level : parent2_grad_level;
-        };
-
-        NodeInVec get_arguments() {
-            return NodeInVec {};
-        }
-
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
             auto graph = this->graph.lock();
             if (messages.find(current) != messages.end()) {
-                throw UnkownError({parent1, parent2}, "The logical operator recieved a gradient message.");
+                throw_logical_error({parent1, parent2});
             }
             return;
         };
     };
 
-    class LogicalUnary : public Operator{
+    class LogicalUnary : public UnaryOperator{
     public:
-        NodeInPtr parent;
         LogicalUnary(std::string const name,
                      GraphInPtr graph,
                      NodeInPtr parent):
-                Operator(graph, name),
-                parent(parent)
+                UnaryOperator(name, graph, parent)
         {};
-
-        NodeInVec get_parents() {
-            return {parent};
-        };
 
         ad_value_type get_value_type(){
             return BOOLEAN;
@@ -113,22 +63,10 @@ namespace metadiff {
             }
         };
 
-        std::array<SymInt,4> get_shape(){
-            return parent.lock()->shape;
-        }
-
-        unsigned short get_gradient_level(){
-            return parent.lock()->grad_level;
-        };
-
-        NodeInVec get_arguments() {
-            return NodeInVec {};
-        }
-
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
             auto graph = this->graph.lock();
             if (messages.find(current) != messages.end()) {
-                throw UnkownError({parent}, "The logical operator recieved a gradient message.");
+                throw_logical_error({parent});
             }
             return;
         };
@@ -303,12 +241,12 @@ namespace metadiff {
     class And : public LogicalBinary {
     public:
         And(GraphInPtr graph,
-                  NodeInPtr parent1,
-                  NodeInPtr parent2) :
+            NodeInPtr parent1,
+            NodeInPtr parent2) :
                 LogicalBinary("And", graph, parent1, parent2)
         {
             if(parent1.lock()->v_type != BOOLEAN or parent2.lock()->v_type != BOOLEAN){
-                throw UnkownError({parent1, parent2}, "Operator 'And' accepts only BOOLEAN inputs");
+                throw UnknownError({parent1, parent2}, "Operator 'And' accepts only BOOLEAN inputs");
             }
         };
     };
@@ -328,12 +266,12 @@ namespace metadiff {
     class Or : public LogicalBinary {
     public:
         Or(GraphInPtr graph,
-            NodeInPtr parent1,
-            NodeInPtr parent2) :
+           NodeInPtr parent1,
+           NodeInPtr parent2) :
                 LogicalBinary("Or", graph, parent1, parent2)
         {
             if(parent1.lock()->v_type != BOOLEAN or parent2.lock()->v_type != BOOLEAN){
-                throw UnkownError({parent1, parent2}, "Operator 'Or' accepts only BOOLEAN inputs");
+                throw UnknownError({parent1, parent2}, "Operator 'Or' accepts only BOOLEAN inputs");
             }
         };
     };
@@ -372,7 +310,7 @@ namespace metadiff {
     class NonZeroElements : public LogicalUnary {
     public:
         NonZeroElements(GraphInPtr graph,
-                     NodeInPtr parent) :
+                        NodeInPtr parent) :
                 LogicalUnary("NonZeroElem", graph, parent)
         {};
     };
@@ -386,6 +324,44 @@ namespace metadiff {
 
     Node non_zero_elem(Node node){
         return node.non_zeros();
+    }
+
+    class IsNaN : public LogicalUnary {
+    public:
+        IsNaN(GraphInPtr graph,
+              NodeInPtr parent) :
+                LogicalUnary("IsNaN", graph, parent)
+        {};
+    };
+
+    Node Node::is_nan(){
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<IsNaN>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node is_nan(Node node){
+        return node.is_nan();
+    }
+
+    class IsInf : public LogicalUnary {
+    public:
+        IsInf(GraphInPtr graph,
+              NodeInPtr parent) :
+                LogicalUnary("IsInf", graph, parent)
+        {};
+    };
+
+    Node Node::is_inf(){
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<IsInf>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node is_inf(Node node){
+        return node.is_inf();
     }
 }
 #endif //AUTODIFF_LOGICAL_H

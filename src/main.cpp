@@ -7,11 +7,10 @@
  * http://arrayfire.com/licenses/BSD-3-Clause
  ********************************************************/
 
-//#include <arrayfire.h>
+#include <arrayfire.h>
 #include <algorithm>
 #include "autodiff.h"
 #include <ctime>
-
 //using namespace af;
 
 //std::vector<float> input(100);
@@ -41,6 +40,20 @@ namespace sym = metadiff::symbolic;
 
 int main(int argc, char *argv[])
 {
+//    af::setSeed(5);
+//    af::array a = af::randu(2, 2, 4, f32);
+//    af::array b = af::randu(2, 2, 4, f32);
+//    af::array m,i;
+//    af::max(m, i, a, 2);
+//    auto c = af::transpose(a);
+//
+//    af_print(a);
+//    af_print(c);
+//    af::array idx = af::iota(af::dim4(2, 2));
+//    i = i * idx.elements() + idx;
+//    a(i) -= 1;
+//    af_print(a);
+//    af_print(b);
 //    af::dim4 dims(1, 1, 1, 1);
 //    auto c1_v = af::constant(0.5, dims, f32);
 //    auto c2_v = af::constant(1.5, dims, f32);
