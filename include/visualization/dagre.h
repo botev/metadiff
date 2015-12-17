@@ -22,6 +22,8 @@ namespace metadiff {
                         case BOOLEAN: value = std::to_string(((bool) node->value.num_value)); break;
                     }
                     return value + "[" + std::to_string(node->id) + "]";
+                } else if(node->op->name != "Input") {
+                    return node->op->name + "[" + std::to_string(node->id) + "]";
                 } else {
                     return "CONST[" + std::to_string(node->id) + "]";
                 }

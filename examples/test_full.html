@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <!-- saved from url=(0065)http://cpettitt.github.io/project/dagre-d3/latest/demo/hover.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="utf-8">
-<title>Function Graph</title>
+	<title>Function Graph</title>
 
-<link rel="stylesheet" href="../html_files/demo.css">
-<script src="../html_files/d3.v3.min.js" charset="utf-8"></script>
-<script src="../html_files/dagre-d3.js"></script><style type="text/css"></style>
+	<link rel="stylesheet" href="../html_files/demo.css">
+	<script src="../html_files/d3.v3.min.js" charset="utf-8"></script>
+	<script src="../html_files/dagre-d3.js"></script><style type="text/css"></style>
 
-<!-- Pull in JQuery dependencies -->
-<link rel="stylesheet" href="../html_files/tipsy.css">
-<script src="../html_files/jquery-1.9.1.min.js"></script>
-<script src="../html_files/tipsy.js"></script>
+	<!-- Pull in JQuery dependencies -->
+	<link rel="stylesheet" href="../html_files/tipsy.css">
+	<script src="../html_files/jquery-1.9.1.min.js"></script>
+	<script src="../html_files/tipsy.js"></script>
 
 </head><body style="margin:0;padding:0" height="100%"><h3 style="margin-bottom: 0px">Function</h3>
 <h5 style="margin-top: 0px; margin-bottom: 0px">Default device: CPU[0]</h5>
@@ -19,382 +19,382 @@
 <h5 style="margin-top: 0px; margin-bottom: 0px">Broadcast policy: Warn</h5>
 
 <style id="css">
-text {
-  font-weight: 300;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
-  font-size: 14px;
-}
+	text {
+		font-weight: 300;
+		font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+		font-size: 14px;
+	}
 
-.node rect {
-  stroke: #333;
-  fill: #fff;
-}
+	.node rect {
+		stroke: #333;
+		fill: #fff;
+	}
 
-.edgePath path {
-  stroke: #333;
-  fill: #333;
-  stroke-width: 1.5px;
-}
+	.edgePath path {
+		stroke: #333;
+		fill: #333;
+		stroke-width: 1.5px;
+	}
 
-.node text {
-  pointer-events: none;
-}
+	.node text {
+		pointer-events: none;
+	}
 
-/* This styles the title of the tooltip */
-.tipsy .name {
-  font-size: 1.5em;
-  font-weight: bold;
-  color: #60b1fc;
-  margin: 0;
-}
+	/* This styles the title of the tooltip */
+	.tipsy .name {
+		font-size: 1.5em;
+		font-weight: bold;
+		color: #60b1fc;
+		margin: 0;
+	}
 
-/* This styles the body of the tooltip */
-.tipsy .description {
-  font-size: 1.2em;
-}
+	/* This styles the body of the tooltip */
+	.tipsy .description {
+		font-size: 1.2em;
+	}
 </style>
 
 <svg width="1500" height="900"></svg>
 
 <script id="js">
-// Create a new directed graph
-var g = new dagreD3.graphlib.Graph({compound:true, multigraph: true})
-		.setGraph({})
-		.setDefaultEdgeLabel(function() { return {}; });
-// Nodes states
-var states = {
-	'Input[0]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [b, a, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [8, 54]",
-		style: "fill: #00ff00"
-	},
-	'Targets[1]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [20]",
-		style: "fill: #00ff00"
-	},
-	'Win[2]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, b, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [8]",
-		style: "fill: #00ff00"
-	},
-	'Wh[3]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, c, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [12, 46]",
-		style: "fill: #00ff00"
-	},
-	'Wout[4]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, c, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [16, 36]",
-		style: "fill: #00ff00"
-	},
-	'bin[5]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [9]",
-		style: "fill: #00ff00"
-	},
-	'bh[6]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [13]",
-		style: "fill: #00ff00"
-	},
-	'bout[7]': {
-		description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [17]",
-		style: "fill: #00ff00"
-	},
-	'MatrixMul[8]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [2, 0] <br> Children: [10]",
-		style: "fill: #0000ff"
-	},
-	'Broadcast[9]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [5] <br> Children: [10]",
-		style: "fill: #0000ff"
-	},
-	'Add[10]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [8, 9] <br> Children: [11]",
-		style: "fill: #0000ff"
-	},
-	'Tanh[11]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [10] <br> Children: [12, 44, 48]",
-		style: "fill: #0000ff"
-	},
-	'MatrixMul[12]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [3, 11] <br> Children: [14]",
-		style: "fill: #0000ff"
-	},
-	'Broadcast[13]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [6] <br> Children: [14]",
-		style: "fill: #0000ff"
-	},
-	'Add[14]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [12, 13] <br> Children: [15]",
-		style: "fill: #0000ff"
-	},
-	'Tanh[15]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [14] <br> Children: [16, 34, 38]",
-		style: "fill: #0000ff"
-	},
-	'MatrixMul[16]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [4, 15] <br> Children: [18]",
-		style: "fill: #0000ff"
-	},
-	'Broadcast[17]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [7] <br> Children: [18]",
-		style: "fill: #0000ff"
-	},
-	'Add[18]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [16, 17] <br> Children: [19]",
-		style: "fill: #0000ff"
-	},
-	'Tanh[19]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [18] <br> Children: [21, 28]",
-		style: "fill: #0000ff"
-	},
-	'Neg[20]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [1] <br> Children: [21]",
-		style: "fill: #0000ff"
-	},
-	'Add[21]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [19, 20] <br> Children: [22, 27]",
-		style: "fill: #0000ff"
-	},
-	'Square[22]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [21] <br> Children: [23]",
-		style: "fill: #0000ff"
-	},
-	'Sum[23]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [1, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [22] <br> Children: []",
-		style: "fill: #ff0000"
-	},
-	'1[24]': {
-		description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [25]",
-		style: "fill: #ffff00"
-	},
-	'CONST[25]': {
-		description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [24] <br> Children: [27]",
-		style: "fill: #ffff00"
-	},
-	'2[26]': {
-		description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [27]",
-		style: "fill: #ffff00"
-	},
-	'Mul[27]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [25, 26, 21] <br> Children: [32]",
-		style: "fill: #0000ff"
-	},
-	'Square[28]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [19] <br> Children: [29]",
-		style: "fill: #0000ff"
-	},
-	'Neg[29]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [28] <br> Children: [31]",
-		style: "fill: #0000ff"
-	},
-	'1[30]': {
-		description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [31]",
-		style: "fill: #ffff00"
-	},
-	'Add[31]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [29, 30] <br> Children: [32]",
-		style: "fill: #0000ff"
-	},
-	'Mul[32]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [27, 31] <br> Children: [33, 35, 37]",
-		style: "fill: #0000ff"
-	},
-	'Sum[33]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [32] <br> Children: []",
-		style: "fill: #ff0000"
-	},
-	'Transpose[34]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [a, c, 1, 1] <br> Gradient Level:0 <br> Parents: [15] <br> Children: [35]",
-		style: "fill: #0000ff"
-	},
-	'MatrixMul[35]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, c, 1, 1] <br> Gradient Level:1 <br> Parents: [32, 34] <br> Children: []",
-		style: "fill: #ff0000"
-	},
-	'Transpose[36]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, d, 1, 1] <br> Gradient Level:0 <br> Parents: [4] <br> Children: [37]",
-		style: "fill: #0000ff"
-	},
-	'MatrixMul[37]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [36, 32] <br> Children: [42]",
-		style: "fill: #0000ff"
-	},
-	'Square[38]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [15] <br> Children: [39]",
-		style: "fill: #0000ff"
-	},
-	'Neg[39]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [38] <br> Children: [41]",
-		style: "fill: #0000ff"
-	},
-	'1[40]': {
-		description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [41]",
-		style: "fill: #ffff00"
-	},
-	'Add[41]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [39, 40] <br> Children: [42]",
-		style: "fill: #0000ff"
-	},
-	'Mul[42]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [37, 41] <br> Children: [43, 45, 47]",
-		style: "fill: #0000ff"
-	},
-	'Sum[43]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [42] <br> Children: []",
-		style: "fill: #ff0000"
-	},
-	'Transpose[44]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [a, c, 1, 1] <br> Gradient Level:0 <br> Parents: [11] <br> Children: [45]",
-		style: "fill: #0000ff"
-	},
-	'MatrixMul[45]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, c, 1, 1] <br> Gradient Level:1 <br> Parents: [42, 44] <br> Children: []",
-		style: "fill: #ff0000"
-	},
-	'Transpose[46]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, c, 1, 1] <br> Gradient Level:0 <br> Parents: [3] <br> Children: [47]",
-		style: "fill: #0000ff"
-	},
-	'MatrixMul[47]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [46, 42] <br> Children: [52]",
-		style: "fill: #0000ff"
-	},
-	'Square[48]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [11] <br> Children: [49]",
-		style: "fill: #0000ff"
-	},
-	'Neg[49]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [48] <br> Children: [51]",
-		style: "fill: #0000ff"
-	},
-	'1[50]': {
-		description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [51]",
-		style: "fill: #ffff00"
-	},
-	'Add[51]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [49, 50] <br> Children: [52]",
-		style: "fill: #0000ff"
-	},
-	'Mul[52]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [47, 51] <br> Children: [53, 55]",
-		style: "fill: #0000ff"
-	},
-	'Sum[53]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [52] <br> Children: []",
-		style: "fill: #ff0000"
-	},
-	'CONST[54]': {
-		description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [a, b, 1, 1] <br> Gradient Level:0 <br> Parents: [0] <br> Children: [55]",
-		style: "fill: #ffff00"
-	},
-	'MatrixMul[55]': {
-		description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, b, 1, 1] <br> Gradient Level:1 <br> Parents: [52, 54] <br> Children: []",
-		style: "fill: #ff0000"
+	// Create a new directed graph
+	var g = new dagreD3.graphlib.Graph({compound:true, multigraph: true})
+			.setGraph({})
+			.setDefaultEdgeLabel(function() { return {}; });
+	// Nodes states
+	var states = {
+		'Input[0]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [b, a, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [8, 54]",
+			style: "fill: #00ff00"
+		},
+		'Targets[1]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [20]",
+			style: "fill: #00ff00"
+		},
+		'Win[2]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, b, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [8]",
+			style: "fill: #00ff00"
+		},
+		'Wh[3]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, c, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [12, 46]",
+			style: "fill: #00ff00"
+		},
+		'Wout[4]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, c, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [16, 36]",
+			style: "fill: #00ff00"
+		},
+		'bin[5]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [9]",
+			style: "fill: #00ff00"
+		},
+		'bh[6]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [13]",
+			style: "fill: #00ff00"
+		},
+		'bout[7]': {
+			description: "Type: INPUT <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [] <br> Children: [17]",
+			style: "fill: #00ff00"
+		},
+		'MatrixMul[8]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [2, 0] <br> Children: [10]",
+			style: "fill: #0000ff"
+		},
+		'Broadcast[9]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [5] <br> Children: [10]",
+			style: "fill: #0000ff"
+		},
+		'Add[10]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [8, 9] <br> Children: [11]",
+			style: "fill: #0000ff"
+		},
+		'Tanh[11]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [10] <br> Children: [12, 44, 48]",
+			style: "fill: #0000ff"
+		},
+		'MatrixMul[12]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [3, 11] <br> Children: [14]",
+			style: "fill: #0000ff"
+		},
+		'Broadcast[13]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [6] <br> Children: [14]",
+			style: "fill: #0000ff"
+		},
+		'Add[14]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [12, 13] <br> Children: [15]",
+			style: "fill: #0000ff"
+		},
+		'Tanh[15]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:0 <br> Parents: [14] <br> Children: [16, 34, 38]",
+			style: "fill: #0000ff"
+		},
+		'MatrixMul[16]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [4, 15] <br> Children: [18]",
+			style: "fill: #0000ff"
+		},
+		'Broadcast[17]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [7] <br> Children: [18]",
+			style: "fill: #0000ff"
+		},
+		'Add[18]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [16, 17] <br> Children: [19]",
+			style: "fill: #0000ff"
+		},
+		'Tanh[19]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [18] <br> Children: [21, 28]",
+			style: "fill: #0000ff"
+		},
+		'Neg[20]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [1] <br> Children: [21]",
+			style: "fill: #0000ff"
+		},
+		'Add[21]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [19, 20] <br> Children: [22, 27]",
+			style: "fill: #0000ff"
+		},
+		'Square[22]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:0 <br> Parents: [21] <br> Children: [23]",
+			style: "fill: #0000ff"
+		},
+		'Sum[23]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [1, 1, 1, 1] <br> Gradient Level:0 <br> Parents: [22] <br> Children: []",
+			style: "fill: #ff0000"
+		},
+		'1[24]': {
+			description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [25]",
+			style: "fill: #ffff00"
+		},
+		'Broadcast[25]': {
+			description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [24] <br> Children: [27]",
+			style: "fill: #ffff00"
+		},
+		'2[26]': {
+			description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [27]",
+			style: "fill: #ffff00"
+		},
+		'Mul[27]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [25, 26, 21] <br> Children: [32]",
+			style: "fill: #0000ff"
+		},
+		'Square[28]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [19] <br> Children: [29]",
+			style: "fill: #0000ff"
+		},
+		'Neg[29]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [28] <br> Children: [31]",
+			style: "fill: #0000ff"
+		},
+		'1[30]': {
+			description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [31]",
+			style: "fill: #ffff00"
+		},
+		'Add[31]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [29, 30] <br> Children: [32]",
+			style: "fill: #0000ff"
+		},
+		'Mul[32]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, a, 1, 1] <br> Gradient Level:1 <br> Parents: [27, 31] <br> Children: [33, 35, 37]",
+			style: "fill: #0000ff"
+		},
+		'Sum[33]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [32] <br> Children: []",
+			style: "fill: #ff0000"
+		},
+		'Transpose[34]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [a, c, 1, 1] <br> Gradient Level:0 <br> Parents: [15] <br> Children: [35]",
+			style: "fill: #0000ff"
+		},
+		'MatrixMul[35]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [d, c, 1, 1] <br> Gradient Level:1 <br> Parents: [32, 34] <br> Children: []",
+			style: "fill: #ff0000"
+		},
+		'Transpose[36]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, d, 1, 1] <br> Gradient Level:0 <br> Parents: [4] <br> Children: [37]",
+			style: "fill: #0000ff"
+		},
+		'MatrixMul[37]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [36, 32] <br> Children: [42]",
+			style: "fill: #0000ff"
+		},
+		'Square[38]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [15] <br> Children: [39]",
+			style: "fill: #0000ff"
+		},
+		'Neg[39]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [38] <br> Children: [41]",
+			style: "fill: #0000ff"
+		},
+		'1[40]': {
+			description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [41]",
+			style: "fill: #ffff00"
+		},
+		'Add[41]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [39, 40] <br> Children: [42]",
+			style: "fill: #0000ff"
+		},
+		'Mul[42]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [37, 41] <br> Children: [43, 45, 47]",
+			style: "fill: #0000ff"
+		},
+		'Sum[43]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [42] <br> Children: []",
+			style: "fill: #ff0000"
+		},
+		'Transpose[44]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [a, c, 1, 1] <br> Gradient Level:0 <br> Parents: [11] <br> Children: [45]",
+			style: "fill: #0000ff"
+		},
+		'MatrixMul[45]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, c, 1, 1] <br> Gradient Level:1 <br> Parents: [42, 44] <br> Children: []",
+			style: "fill: #ff0000"
+		},
+		'Transpose[46]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, c, 1, 1] <br> Gradient Level:0 <br> Parents: [3] <br> Children: [47]",
+			style: "fill: #0000ff"
+		},
+		'MatrixMul[47]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [46, 42] <br> Children: [52]",
+			style: "fill: #0000ff"
+		},
+		'Square[48]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [11] <br> Children: [49]",
+			style: "fill: #0000ff"
+		},
+		'Neg[49]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [48] <br> Children: [51]",
+			style: "fill: #0000ff"
+		},
+		'1[50]': {
+			description: "Type: CONSTANT <br> Device: CPU[0] <br> Value type: INTEGER <br> Shape: [1, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [] <br> Children: [51]",
+			style: "fill: #ffff00"
+		},
+		'Add[51]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [49, 50] <br> Children: [52]",
+			style: "fill: #0000ff"
+		},
+		'Mul[52]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, a, 1, 1] <br> Gradient Level:1 <br> Parents: [47, 51] <br> Children: [53, 55]",
+			style: "fill: #0000ff"
+		},
+		'Sum[53]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, 1, 1, 1] <br> Gradient Level:1 <br> Parents: [52] <br> Children: []",
+			style: "fill: #ff0000"
+		},
+		'Transpose[54]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [a, b, 1, 1] <br> Gradient Level:0 <br> Parents: [0] <br> Children: [55]",
+			style: "fill: #0000ff"
+		},
+		'MatrixMul[55]': {
+			description: "Type: DERIVED <br> Device: CPU[0] <br> Value type: FLOAT <br> Shape: [c, b, 1, 1] <br> Gradient Level:1 <br> Parents: [52, 54] <br> Children: []",
+			style: "fill: #ff0000"
+		}
 	}
-}
-// Set the gradient level boxes
-g.setNode('grad_0', {label: 'Calculation Level[0]', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});
-g.setNode('grad_1', {label: 'Calculation Level[1]', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});
-// Add states to the graph, set labels, and style
-Object.keys(states).forEach(function(state) {
-  var value = states[state];
-  value.label = state;
-  value.rx = value.ry = 5;
-  g.setNode(state, value);
-});
-// Set up the edges
-g.setEdge({v:'Win[2]', w:'MatrixMul[8]', name:'0'}, {label: "0"});
-g.setEdge({v:'Input[0]', w:'MatrixMul[8]', name:'1'}, {label: "1"});
-g.setEdge({v:'bin[5]', w:'Broadcast[9]', name:'0'}, {label: "0"});
-g.setEdge({v:'MatrixMul[8]', w:'Add[10]', name:'0'}, {label: "0"});
-g.setEdge({v:'Broadcast[9]', w:'Add[10]', name:'1'}, {label: "1"});
-g.setEdge({v:'Add[10]', w:'Tanh[11]', name:'0'}, {label: "0"});
-g.setEdge({v:'Wh[3]', w:'MatrixMul[12]', name:'0'}, {label: "0"});
-g.setEdge({v:'Tanh[11]', w:'MatrixMul[12]', name:'1'}, {label: "1"});
-g.setEdge({v:'bh[6]', w:'Broadcast[13]', name:'0'}, {label: "0"});
-g.setEdge({v:'MatrixMul[12]', w:'Add[14]', name:'0'}, {label: "0"});
-g.setEdge({v:'Broadcast[13]', w:'Add[14]', name:'1'}, {label: "1"});
-g.setEdge({v:'Add[14]', w:'Tanh[15]', name:'0'}, {label: "0"});
-g.setEdge({v:'Wout[4]', w:'MatrixMul[16]', name:'0'}, {label: "0"});
-g.setEdge({v:'Tanh[15]', w:'MatrixMul[16]', name:'1'}, {label: "1"});
-g.setEdge({v:'bout[7]', w:'Broadcast[17]', name:'0'}, {label: "0"});
-g.setEdge({v:'MatrixMul[16]', w:'Add[18]', name:'0'}, {label: "0"});
-g.setEdge({v:'Broadcast[17]', w:'Add[18]', name:'1'}, {label: "1"});
-g.setEdge({v:'Add[18]', w:'Tanh[19]', name:'0'}, {label: "0"});
-g.setEdge({v:'Targets[1]', w:'Neg[20]', name:'0'}, {label: "0"});
-g.setEdge({v:'Tanh[19]', w:'Add[21]', name:'0'}, {label: "0"});
-g.setEdge({v:'Neg[20]', w:'Add[21]', name:'1'}, {label: "1"});
-g.setEdge({v:'Add[21]', w:'Square[22]', name:'0'}, {label: "0"});
-g.setEdge({v:'Square[22]', w:'Sum[23]', name:'0'}, {label: "0"});
-g.setEdge({v:'1[24]', w:'CONST[25]', name:'0'}, {label: "0"});
-g.setEdge({v:'CONST[25]', w:'Mul[27]', name:'0'}, {label: "0"});
-g.setEdge({v:'2[26]', w:'Mul[27]', name:'1'}, {label: "1"});
-g.setEdge({v:'Add[21]', w:'Mul[27]', name:'2'}, {label: "2"});
-g.setEdge({v:'Tanh[19]', w:'Square[28]', name:'0'}, {label: "0"});
-g.setEdge({v:'Square[28]', w:'Neg[29]', name:'0'}, {label: "0"});
-g.setEdge({v:'Neg[29]', w:'Add[31]', name:'0'}, {label: "0"});
-g.setEdge({v:'1[30]', w:'Add[31]', name:'1'}, {label: "1"});
-g.setEdge({v:'Mul[27]', w:'Mul[32]', name:'0'}, {label: "0"});
-g.setEdge({v:'Add[31]', w:'Mul[32]', name:'1'}, {label: "1"});
-g.setEdge({v:'Mul[32]', w:'Sum[33]', name:'0'}, {label: "0"});
-g.setEdge({v:'Tanh[15]', w:'Transpose[34]', name:'0'}, {label: "0"});
-g.setEdge({v:'Mul[32]', w:'MatrixMul[35]', name:'0'}, {label: "0"});
-g.setEdge({v:'Transpose[34]', w:'MatrixMul[35]', name:'1'}, {label: "1"});
-g.setEdge({v:'Wout[4]', w:'Transpose[36]', name:'0'}, {label: "0"});
-g.setEdge({v:'Transpose[36]', w:'MatrixMul[37]', name:'0'}, {label: "0"});
-g.setEdge({v:'Mul[32]', w:'MatrixMul[37]', name:'1'}, {label: "1"});
-g.setEdge({v:'Tanh[15]', w:'Square[38]', name:'0'}, {label: "0"});
-g.setEdge({v:'Square[38]', w:'Neg[39]', name:'0'}, {label: "0"});
-g.setEdge({v:'Neg[39]', w:'Add[41]', name:'0'}, {label: "0"});
-g.setEdge({v:'1[40]', w:'Add[41]', name:'1'}, {label: "1"});
-g.setEdge({v:'MatrixMul[37]', w:'Mul[42]', name:'0'}, {label: "0"});
-g.setEdge({v:'Add[41]', w:'Mul[42]', name:'1'}, {label: "1"});
-g.setEdge({v:'Mul[42]', w:'Sum[43]', name:'0'}, {label: "0"});
-g.setEdge({v:'Tanh[11]', w:'Transpose[44]', name:'0'}, {label: "0"});
-g.setEdge({v:'Mul[42]', w:'MatrixMul[45]', name:'0'}, {label: "0"});
-g.setEdge({v:'Transpose[44]', w:'MatrixMul[45]', name:'1'}, {label: "1"});
-g.setEdge({v:'Wh[3]', w:'Transpose[46]', name:'0'}, {label: "0"});
-g.setEdge({v:'Transpose[46]', w:'MatrixMul[47]', name:'0'}, {label: "0"});
-g.setEdge({v:'Mul[42]', w:'MatrixMul[47]', name:'1'}, {label: "1"});
-g.setEdge({v:'Tanh[11]', w:'Square[48]', name:'0'}, {label: "0"});
-g.setEdge({v:'Square[48]', w:'Neg[49]', name:'0'}, {label: "0"});
-g.setEdge({v:'Neg[49]', w:'Add[51]', name:'0'}, {label: "0"});
-g.setEdge({v:'1[50]', w:'Add[51]', name:'1'}, {label: "1"});
-g.setEdge({v:'MatrixMul[47]', w:'Mul[52]', name:'0'}, {label: "0"});
-g.setEdge({v:'Add[51]', w:'Mul[52]', name:'1'}, {label: "1"});
-g.setEdge({v:'Mul[52]', w:'Sum[53]', name:'0'}, {label: "0"});
-g.setEdge({v:'Input[0]', w:'CONST[54]', name:'0'}, {label: "0"});
-g.setEdge({v:'Mul[52]', w:'MatrixMul[55]', name:'0'}, {label: "0"});
-g.setEdge({v:'CONST[54]', w:'MatrixMul[55]', name:'1'}, {label: "1"});
+	// Set the gradient level boxes
+	g.setNode('grad_0', {label: 'Calculation Level[0]', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});
+	g.setNode('grad_1', {label: 'Calculation Level[1]', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});
+	// Add states to the graph, set labels, and style
+	Object.keys(states).forEach(function(state) {
+		var value = states[state];
+		value.label = state;
+		value.rx = value.ry = 5;
+		g.setNode(state, value);
+	});
+	// Set up the edges
+	g.setEdge({v:'Win[2]', w:'MatrixMul[8]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Input[0]', w:'MatrixMul[8]', name:'1'}, {label: "1"});
+	g.setEdge({v:'bin[5]', w:'Broadcast[9]', name:'0'}, {label: "0"});
+	g.setEdge({v:'MatrixMul[8]', w:'Add[10]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Broadcast[9]', w:'Add[10]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Add[10]', w:'Tanh[11]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Wh[3]', w:'MatrixMul[12]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Tanh[11]', w:'MatrixMul[12]', name:'1'}, {label: "1"});
+	g.setEdge({v:'bh[6]', w:'Broadcast[13]', name:'0'}, {label: "0"});
+	g.setEdge({v:'MatrixMul[12]', w:'Add[14]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Broadcast[13]', w:'Add[14]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Add[14]', w:'Tanh[15]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Wout[4]', w:'MatrixMul[16]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Tanh[15]', w:'MatrixMul[16]', name:'1'}, {label: "1"});
+	g.setEdge({v:'bout[7]', w:'Broadcast[17]', name:'0'}, {label: "0"});
+	g.setEdge({v:'MatrixMul[16]', w:'Add[18]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Broadcast[17]', w:'Add[18]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Add[18]', w:'Tanh[19]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Targets[1]', w:'Neg[20]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Tanh[19]', w:'Add[21]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Neg[20]', w:'Add[21]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Add[21]', w:'Square[22]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Square[22]', w:'Sum[23]', name:'0'}, {label: "0"});
+	g.setEdge({v:'1[24]', w:'Broadcast[25]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Broadcast[25]', w:'Mul[27]', name:'0'}, {label: "0"});
+	g.setEdge({v:'2[26]', w:'Mul[27]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Add[21]', w:'Mul[27]', name:'2'}, {label: "2"});
+	g.setEdge({v:'Tanh[19]', w:'Square[28]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Square[28]', w:'Neg[29]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Neg[29]', w:'Add[31]', name:'0'}, {label: "0"});
+	g.setEdge({v:'1[30]', w:'Add[31]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Mul[27]', w:'Mul[32]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Add[31]', w:'Mul[32]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Mul[32]', w:'Sum[33]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Tanh[15]', w:'Transpose[34]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Mul[32]', w:'MatrixMul[35]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Transpose[34]', w:'MatrixMul[35]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Wout[4]', w:'Transpose[36]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Transpose[36]', w:'MatrixMul[37]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Mul[32]', w:'MatrixMul[37]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Tanh[15]', w:'Square[38]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Square[38]', w:'Neg[39]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Neg[39]', w:'Add[41]', name:'0'}, {label: "0"});
+	g.setEdge({v:'1[40]', w:'Add[41]', name:'1'}, {label: "1"});
+	g.setEdge({v:'MatrixMul[37]', w:'Mul[42]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Add[41]', w:'Mul[42]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Mul[42]', w:'Sum[43]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Tanh[11]', w:'Transpose[44]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Mul[42]', w:'MatrixMul[45]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Transpose[44]', w:'MatrixMul[45]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Wh[3]', w:'Transpose[46]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Transpose[46]', w:'MatrixMul[47]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Mul[42]', w:'MatrixMul[47]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Tanh[11]', w:'Square[48]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Square[48]', w:'Neg[49]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Neg[49]', w:'Add[51]', name:'0'}, {label: "0"});
+	g.setEdge({v:'1[50]', w:'Add[51]', name:'1'}, {label: "1"});
+	g.setEdge({v:'MatrixMul[47]', w:'Mul[52]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Add[51]', w:'Mul[52]', name:'1'}, {label: "1"});
+	g.setEdge({v:'Mul[52]', w:'Sum[53]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Input[0]', w:'Transpose[54]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Mul[52]', w:'MatrixMul[55]', name:'0'}, {label: "0"});
+	g.setEdge({v:'Transpose[54]', w:'MatrixMul[55]', name:'1'}, {label: "1"});
 
-// Create the renderer
-var render = new dagreD3.render();
+	// Create the renderer
+	var render = new dagreD3.render();
 
-// Set up an SVG group so that we can translate the final graph.
-var svg = d3.select("svg"),
-    inner = svg.append("g");
+	// Set up an SVG group so that we can translate the final graph.
+	var svg = d3.select("svg"),
+			inner = svg.append("g");
 
-// Set up zoom support
-var zoom = d3.behavior.zoom().on("zoom", function() {
-    inner.attr("transform", "translate(" + d3.event.translate + ")" +
-                                "scale(" + d3.event.scale + ")");
-  });
-svg.call(zoom);
+	// Set up zoom support
+	var zoom = d3.behavior.zoom().on("zoom", function() {
+		inner.attr("transform", "translate(" + d3.event.translate + ")" +
+				"scale(" + d3.event.scale + ")");
+	});
+	svg.call(zoom);
 
-// Simple function to style the tooltip for the given node.
-var styleTooltip = function(name, description) {
-  return "<p class='name'>" + name + "</p><p class='description'  style=\"text-align:left\">" + description + "</p>";
-};
+	// Simple function to style the tooltip for the given node.
+	var styleTooltip = function(name, description) {
+		return "<p class='name'>" + name + "</p><p class='description'  style=\"text-align:left\">" + description + "</p>";
+	};
 
-// Run the renderer. This is what draws the final graph.
-render(inner, g);
+	// Run the renderer. This is what draws the final graph.
+	render(inner, g);
 
-inner.selectAll("g.node")
-  .attr("title", function(v) { return styleTooltip(v, g.node(v).description) })
-  .each(function(v) { $(this).tipsy({ gravity: "w", opacity: 1, html: true }); });
+	inner.selectAll("g.node")
+			.attr("title", function(v) { return styleTooltip(v, g.node(v).description) })
+			.each(function(v) { $(this).tipsy({ gravity: "w", opacity: 1, html: true }); });
 
-// Center the graph
-var initialScale = 0.75;
-zoom
-  .translate([(svg.attr("width") - g.graph().width * initialScale) / 2, 20])
-  .scale(initialScale)
-  .event(svg);
-svg.attr('height', g.graph().height * initialScale + 40);
+	// Center the graph
+	var initialScale = 0.75;
+	zoom
+			.translate([(svg.attr("width") - g.graph().width * initialScale) / 2, 20])
+			.scale(initialScale)
+			.event(svg);
+	svg.attr('height', g.graph().height * initialScale + 40);
 </script>
 </body></html>

@@ -148,11 +148,7 @@ namespace metadiff {
             this->op->generate_gradients(id, messages);
         }
 
-        bool is_constant() const{
-            return type == ad_node_type::CONSTANT
-                   or type == ad_node_type::SYMBOLIC_INTEGER
-                   or type == ad_node_type::CONSTANT_DERIVED;
-        }
+        bool is_constant() const;
 
         bool is_scalar() const{
             for(int i=0; i < 4; i++){
@@ -344,6 +340,7 @@ namespace metadiff {
         ad_integer_type i_type;
         ad_implicit_broadcast broadcast;
         size_t sym_integer_count;
+        std::vector<size_t> temporary_constants;
 
         GraphInternal() {
             // TODO Have a better preference of devices available in order
@@ -360,9 +357,8 @@ namespace metadiff {
             return SymInt::variable(this->sym_integer_count - 1);
         }
 
-        void get_flow_tree(size_t target, std::vector<size_t> params,
-                           std::vector<size_t>& flow_tree,
-                           std::unordered_map<size_t, ad_node_type>& other_types){
+        std::vector<size_t> get_flow_tree(size_t target, std::vector<size_t> params){
+            std::vector<size_t> flow_tree;
             // Assumes that computations are ordered
             auto n = this->nodes.size();
             bool target_tree[n], params_tree[n];
@@ -401,16 +397,16 @@ namespace metadiff {
 //                std::cout << target_tree[i] << ", ";
 //            }
 //            std::cout<< std::endl;
+            temporary_constants.clear();
             for(size_t i=0;i<nodes.size(); i++) {
                 if(target_tree[i] and params_tree[i]){
                     // Add to flow tree
                     flow_tree.push_back(i);
                 } else {
-                    // Make them temporary constant so that no gradient messages are passed
-                    other_types[i] = nodes[i]->type;
-                    nodes[i]->type = CONSTANT;
+                    temporary_constants.push_back(i);
                 }
             }
+            return flow_tree;
         }
 
         std::vector<Node> gradient(Node objective, std::vector<Node> params) {
@@ -426,9 +422,7 @@ namespace metadiff {
             }
 
             // Extract the flow tree between params and objective
-            std::vector<size_t> flow_tree;
-            std::unordered_map<size_t, ad_node_type> other_types;
-            get_flow_tree(objective.id, param_ids, flow_tree, other_types);
+            auto flow_tree = get_flow_tree(objective.id, param_ids);
             long n = flow_tree.size();
 
             // Send the first message as 1 to the objective
@@ -453,9 +447,7 @@ namespace metadiff {
             }
 
             // Restore types of other inputs
-            for(auto kv : other_types) {
-                nodes[kv.first]->type = kv.second;
-            }
+            temporary_constants.clear();
             return grads;
         }
 
@@ -806,6 +798,14 @@ namespace metadiff {
 
     void setDevice(GraphInPtr graph, size_t id, Device device){
         graph.lock()->nodes[id]->device = device;
+    }
+
+    bool NodeInternal::is_constant() const{
+        auto consts = graph.lock()->temporary_constants;
+        return type == ad_node_type::CONSTANT
+               or type == ad_node_type::SYMBOLIC_INTEGER
+               or type == ad_node_type::CONSTANT_DERIVED
+               or std::find(consts.begin(), consts.end(),  id) != consts.end();
     }
 
 // <broadcast 1, broadcast 2>
