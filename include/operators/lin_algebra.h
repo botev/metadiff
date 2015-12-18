@@ -14,7 +14,7 @@ namespace metadiff{
                 UnaryOperator("Transpose", graph, parent)
         {}
 
-        std::array<SymInt,4> get_shape(){
+        Shape get_shape(){
             auto parent_shape = parent.lock()->shape;
             Shape shape {1, 1, 1, 1};
             int last_non_zero = 0;
@@ -65,62 +65,6 @@ namespace metadiff{
     }
 
     Node transpose(Node node){
-        return node.transpose();
-    }
-
-    class Diagonal: public UnaryOperator{
-    public:
-        Shape shape;
-        Diagonal(GraphInPtr graph, NodeInPtr parent):
-                UnaryOperator("Diag", graph, parent){
-            auto parent_node = this->parent.lock();
-            if(not parent_node->is_matrix()){
-                throw InvalidArguments(name, {parent}, "Parent is not a vector or a sqyare matrix.");
-            }
-            if(parent_node->is_vector()){
-                shape = {parent_node->shape[0], parent_node->shape[0], 1, 1};
-            } else if(parent_node->shape[0] != parent_node->shape[1]){
-                throw InvalidArguments(name, {parent}, "Parent is not a vector or a sqyare matrix.");
-            } else {
-                shape = {parent_node->shape[0], 1, 1, 1};
-            }
-        };
-
-        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
-            auto graph = this->graph.lock();
-
-            // Check for any incoming messages
-            if (messages.find(current) == messages.end()) {
-                return;
-            }
-
-            // Get the gradient with respect to this node, alter the name
-            auto my_grad = graph->nodes[messages[current]];
-            update_grad_name(my_grad, current);
-
-            // Check for any surprises
-            auto parent = this->parent.lock();
-            if (parent->is_constant()) {
-                throw_grad_type_error();
-            }
-
-            // Node computes f = diag(p_1)
-            // => dE/dp_1 = diag(dE)
-            std::shared_ptr<Operator> op = std::make_shared<Diagonal>(graph, my_grad);
-            auto parent_grad = graph->derived_node(op).lock();
-            parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
-            send_grad_message(graph, parent->id, parent_grad->id, messages);
-        }
-    };
-
-    Node Node::diag() {
-        auto graph = this->graph.lock();
-        auto arg = graph->nodes[this->id];
-        auto op = std::make_shared<Diagonal>(graph, arg);
-        return Node(graph, graph->derived_node(op).lock()->id);
-    }
-
-    Node diag(Node node){
         return node.transpose();
     }
 
@@ -299,7 +243,7 @@ namespace metadiff{
             }
         }
 
-        std::array<SymInt,4> get_shape(){
+        Shape get_shape(){
             return {1, 1, 1, 1};
         }
 
@@ -360,7 +304,7 @@ namespace metadiff{
             }
         }
 
-        std::array<SymInt,4> get_shape(){
+        Shape get_shape(){
             return {1, 1, 1, 1};
         }
 
@@ -417,7 +361,7 @@ namespace metadiff{
             }
         }
 
-        std::array<SymInt,4> get_shape(){
+        Shape get_shape(){
             return {1, 1, 1, 1};
         }
 

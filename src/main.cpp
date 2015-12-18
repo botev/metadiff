@@ -42,11 +42,14 @@ int main(int argc, char *argv[])
     auto h1 = md::tanh(dot(Win, data_in) + bin);
     auto h2 = md::tanh(dot(Wh, h1) + bh);
     auto out = md::tanh(dot(Wout, h2) + bout);
-    auto square_error = md::square(out - data_t).sum();
+    auto error = md::square(out - data_t);
+    auto error2 = error.reorder(1, 0);
+    auto error3 = error2.flatten();
+    auto sum_error = error3.sum();
     auto params = {Win, bin, Wh, bh, Wout, bout};
-    auto grads = graph->gradient(square_error, params);
+    auto grads = graph->gradient(sum_error, params);
     auto targets = grads;
-    targets.push_back(square_error);
+    targets.push_back(sum_error);
     md::dagre::dagre_to_file("test_full.html", graph, targets);
     return 0;
 }

@@ -25,7 +25,7 @@ namespace metadiff{
             return CONSTANT_DERIVED;
         };
 
-        std::array<SymInt,4> get_shape(){
+        Shape get_shape(){
             return shape;
         }
 

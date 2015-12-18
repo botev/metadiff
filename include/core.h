@@ -292,6 +292,11 @@ namespace metadiff {
         Node det();
         Node logdet();
         Node trace();
+
+        Node reshape(Shape shape);
+        Node flatten(size_t ndim=1);
+        Node reorder(std::array<size_t, 4> order);
+        Node reorder(size_t dim1, size_t dim2, size_t dim3=2, size_t dim4=3);
     };
 
     class Input : public Operator {

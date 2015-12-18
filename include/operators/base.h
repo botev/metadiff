@@ -67,6 +67,11 @@ namespace metadiff {
         return max_shape;
     }
 
+    // Helper function to get all elements
+    SymInt number_of_elements(Shape shape){
+        return shape[0] * shape[1] * shape[2] * shape[3];
+    };
+
     class Broadcast : public Operator {
     public:
         NodeInPtr parent;
@@ -422,7 +427,7 @@ namespace metadiff {
             }
         };
 
-        std::array<SymInt,4> get_shape(){
+        Shape get_shape(){
             return parent.lock()->shape;
         }
 
