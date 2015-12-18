@@ -40,11 +40,7 @@ namespace metadiff{
 
             // Get the gradient with respect to this node, alter the name
             auto my_grad = graph->nodes[messages[current]];
-            if (my_grad->name == "Derived Node" or my_grad->name == "") {
-                my_grad->name = "Grad of " + std::to_string(current);
-            } else {
-                my_grad->name += "|Grad of " + std::to_string(current);
-            }
+            update_grad_name(my_grad, current);
 
             // Check for any surprises
             auto parent = this->parent.lock();
@@ -188,19 +184,19 @@ namespace metadiff{
                     NodeInPtr right_tr;
                     if (left_nodes.size() == 1) {
                         auto op = std::make_shared<Transpose>(graph, left_nodes[0]);
-                        left_tr = graph->derived_node(op);
+                        left_tr = graph->derived_node(op, my_grad->grad_level);
                     } else if (left_nodes.size() > 1) {
                         std::shared_ptr<Operator> op = std::make_shared<MatrixMultiplication>(graph, left_nodes);
-                        auto left_mul = graph->derived_node(op);
+                        auto left_mul = graph->derived_node(op, my_grad->grad_level);
                         op = std::make_shared<Transpose>(graph, left_mul);
                         left_tr = graph->derived_node(op, my_grad->grad_level);
                     }
                     if (right_nodes.size() == 1) {
                         auto op = std::make_shared<Transpose>(graph, right_nodes[0]);
-                        right_tr = graph->derived_node(op);
+                        right_tr = graph->derived_node(op, my_grad->grad_level);
                     } else if (right_nodes.size() > 1) {
                         std::shared_ptr<Operator> op = std::make_shared<MatrixMultiplication>(graph, right_nodes);
-                        auto right_mul = graph->derived_node(op);
+                        auto right_mul = graph->derived_node(op, my_grad->grad_level);
                         op = std::make_shared<Transpose>(graph, right_mul);
                         right_tr = graph->derived_node(op, my_grad->grad_level);
                     }
