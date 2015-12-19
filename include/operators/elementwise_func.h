@@ -164,7 +164,8 @@ namespace metadiff {
         return Node(graph, graph->derived_node(op).lock()->id);
     }
 
-    Node pow(Node node1, double node2){
+    Node pow(Node node1, double value){
+        auto node2 = af::constant(value, 1);
         auto graph = node1.graph.lock();
         auto arg1 = graph->nodes[node1.id];
         auto arg2 = graph->nodes[graph->constant_node(node2).id];
@@ -172,7 +173,8 @@ namespace metadiff {
         return Node(graph, graph->derived_node(op).lock()->id);
     }
 
-    Node pow(double node1, Node node2){
+    Node pow(double value, Node node2){
+        auto node1 = af::constant(value, 1);
         auto graph = node2.graph.lock();
         auto arg1 = graph->nodes[graph->constant_node(node1).id];
         auto arg2 = graph->nodes[node2.id];
@@ -206,7 +208,7 @@ namespace metadiff {
 
             // Node computes f = abs(p)
             // => dE/dp = dE * (p>=0)
-            auto zero = graph->nodes[graph->constant_node(0).id];
+            auto zero = graph->nodes[graph->constant_node(af::constant(0.0, 1)).id];
             zero->grad_level = my_grad->grad_level;
             std::shared_ptr<Operator> op = std::make_shared<GreaterThanOrEqual>(graph, parent, zero);
             auto check = graph->derived_node(op).lock();
@@ -557,7 +559,7 @@ namespace metadiff {
             auto this_node_sqr = graph->derived_node(op, my_grad->grad_level).lock();
             op = std::make_shared<Neg>(graph, this_node_sqr);
             auto minus_this_node_sqr = graph->derived_node(op).lock();
-            auto one = graph->nodes[graph->constant_node(1).id];
+            auto one = graph->nodes[graph->constant_node(af::constant(1.0, 1)).id];
             one->grad_level = my_grad->grad_level;
             op = std::make_shared<Add>(graph, minus_this_node_sqr, one);
             auto one_minus_this_node_sqr = graph->derived_node(op).lock();
@@ -610,7 +612,7 @@ namespace metadiff {
             auto this_node_sqr = graph->derived_node(op, my_grad->grad_level).lock();
             op = std::make_shared<Neg>(graph, this_node_sqr);
             auto minus_this_node_sqr = graph->derived_node(op).lock();
-            auto one = graph->nodes[graph->constant_node(1).id];
+            auto one = graph->nodes[graph->constant_node(af::constant(1.0, 1)).id];
             one->grad_level = my_grad->grad_level;
             op = std::make_shared<Add>(graph, minus_this_node_sqr, one);
             auto one_minus_this_node_sqr = graph->derived_node(op).lock();
@@ -630,6 +632,56 @@ namespace metadiff {
 
     Node coth(Node node){
         return node.coth();
+    }
+
+    class Sigmoid: public UnaryOperator {
+    public:
+        Sigmoid(GraphInPtr graph, NodeInPtr parent) :
+                UnaryOperator("Sigmoid", graph, parent)
+        {};
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+            auto graph = this->graph.lock();
+
+            // Check for any incoming messages
+            if(messages.find(current) == messages.end()){
+                return;
+            }
+
+            // Get the gradient with respect to this node
+            auto my_grad = graph->nodes[messages[current]];
+            update_grad_name(my_grad, current);
+
+            // Check for any surprises
+            auto parent = this->parent.lock();
+            if(parent->is_constant()) {
+                throw_grad_type_error();
+            }
+
+            // Node computes f = sigm(p)
+            // => dE/dp = dE * f * (1 - f)
+            auto this_node = graph->nodes[current];
+            auto one = graph->nodes[graph->constant_node(af::constant(1.0, 1)).id];
+            std::shared_ptr<Operator> op = std::make_shared<Neg>(graph, this_node);
+            auto this_node_neg = graph->derived_node(op, my_grad->grad_level).lock();
+            op = std::make_shared<Add>(graph, one, this_node_neg);
+            auto one_minus_this_node = graph->derived_node(op, my_grad->grad_level).lock();
+            op = std::make_shared<Mul>(graph, NodeInVec {my_grad, this_node, one_minus_this_node});
+            auto parent_grad = graph->derived_node(op).lock();
+            parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
+            send_grad_message(graph, parent->id, parent_grad->id, messages);
+        };
+    };
+
+    Node Node::sigmoid() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<Sigmoid>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node sigmoid(Node node){
+        return node.sigmoid();
     }
 }
 

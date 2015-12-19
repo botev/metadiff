@@ -26,6 +26,8 @@ namespace metadiff{
             f << "using namespace af;\n\n";
             f << "extern \"C\" std::vector<af::array> eval_func(std::vector<af::array> inputs){\n";
             f << "\tstd::vector<af::array> outputs;\n";
+            f << "\t// Set up automatic broadcasting\n";
+            f << "\taf::gforSet(true);\n";
             // Get ancestors mask
             auto ancestor_mask = graph->get_ancestors_mask(targets);
             // Check that all inputs required are given
@@ -59,6 +61,19 @@ namespace metadiff{
             }
 
 //            f << "std::cout << \"End\" << std::endl;\n";
+
+            // Disable the automatic broadcasting
+            f << "\taf::gforSet(false);";
+
+//            //   Debugging
+//            f << "\taf_print(node_18);\n";
+//            f << "\taf_print(node_19_cond);\n";
+//            f << "\taf_print(node_19);\n";
+//            f << "\taf_print(node_21);\n";
+//            f << "\taf_print(node_22);\n";
+//            f << "\taf_print(node_23);\n";
+//            f << "\taf_print(node_24);\n";
+//            f << "\taf_print(node_25);\n";
 
             // Write all of the output nodes as the result
             f << "\n\t// Write all of the output nodes in correct order\n";
@@ -112,6 +127,7 @@ namespace metadiff{
         auto op_name = node->op->name;
         auto parents = node->op->get_parents();
         auto args = node->op->get_arguments();
+        auto children = node->children;
 //        f << "\tstd::cout << \"Parents dims: \" << ";
 //        for(int i=0;i<parents.size();i++){
 //            if(not parents[i].lock()->is_constant()) {
@@ -122,15 +138,30 @@ namespace metadiff{
 
         if(node->type == CONSTANT and node->op->name == "Input"){
             if(node->v_type == FLOAT) {
-                f << "\tfloat node_" << id << " = " << node->value.num_value << ";\n";
+                float host[1];
+                node->value.host(host);
+                f << "\tfloat node_" << id << " = " << host[0];
             } else if(node->v_type == INTEGER){
-                f << "\tfloat node_" << id << " = " << ((int)node->value.num_value) << ";\n";
+                int host[1];
+                node->value.host(host);
+                f << "\tfloat node_" << id << " = " << host[0];
             } else {
-                f << "\tfloat node_" << id << " = " << ((bool)node->value.num_value) << ";\n";
+                bool host[1];
+                node->value.host(host);
+                f << "\tfloat node_" << id << " = " << host[0];
             }
-        } else {
+        } else if (op_name == "Broadcast") {
             f << "\taf::array node_" << id << " = ";
-            if (op_name == "Broadcast") {
+            bool not_supproted = false;
+            for(int i=0;i<children.size();i++){
+                auto name = children[i].lock()->op->name;
+                if(name != "Add" and name != "Mul"
+                   and name != "Neg" and name != "Div"){
+                    not_supproted = true;
+                    break;
+                }
+            }
+            if(not_supproted){
                 auto parent = parents[0].lock();
                 f << "af::tile(node_" << parent->id << ", ";
                 for (int i = 0; i < 4; i++) {
@@ -144,141 +175,188 @@ namespace metadiff{
                     }
                 }
                 f << ")";
-            } else if (op_name == "Sum") {
-                auto parent = parents[0].lock();
-                auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
-                std::string code = "node_" + std::to_string(parent->id);
-                for (int i = 0; i < axes.size(); i++) {
-                    if (parent->shape[axes[i]] != 1) {
-                        code = "af::sum(" + code + ", " + std::to_string(axes[i]) + ")";
-                    }
-                }
-                f << code;
-            } else if (op_name == "Add") {
-                for (int i = 0; i < parents.size(); i++) {
-                    f << "node_" << parents[i].lock()->id;
-                    if (i < parents.size() - 1) {
-                        f << " + ";
-                    }
-                }
-            } else if (op_name == "Neg") {
-                f << "- node_" << parents[0].lock()->id << "";
-            } else if (op_name == "Mul") {
-                for (int i = 0; i < parents.size(); i++) {
-                    f << "node_" << parents[i].lock()->id;
-                    if (i < parents.size() - 1) {
-                        f << " * ";
-                    }
-                }
-            } else if (op_name == "Div") {
-                f << "1 / node_" << parents[0].lock()->id << "";
-            } else if (op_name == "Square") {
-                f << "node_" << parents[0].lock()->id << " * "
-                << parents[0].lock()->id << "";
-            } else if (op_name == "Transpose") {
-                f << "af::transpose(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "MatrixMul") {
-                f << "af::matmul(";
-                for (int i = 0; i < parents.size(); i++) {
-                    f << "node_" << parents[i].lock()->id;
-                    if (i < parents.size() - 1) {
-                        f << ", ";
-                    }
-                }
-                f << ")";
-            } else if (op_name == "MatrixInv") {
-                f << "af::inverse(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Det") {
-                f << "af::det(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "LogDet") {
-                f << "af::log(af::det(node_" << parents[0].lock()->id << "))";
-            } else if (op_name == "Trace") {
-
-            } else if (op_name == "Exp") {
-                f << "af::exp(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Log") {
-                f << "af::log(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Pow") {
-
-            } else if (op_name == "Abs") {
-                f << "af::abs(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Sin") {
-                f << "af::sin(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Cos") {
-                f << "af::cos(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Tan") {
-                f << "af::tan(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Cot") {
-                f << "af::cot(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Sinh") {
-                f << "af::sinh(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Cosh") {
-                f << "af::cosh(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Tanh") {
-                f << "af::tanh(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Coth") {
-                f << "af::coth(node_" << parents[0].lock()->id << ")";
-            } else if (op_name == "Diag") {
-                if (node->shape[1] == 1) {
-                    f << "af::diag(node_" << parents[0].lock()->id << ", 0, true)";
-                } else {
-                    f << "af::diag(node_" << parents[0].lock()->id << ", 0, false)";
-                }
-            } else if (op_name == "Reshape") {
-                f << "af::moddims(node_" << parents[0].lock()->id << ", ";
-                for (int i = 0; i < 4; i++) {
-                    f << node->shape[i].to_string_with_star();
-                    if (i < 3) {
-                        f << ", ";
-                    }
-                }
-                f << ")";
-            } else if (op_name == "Reorder") {
-                f << "af::reorder(node_" << parents[0].lock()->id << ", ";
-                auto op_1 = dynamic_cast<Reorder *>(node->op.get());
-                auto order = op_1->order;
-                for (int i = 0; i < 4; i++) {
-                    f << order[i];
-                    if (i < 3) {
-                        f << ", ";
-                    }
-                }
-                f << ")";
-            } else if (op_name == "MaxAndArgMax") {
-
-            } else if (op_name == "SortAndArgSort") {
-
-            } else if (op_name == "Eye") {
-
-            } else if (op_name == "Gt") {
-
-            } else if (op_name == "Ge") {
-
-            } else if (op_name == "Lt") {
-
-            } else if (op_name == "Le") {
-
-            } else if (op_name == "Eq") {
-
-            } else if (op_name == "Ne") {
-
-            } else if (op_name == "ApproxEq") {
-
-            } else if (op_name == "ApproxNe") {
-
-            } else if (op_name == "ZeroElem") {
-
-            } else if (op_name == "NonZeroElem") {
-
-            } else if (op_name == "IsNaN") {
-
-            } else if (op_name == "IsInf") {
-
             } else {
-                f << "WTF";
+                auto parent = parents[0].lock();
+                f << "node_" << parent->id;
             }
-            f << ";\n";
+        } else if (op_name == "Sum") {
+            f << "\taf::array node_" << id << " = ";
+            auto parent = parents[0].lock();
+            auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
+            std::string code = "node_" + std::to_string(parent->id);
+            for (int i = 0; i < axes.size(); i++) {
+                if (parent->shape[axes[i]] != 1) {
+                    code = "af::sum(" + code + ", " + std::to_string(axes[i]) + ")";
+                }
+            }
+            f << code;
+        } else if (op_name == "Add") {
+            f << "\taf::array node_" << id << " = ";
+            for (int i = 0; i < parents.size(); i++) {
+                f << "node_" << parents[i].lock()->id;
+                if (i < parents.size() - 1) {
+                    f << " + ";
+                }
+            }
+        } else if (op_name == "Neg") {
+            f << "\taf::array node_" << id << " = ";
+            f << "- node_" << parents[0].lock()->id << "";
+        } else if (op_name == "Mul") {
+            f << "\taf::array node_" << id << " = ";
+            for (int i = 0; i < parents.size(); i++) {
+                f << "node_" << parents[i].lock()->id;
+                if (i < parents.size() - 1) {
+                    f << " * ";
+                }
+            }
+        } else if (op_name == "Div") {
+            f << "\taf::array node_" << id << " = ";
+            f << "1 / node_" << parents[0].lock()->id << "";
+        } else if (op_name == "Square") {
+            f << "\taf::array node_" << id << " = ";
+            f << "node_" << parents[0].lock()->id << " * "
+            << parents[0].lock()->id << "";
+        } else if (op_name == "Transpose") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::transpose(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "MatrixMul") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::matmul(";
+            for (int i = 0; i < parents.size(); i++) {
+                f << "node_" << parents[i].lock()->id;
+                if (i < parents.size() - 1) {
+                    f << ", ";
+                }
+            }
+            f << ")";
+        } else if (op_name == "MatrixInv") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::inverse(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Det") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::det(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "LogDet") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::log(af::det(node_" << parents[0].lock()->id << "))";
+        } else if (op_name == "Trace") {
+            f << "\taf::array node_" << id << " = ";
+
+        } else if (op_name == "Exp") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::exp(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Log") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::log(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Pow") {
+            f << "\taf::array node_" << id << " = ";
+
+        } else if (op_name == "Abs") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::abs(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Sin") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::sin(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Cos") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::cos(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Tan") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::tan(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Cot") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::cot(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Sinh") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::sinh(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Cosh") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::cosh(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Tanh") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::tanh(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Coth") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::coth(node_" << parents[0].lock()->id << ")";
+        } else if (op_name == "Sigmoid") {
+            f << "\taf::array node_" << id << " =  1 / (1 + af::exp(-node_" << parents[0].lock()->id << "))";
+        } else if (op_name == "Diag") {
+            f << "\taf::array node_" << id << " = ";
+            if (node->shape[1] == 1) {
+                f << "af::diag(node_" << parents[0].lock()->id << ", 0, true)";
+            } else {
+                f << "af::diag(node_" << parents[0].lock()->id << ", 0, false)";
+            }
+        } else if (op_name == "Reshape") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::moddims(node_" << parents[0].lock()->id << ", ";
+            for (int i = 0; i < 4; i++) {
+                f << node->shape[i].to_string_with_star();
+                if (i < 3) {
+                    f << ", ";
+                }
+            }
+            f << ")";
+        } else if (op_name == "Reorder") {
+            f << "\taf::array node_" << id << " = ";
+            f << "af::reorder(node_" << parents[0].lock()->id << ", ";
+            auto op_1 = dynamic_cast<Reorder *>(node->op.get());
+            auto order = op_1->order;
+            for (int i = 0; i < 4; i++) {
+                f << order[i];
+                if (i < 3) {
+                    f << ", ";
+                }
+            }
+            f << ")";
+        } else if(op_name == "Softplus"){
+            auto parent = parents[0].lock();
+            double th = dynamic_cast<Softplus*>(node->op.get())->threshold;
+            f << "\taf::array node_" << id << "_cond = node_" << parent->id << " < " << th <<";\n";
+            f << "\taf::array node_" << id << "_exp = af::exp(node_" << parent->id << ");\n";
+            f << "\taf::array node_" << id << " = af::log1p(node_" << id << "_exp);\n";
+            f << "\taf::replace(node_" << id << ", node_" << id << "_cond, node_" << parent->id << ")";
+        } else if (op_name == "BinCrossEntropyLogit"){
+            auto p = parents[0].lock();
+            auto sf = parents[1].lock();
+            auto sfm = parents[2].lock();
+            // Calculate p*(sf(-x)-sf(x)) + sf(x)
+            f << "\taf::array node_" << id << " = " << "node_" << p->id << " * (node_" << sfm->id
+                    << " - node_" << sf->id << ") + node_" << sf->id;
+        } else if (op_name == "MaxAndArgMax") {
+
+        } else if (op_name == "SortAndArgSort") {
+
+        } else if (op_name == "Eye") {
+
+        } else if (op_name == "Gt") {
+
+        } else if (op_name == "Ge") {
+
+        } else if (op_name == "Lt") {
+
+        } else if (op_name == "Le") {
+
+        } else if (op_name == "Eq") {
+
+        } else if (op_name == "Ne") {
+
+        } else if (op_name == "ApproxEq") {
+
+        } else if (op_name == "ApproxNe") {
+
+        } else if (op_name == "ZeroElem") {
+
+        } else if (op_name == "NonZeroElem") {
+
+        } else if (op_name == "IsNaN") {
+
+        } else if (op_name == "IsInf") {
+
+        } else {
+            f << "WTF";
         }
+        f << ";\n";
+//        f << "\taf_print(af::anyTrue(af::anyTrue(af::isNaN(node_" << id <<"))));\n";
     }
 
 }

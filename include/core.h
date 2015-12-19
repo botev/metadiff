@@ -33,25 +33,21 @@ namespace metadiff {
         {};
     };
 
-    class ConstValue{
-        // TODO properly
-    public:
-        // For different type of values
-        void* pointer;
-        double num_value;
-        // Symbolic value
-        SymInt value;
-        ConstValue(){};
-        ConstValue(void * pointer):
-                pointer(pointer)
-        {};
-        ConstValue(double num_value):
-                num_value(num_value)
-        {};
-        ConstValue(SymInt value):
-                value(value)
-        {};
-    };
+
+//    class ConstValue{
+//    public:
+//        af::array value;
+//        ConstValue(){};
+//
+//        ConstValue(void * pointer):
+//                pointer(pointer),
+//                array(true)
+//        {};
+//        ConstValue(double num_value):
+//                num_value(num_value),
+//                array(false)
+//        {};
+//    };
 
     class SharedVariable{
         // TODO properly
@@ -111,7 +107,7 @@ namespace metadiff {
         std::shared_ptr<Operator> op;
         NodeInVec children;
         unsigned short grad_level;
-        ConstValue value;
+        af::array value;
 
         NodeInternal(GraphInPtr graph, Device device):
                 graph(graph),
@@ -279,6 +275,8 @@ namespace metadiff {
         Node cosh();
         Node tanh();
         Node coth();
+        Node sigmoid();
+        Node constant();
 
         Node transpose();
         Node diag();
@@ -291,6 +289,8 @@ namespace metadiff {
         Node flatten(size_t ndim=1);
         Node reorder(std::array<size_t, 4> order);
         Node reorder(size_t dim1, size_t dim2, size_t dim3=2, size_t dim4=3);
+
+        Node softplus(double threshold = 50);
     };
 
     class Input : public Operator {
@@ -422,7 +422,7 @@ namespace metadiff {
 
             // Send the first message as 1 to the objective
             auto target = this->nodes[objective.id];
-            auto unity_grad = this->constant_node(1).id;
+            auto unity_grad = this->constant_node(af::constant(1.0, 1)).id;
             this->nodes[unity_grad]->grad_level = target->grad_level + ((unsigned short) 1);
             this->nodes[unity_grad]->name = "";
             grad_messages[target->id] = unity_grad;
@@ -478,104 +478,130 @@ namespace metadiff {
             }
         }
 
-        Node constant_node(double *value, std::array<size_t, 4> dims) {
+//        Node constant_node(double *value, std::array<size_t, 4> dims) {
+//            auto result = std::make_shared<NodeInternal>(
+//                    shared_from_this(),
+//                    default_device,
+//                    nodes.size(),
+//                    "Constant Node",
+//                    ad_node_type::CONSTANT,
+//                    ad_value_type::FLOAT,
+//                    Shape {dims[0], dims[1], dims[2], dims[3]},
+//                    std::make_shared<Input>(shared_from_this()),
+//                    0
+//            );
+//            result->value.pointer = value;
+//            this->nodes.push_back(result);
+//            return Node(shared_from_this(), result->id);
+//        }
+//
+//        Node constant_node(double value) {
+//            auto result = std::make_shared<NodeInternal>(
+//                    shared_from_this(),
+//                    default_device,
+//                    nodes.size(),
+//                    "Constant Node",
+//                    ad_node_type::CONSTANT,
+//                    ad_value_type::FLOAT,
+//                    Shape {1, 1, 1, 1},
+//                    std::make_shared<Input>(shared_from_this()),
+//                    0
+//            );
+//            result->value.num_value = value;
+//            this->nodes.push_back(result);
+//            return Node(shared_from_this(), result->id);
+//        }
+//
+//        Node constant_node(int *value, std::array<size_t, 4> dims) {
+//            auto result = std::make_shared<NodeInternal>(
+//                    shared_from_this(),
+//                    default_device,
+//                    nodes.size(),
+//                    "Constant Node",
+//                    ad_node_type::CONSTANT,
+//                    ad_value_type::INTEGER,
+//                    Shape {dims[0], dims[1], dims[2], dims[3]},
+//                    std::make_shared<Input>(shared_from_this()),
+//                    0
+//            );
+//            result->value.pointer = value;
+//            this->nodes.push_back(result);
+//            return Node(shared_from_this(), result->id);
+//        }
+//
+//        Node constant_node(int value) {
+//            auto result = std::make_shared<NodeInternal>(
+//                    shared_from_this(),
+//                    default_device,
+//                    nodes.size(),
+//                    "Constant Node",
+//                    ad_node_type::CONSTANT,
+//                    ad_value_type::INTEGER,
+//                    Shape {1, 1, 1, 1},
+//                    std::make_shared<Input>(shared_from_this()),
+//                    0
+//            );
+//            result->value.num_value = value;
+//            this->nodes.push_back(result);
+//            return Node(shared_from_this(), result->id);
+//        }
+//
+//        Node constant_node(bool *value, std::array<size_t, 4> dims) {
+//            auto result = std::make_shared<NodeInternal>(
+//                    shared_from_this(),
+//                    default_device,
+//                    nodes.size(),
+//                    "Constant Node",
+//                    ad_node_type::CONSTANT,
+//                    ad_value_type::INTEGER,
+//                    Shape {dims[0], dims[1], dims[2], dims[3]},
+//                    std::make_shared<Input>(shared_from_this()),
+//                    0
+//            );
+//            result->value.pointer = value;
+//            this->nodes.push_back(result);
+//            return Node(shared_from_this(), result->id);
+//        }
+//
+//        Node constant_node(bool value) {
+//            auto result = std::make_shared<NodeInternal>(
+//                    shared_from_this(),
+//                    default_device,
+//                    nodes.size(),
+//                    "Constant Node",
+//                    ad_node_type::CONSTANT,
+//                    ad_value_type::INTEGER,
+//                    Shape {1, 1, 1, 1},
+//                    std::make_shared<Input>(shared_from_this()),
+//                    0
+//            );
+//            result->value.num_value = value;
+//            this->nodes.push_back(result);
+//            return Node(shared_from_this(), result->id);
+//        }
+        Node constant_node(af::array value){
+            ad_value_type dtype;
+            if(value.type() == af::dtype::b8){
+                dtype = BOOLEAN;
+            }
+            if(value.type() == af::dtype::f32
+                    or value.type() == af::dtype::f64){
+                dtype = FLOAT;
+            } else {
+                dtype = INTEGER;
+            }
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
                     nodes.size(),
                     "Constant Node",
                     ad_node_type::CONSTANT,
-                    ad_value_type::FLOAT,
-                    Shape {dims[0], dims[1], dims[2], dims[3]},
-                    std::make_shared<Input>(shared_from_this()),
-                    0
-            );
-            result->value.pointer = value;
-            this->nodes.push_back(result);
-            return Node(shared_from_this(), result->id);
-        }
-
-        Node constant_node(double value) {
-            auto result = std::make_shared<NodeInternal>(
-                    shared_from_this(),
-                    default_device,
-                    nodes.size(),
-                    "Constant Node",
-                    ad_node_type::CONSTANT,
-                    ad_value_type::FLOAT,
+                    dtype,
                     Shape {1, 1, 1, 1},
                     std::make_shared<Input>(shared_from_this()),
                     0
             );
-            result->value.num_value = value;
-            this->nodes.push_back(result);
-            return Node(shared_from_this(), result->id);
-        }
-
-        Node constant_node(int *value, std::array<size_t, 4> dims) {
-            auto result = std::make_shared<NodeInternal>(
-                    shared_from_this(),
-                    default_device,
-                    nodes.size(),
-                    "Constant Node",
-                    ad_node_type::CONSTANT,
-                    ad_value_type::INTEGER,
-                    Shape {dims[0], dims[1], dims[2], dims[3]},
-                    std::make_shared<Input>(shared_from_this()),
-                    0
-            );
-            result->value.pointer = value;
-            this->nodes.push_back(result);
-            return Node(shared_from_this(), result->id);
-        }
-
-        Node constant_node(int value) {
-            auto result = std::make_shared<NodeInternal>(
-                    shared_from_this(),
-                    default_device,
-                    nodes.size(),
-                    "Constant Node",
-                    ad_node_type::CONSTANT,
-                    ad_value_type::INTEGER,
-                    Shape {1, 1, 1, 1},
-                    std::make_shared<Input>(shared_from_this()),
-                    0
-            );
-            result->value.num_value = value;
-            this->nodes.push_back(result);
-            return Node(shared_from_this(), result->id);
-        }
-
-        Node constant_node(bool *value, std::array<size_t, 4> dims) {
-            auto result = std::make_shared<NodeInternal>(
-                    shared_from_this(),
-                    default_device,
-                    nodes.size(),
-                    "Constant Node",
-                    ad_node_type::CONSTANT,
-                    ad_value_type::INTEGER,
-                    Shape {dims[0], dims[1], dims[2], dims[3]},
-                    std::make_shared<Input>(shared_from_this()),
-                    0
-            );
-            result->value.pointer = value;
-            this->nodes.push_back(result);
-            return Node(shared_from_this(), result->id);
-        }
-
-        Node constant_node(bool value) {
-            auto result = std::make_shared<NodeInternal>(
-                    shared_from_this(),
-                    default_device,
-                    nodes.size(),
-                    "Constant Node",
-                    ad_node_type::CONSTANT,
-                    ad_value_type::INTEGER,
-                    Shape {1, 1, 1, 1},
-                    std::make_shared<Input>(shared_from_this()),
-                    0
-            );
-            result->value.num_value = value;
+            result->value = value;
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }

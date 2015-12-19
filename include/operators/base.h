@@ -828,7 +828,7 @@ namespace metadiff {
         // Node computes f = p^2
         // => dE/dp = 2 * dE * p
         auto parent_node = graph->nodes[parent->id];
-        auto two = graph->nodes[graph->constant_node(2).id];
+        auto two = graph->nodes[graph->constant_node(af::constant(2.0, 1)).id];
         two->grad_level = my_grad->grad_level;
         auto op = std::make_shared<Mul>(graph, NodeInVec {my_grad, two, parent});
         auto parent_grad = graph->derived_node(op).lock();

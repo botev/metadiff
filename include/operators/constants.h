@@ -6,6 +6,42 @@
 #define METADIFF_OPERATORS_CONSTANTS_H
 
 namespace metadiff{
+    class MakeConstant: public UnaryOperator{
+    public:
+        MakeConstant(GraphInPtr graph,
+                     NodeInPtr parent):
+                UnaryOperator("Const", graph, parent)
+        {};
+
+        ad_node_type get_node_type(){
+            auto parent_type = parent.lock()->type;
+            if(parent_type == CONSTANT){
+                return CONSTANT;
+            } else {
+                return CONSTANT_DERIVED;
+            }
+        };
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
+            auto graph = this->graph.lock();
+            if (messages.find(current) != messages.end()) {
+                this->throw_grad_type_error();
+            }
+            return;
+        };
+    };
+
+    Node Node::constant() {
+        auto graph = this->graph.lock();
+        auto arg = graph->nodes[this->id];
+        auto op = std::make_shared<MakeConstant>(graph, arg);
+        return Node(graph, graph->derived_node(op).lock()->id);
+    }
+
+    Node to_constant(Node node){
+        return node.constant();
+    }
+
     class ConstantOperator: public Operator{
     public:
         Shape shape;
