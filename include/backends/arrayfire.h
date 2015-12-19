@@ -58,7 +58,8 @@ namespace metadiff{
                 }
             }
 
-            f << "std::cout << \"End\" << std::endl;\n";
+//            f << "std::cout << \"End\" << std::endl;\n";
+
             // Write all of the output nodes as the result
             f << "\n\t// Write all of the output nodes in correct order\n";
             f << "\treturn {";

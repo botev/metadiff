@@ -410,8 +410,15 @@ namespace metadiff {
             for(size_t i=0;i<nodes.size(); i++) {
                 if(ancestors_mask[i] and descendence_mask[i]){
                     flow_tree.push_back(i);
+                } else {
+                    temporary_constants.push_back(i);
                 }
             }
+//            std::cout << "Temp consts: ";
+//            for(int i=0;i<temporary_constants.size();i++){
+//                std::cout << temporary_constants[i] << ", ";
+//            }
+//            std::cout << std::endl;
 
             // Send the first message as 1 to the objective
             auto target = this->nodes[objective.id];
