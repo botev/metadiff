@@ -5,8 +5,6 @@
 #ifndef AUTODIFF_DAGRE_H
 #define AUTODIFF_DAGRE_H
 
-#include "stdio.h"
-
 namespace metadiff {
     namespace dagre {
         std::string node_name_html(std::weak_ptr<const NodeInternal> node_ptr) {
@@ -76,7 +74,8 @@ namespace metadiff {
             }
             child_id_str += "]";
             names.push_back("'" + state_name + "': {\n"
-                    "\t\tdescription: \"Type: " + to_string(node->type) + " <br> "
+                    "\t\tdescription: \"Name: " + node->name + " <br> "
+                                    "Type: " + to_string(node->type) + " <br> "
                                     "Device: " + to_string(node->device) + " <br> "
                                     "Value type: " + to_string(node->v_type) + " <br> "
                                     "Shape: [" + node->shape[0].to_string() + ", " +

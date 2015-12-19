@@ -5,8 +5,6 @@
 #ifndef AUTODIFF_BASE_H
 #define AUTODIFF_BASE_H
 
-#include "autodiff.h"
-
 namespace metadiff {
 
     // Helper function for boilerplate code

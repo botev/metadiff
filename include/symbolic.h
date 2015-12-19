@@ -163,6 +163,41 @@ namespace metadiff {
                     return result;
                 }
             }
+
+            std::string to_string_with_star() const {
+                if (this->coefficient == 0) {
+                    return "0";
+                }
+                std::string result;
+                if (this->coefficient != 1) {
+                    if (this->coefficient == -1) {
+                        result += "-";
+                    } else {
+                        result += std::to_string(this->coefficient);
+                    }
+                }
+                bool first = true;
+                for (int i = 0; i < N; i++) {
+                    if (powers[i] > 0) {
+                        char variable = ('a' + i);
+                        if(not first){
+                            result += "*";
+                        }
+                        for(int j=0;j<powers[i];j++){
+                            result += variable;
+                            if(j < powers[i]-1){
+                                result += "*";
+                            }
+                        }
+                        first = false;
+                    }
+                }
+                if (result == "") {
+                    return "1";
+                } else {
+                    return result;
+                }
+            }
         };
 
         template<const size_t N, typename T>
@@ -392,6 +427,21 @@ namespace metadiff {
                         result += "+" + this->monomials[i].to_string();
                     } else {
                         result += this->monomials[i].to_string();
+                    }
+                }
+                return result;
+            }
+
+            std::string to_string_with_star() const {
+                if (this->monomials.size() == 0) {
+                    return "0";
+                }
+                auto result = this->monomials[0].to_string_with_star();
+                for (int i = 1; i < this->monomials.size(); i++) {
+                    if (this->monomials[i].coefficient > 0) {
+                        result += "+" + this->monomials[i].to_string_with_star();
+                    } else {
+                        result += this->monomials[i].to_string_with_star();
                     }
                 }
                 return result;

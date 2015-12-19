@@ -5,12 +5,6 @@
 #ifndef AUTODIFF_CORE_H
 #define AUTODIFF_CORE_H
 
-#include "vector"
-#include "iostream"
-#include <fstream>
-#include "memory"
-#include <unordered_map>
-
 namespace metadiff {
     const size_t N = 100;
 
@@ -362,56 +356,44 @@ namespace metadiff {
             return SymInt::variable(this->sym_integer_count - 1);
         }
 
-        std::vector<size_t> get_flow_tree(size_t target, std::vector<size_t> params){
-            std::vector<size_t> flow_tree;
-            // Assumes that computations are ordered
+        std::vector<bool> get_descendands_mask(std::vector<Node> marked){
             auto n = this->nodes.size();
-            bool target_tree[n], params_tree[n];
-            for(int i=0;i<nodes.size();i++){
-                target_tree[i] = false;
-                params_tree[i] = false;
+            std::vector<bool> descendands_mask(n, false);
+            for(int i=0;i<marked.size();i++){
+                descendands_mask[marked[i].id] = true;
             }
-            for(int i=0;i<params.size();i++){
-                params_tree[params[i]] = true;
-            }
-            target_tree[target] = true;
+
+            // Mark all direct children
             for(int i=0;i<n; i++){
-                if(params_tree[i]){
+                if(descendands_mask[i]){
                     auto children = nodes[i]->children;
                     for(int j=0;j<children.size();j++){
-                        params_tree[children[j].lock()->id] = true;
+                        descendands_mask[children[j].lock()->id] = true;
                     }
                 }
             }
-//            std::cout << "Flow tree1: ";
-//            for(int i=0;i<n ;i++){
-//                std::cout << params_tree[i] << ", ";
-//            }
-//            std::cout<< std::endl;
+            return descendands_mask;
+        }
 
-            for(int i=nodes.size()-1;i >= 0; i--){
-                if(target_tree[i]){
+        std::vector<bool> get_ancestors_mask(std::vector<Node> marked){
+            // Assumes that computations are ordered
+            auto n = this->nodes.size();
+            std::vector<bool> ancestors_mask(n, false);
+            for(int i=0;i<marked.size();i++){
+                ancestors_mask[marked[i].id] = true;
+            }
+
+            // Mark all direct ancesotrs
+            for(int i=n-1;i >= 0; i--){
+                if(ancestors_mask[i]){
                     auto ancestors = nodes[i]->op->get_ancestors();
                     for(int j=0;j<ancestors.size();j++){
-                        target_tree[ancestors[j].lock()->id] = true;
+                        ancestors_mask[ancestors[j].lock()->id] = true;
                     }
                 }
             }
-//            std::cout << "Flow tree2: ";
-//            for(int i=0;i<n ;i++){
-//                std::cout << target_tree[i] << ", ";
-//            }
-//            std::cout<< std::endl;
-            temporary_constants.clear();
-            for(size_t i=0;i<nodes.size(); i++) {
-                if(target_tree[i] and params_tree[i]){
-                    // Add to flow tree
-                    flow_tree.push_back(i);
-                } else {
-                    temporary_constants.push_back(i);
-                }
-            }
-            return flow_tree;
+
+            return ancestors_mask;
         }
 
         std::vector<Node> gradient(Node objective, std::vector<Node> params) {
@@ -420,15 +402,16 @@ namespace metadiff {
             }
             std::unordered_map<size_t, size_t> grad_messages;
 
-            // Extract the parameter ids
-            std::vector<size_t> param_ids;
-            for(int i=0;i<params.size();i++){
-                param_ids.push_back(params[i].id);
-            }
-
             // Extract the flow tree between params and objective
-            auto flow_tree = get_flow_tree(objective.id, param_ids);
-            long n = flow_tree.size();
+            auto descendence_mask = get_descendands_mask(params);
+            auto ancestors_mask = get_ancestors_mask({objective});
+            std::vector<size_t> flow_tree;
+            temporary_constants.clear();
+            for(size_t i=0;i<nodes.size(); i++) {
+                if(ancestors_mask[i] and descendence_mask[i]){
+                    flow_tree.push_back(i);
+                }
+            }
 
             // Send the first message as 1 to the objective
             auto target = this->nodes[objective.id];
@@ -438,7 +421,7 @@ namespace metadiff {
             grad_messages[target->id] = unity_grad;
 
             // Send all gradient messages
-            for (auto i = n; i > 0; i--) {
+            for (auto i = flow_tree.size(); i > 0; i--) {
                 auto node_id = flow_tree[i-1];
                 if (grad_messages.find(node_id) != grad_messages.end()) {
                     this->nodes[node_id]->generate_gradients(grad_messages);

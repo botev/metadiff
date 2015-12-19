@@ -98,7 +98,7 @@ namespace metadiff {
         GreaterThanOrEqual(GraphInPtr graph,
                            NodeInPtr parent1,
                            NodeInPtr parent2) :
-                LogicalBinary("Gte", graph, parent1, parent2)
+                LogicalBinary("Ge", graph, parent1, parent2)
         {};
     };
 
@@ -140,7 +140,7 @@ namespace metadiff {
         LessThanOrEqual(GraphInPtr graph,
                         NodeInPtr parent1,
                         NodeInPtr parent2) :
-                LogicalBinary("Lte", graph, parent1, parent2)
+                LogicalBinary("Le", graph, parent1, parent2)
         {};
     };
 
@@ -182,7 +182,7 @@ namespace metadiff {
         NotEquals(GraphInPtr graph,
                   NodeInPtr parent1,
                   NodeInPtr parent2) :
-                LogicalBinary("Neq", graph, parent1, parent2)
+                LogicalBinary("Ne", graph, parent1, parent2)
         {};
     };
 
@@ -225,7 +225,7 @@ namespace metadiff {
                                NodeInPtr parent1,
                                NodeInPtr parent2,
                                double tol) :
-                LogicalBinary("ApproxNeq", graph, parent1, parent2),
+                LogicalBinary("ApproxNe", graph, parent1, parent2),
                 tol(tol)
         {};
     };
