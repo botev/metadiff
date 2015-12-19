@@ -2,8 +2,8 @@
 // Created by alex on 10/12/15.
 //
 
-#ifndef AUTODIFF_CORE_H
-#define AUTODIFF_CORE_H
+#ifndef METADIFF_CORE_H
+#define METADIFF_CORE_H
 
 namespace metadiff {
     const size_t N = 100;
@@ -1141,4 +1141,4 @@ namespace metadiff {
     }
 }
 
-#endif //AUTODIFF_CORE_H
+#endif //METADIFF_CORE_H

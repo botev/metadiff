@@ -2,8 +2,8 @@
 // Created by alex on 16/12/15.
 //
 
-#ifndef AUTODIFF_LIN_ALGEBRA_H
-#define AUTODIFF_LIN_ALGEBRA_H
+#ifndef METADIFF_OPERATORS_LIN_ALGEBRA_H
+#define METADIFF_OPERATORS_LIN_ALGEBRA_H
 
 namespace metadiff{
 
@@ -413,4 +413,4 @@ namespace metadiff{
         return node.logdet();
     }
 }
-#endif //AUTODIFF_LIN_ALGEBRA_H
+#endif //METADIFF_OPERATORS_LIN_ALGEBRA_H

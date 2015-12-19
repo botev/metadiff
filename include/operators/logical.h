@@ -2,8 +2,9 @@
 // Created by alex on 15/12/15.
 //
 
-#ifndef AUTODIFF_LOGICAL_H
-#define AUTODIFF_LOGICAL_H
+#ifndef METADIFF_OPERATORS_LOGICAL_H
+#define METADIFF_OPERATORS_LOGICAL_H
+
 namespace metadiff {
 
     void throw_logical_error(NodeInVec parents){
@@ -364,4 +365,4 @@ namespace metadiff {
         return node.is_inf();
     }
 }
-#endif //AUTODIFF_LOGICAL_H
+#endif //METADIFF_OPERATORS_LOGICAL_H

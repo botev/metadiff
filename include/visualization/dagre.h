@@ -2,8 +2,8 @@
 // Created by alex on 10/12/15.
 //
 
-#ifndef AUTODIFF_DAGRE_H
-#define AUTODIFF_DAGRE_H
+#ifndef METADIFF_VISUALIZATION_DAGRE_H
+#define METADIFF_VISUALIZATION_DAGRE_H
 
 namespace metadiff {
     namespace dagre {
@@ -266,4 +266,4 @@ namespace metadiff {
     }
 }
 
-#endif //AUTODIFF_DAGRE_H
+#endif //METADIFF_VISUALIZATION_DAGRE_H

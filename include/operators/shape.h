@@ -2,8 +2,8 @@
 // Created by alex on 18/12/15.
 //
 
-#ifndef AUTODIFF_SHAPE_H
-#define AUTODIFF_SHAPE_H
+#ifndef METADIFF_OPERATORS_SHAPE_H
+#define METADIFF_OPERATORS_SHAPE_H
 
 namespace metadiff{
 
@@ -214,4 +214,4 @@ namespace metadiff{
         return node.reorder({dim1, dim2, dim3, dim4});
     }
 }
-#endif //AUTODIFF_SHAPE_H
+#endif //METADIFF_OPERATORS_SHAPE_H

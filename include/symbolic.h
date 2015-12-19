@@ -2,16 +2,9 @@
 // Created by alex on 23/11/15.
 //
 
-#ifndef AUTODIFF_SYMBOLIC_H
-#define AUTODIFF_SYMBOLIC_H
+#ifndef METADIFF_SYMBOLIC_H
+#define METADIFF_SYMBOLIC_H
 
-
-#include <stddef.h>
-#include <exception>
-#include <algorithm>
-#include <bits/stringfwd.h>
-#include <bits/stl_bvector.h>
-#include "iostream"
 
 namespace metadiff {
     namespace symbolic {
@@ -733,4 +726,4 @@ namespace metadiff {
         }
     }
 }
-#endif //AUTODIFF_SYMBOLIC_H
+#endif //METADIFF_SYMBOLIC_H

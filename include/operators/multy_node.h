@@ -2,8 +2,9 @@
 // Created by alex on 15/12/15.
 //
 
-#ifndef AUTODIFF_MULTY_NODE_H
-#define AUTODIFF_MULTY_NODE_H
+#ifndef METADIFF_OPERATORS_MULTY_NODE_H
+#define METADIFF_OPERATORS_MULTY_NODE_H
+
 namespace metadiff{
     // A common super class for special operators with more than 1 output
     // such as MaxAndArgMax and SortAndArgSort
@@ -207,4 +208,4 @@ namespace metadiff{
         }
     };
 }
-#endif //AUTODIFF_MULTY_NODE_H
+#endif //METADIFF_OPERATORS_MULTY_NODE_H

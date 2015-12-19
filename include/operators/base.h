@@ -2,8 +2,8 @@
 // Created by alex on 13/12/15.
 //
 
-#ifndef AUTODIFF_BASE_H
-#define AUTODIFF_BASE_H
+#ifndef METADIFF_OPERATORS_BASE_H
+#define METADIFF_OPERATORS_BASE_H
 
 namespace metadiff {
 
@@ -850,4 +850,4 @@ namespace metadiff {
     }
 }
 
-#endif //AUTODIFF_BASE_H
+#endif //METADIFF_OPERATORS_BASE_H

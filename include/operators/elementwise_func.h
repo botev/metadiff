@@ -2,8 +2,8 @@
 // Created by alex on 15/12/15.
 //
 
-#ifndef AUTODIFF_ELEMENTWISE_FUNC_H
-#define AUTODIFF_ELEMENTWISE_FUNC_H
+#ifndef METADIFF_ELEMENTWISE_FUNC_H
+#define METADIFF_ELEMENTWISE_FUNC_H
 namespace metadiff {
 
     class ConstantConvert: public UnaryOperator {
@@ -633,4 +633,4 @@ namespace metadiff {
     }
 }
 
-#endif //AUTODIFF_ELEMENTWISE_FUNC_H
+#endif //METADIFF_ELEMENTWISE_FUNC_H

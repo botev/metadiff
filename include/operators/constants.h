@@ -2,8 +2,9 @@
 // Created by alex on 17/12/15.
 //
 
-#ifndef AUTODIFF_CONSTANTS_H
-#define AUTODIFF_CONSTANTS_H
+#ifndef METADIFF_OPERATORS_CONSTANTS_H
+#define METADIFF_OPERATORS_CONSTANTS_H
+
 namespace metadiff{
     class ConstantOperator: public Operator{
     public:
@@ -55,4 +56,4 @@ namespace metadiff{
         }
     };
 }
-#endif //AUTODIFF_CONSTANTS_H
+#endif //METADIFF_OPERATORS_CONSTANTS_H

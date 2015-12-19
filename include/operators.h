@@ -3,8 +3,8 @@
 //
 
 
-#ifndef AUTODIFF_OPERATORS_H
-#define AUTODIFF_OPERATORS_H
+#ifndef METADIFF_OPERATORS_H
+#define METADIFF_OPERATORS_H
 
 #include "operators/base.h"
 #include "operators/constants.h"
@@ -15,4 +15,4 @@
 #include "operators/multy_node.h"
 
 
-#endif //AUTODIFF_OPERATORS_H
+#endif //METADIFF_OPERATORS_H
