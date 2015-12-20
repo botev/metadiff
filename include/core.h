@@ -11,7 +11,7 @@ namespace metadiff {
     typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
     typedef std::array<SymInt,4> Shape;
 
-    enum ad_node_type{SYMBOLIC_INTEGER, CONSTANT, INPUT, SHARED_INPUT, INPUT_DERIVED, CONSTANT_DERIVED};
+    enum ad_node_type{SYMBOLIC_INTEGER, CONSTANT, INPUT, SHARED_INPUT, INPUT_DERIVED, CONSTANT_DERIVED, UPDATE};
     enum ad_value_type{FLOAT, INTEGER, BOOLEAN};
     enum ad_device_type {CPU, GPU};
     enum ad_implicit_broadcast {RAISE, WARN, QUIET};
@@ -49,14 +49,60 @@ namespace metadiff {
 //        {};
 //    };
 
-    class SharedVariable{
-        // TODO properly
-    public:
-        Shape shape;
-        SharedVariable(Shape shape):
-                shape(shape)
-        {};
-    };
+//    class SharedVariableInternal{
+//    public:
+//        af::array value;
+//        std::string name;
+//        SharedVariableInternal(af::array value,
+//                               std::string name):
+//                value(value),
+//                name(name)
+//        {};
+//
+//        Shape shape(){
+//            return Shape{value.dims(0), value.dims(1), value.dims(2), value.dims(3)};
+//        }
+//
+//        Node sum(std::vector<size_t> axes={0,1,2,3});
+//
+//        Node broadcast(Shape shape);
+//        Node broadcast_to(Node other);
+//
+//        Node zeros();
+//        Node non_zeros();
+//        Node is_nan();
+//        Node is_inf();
+//
+//        Node exp();
+//        Node log();
+//        Node pow();
+//        Node abs();
+//        Node sin();
+//        Node cos();
+//        Node tan();
+//        Node cot();
+//        Node sinh();
+//        Node cosh();
+//        Node tanh();
+//        Node coth();
+//        Node sigmoid();
+//        Node constant();
+//
+//        Node transpose();
+//        Node diag();
+//        Node minv();
+//        Node det();
+//        Node logdet();
+//        Node trace();
+//
+//        Node reshape(Shape shape);
+//        Node flatten(size_t ndim=1);
+//        Node reorder(std::array<size_t, 4> order);
+//        Node reorder(size_t dim1, size_t dim2, size_t dim3=2, size_t dim4=3);
+//
+//        Node softplus(double threshold = 50);
+//    };
+
 
     class GraphInternal;
     class NodeInternal;
@@ -64,6 +110,12 @@ namespace metadiff {
     typedef std::vector<NodeInPtr> NodeInVec;
     typedef std::weak_ptr<GraphInternal> GraphInPtr;
     typedef std::shared_ptr<GraphInternal> Graph;
+//    typedef std::shared_ptr<SharedVariableInternal> SharedVar;
+
+//    SharedVar create_shared_var(af::array value, std::string name = "Shared var"){
+//        return std::make_shared<SharedVariableInternal>(name, value);
+//    }
+
     Graph create_graph(){
         return std::make_shared<GraphInternal>();
     }
@@ -108,6 +160,7 @@ namespace metadiff {
         NodeInVec children;
         unsigned short grad_level;
         af::array value;
+//        SharedVar shared;
 
         NodeInternal(GraphInPtr graph, Device device):
                 graph(graph),
@@ -293,6 +346,8 @@ namespace metadiff {
         Node softplus(double threshold = 50);
     };
 
+    typedef std::vector<std::pair<Node, Node>> Updates;
+
     class Input : public Operator {
     public:
         Input(GraphInPtr graph): Operator("Input", graph){}
@@ -324,6 +379,48 @@ namespace metadiff {
         void generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages);
     };
 
+    class Update : public Operator {
+    public:
+        NodeInPtr shared;
+        NodeInPtr update;
+        Update(GraphInPtr graph,
+               NodeInPtr shared,
+               NodeInPtr update):
+                Operator("Update", graph),
+                shared(shared),
+                update(update){
+            verify_inputs();
+        }
+
+        void verify_inputs();
+
+        ad_value_type get_value_type(){
+            return shared.lock()->v_type;
+        }
+
+        Shape get_shape(){
+            return Shape{0, 0, 0, 0};
+        }
+
+        ad_node_type get_node_type(){
+            return UPDATE;
+        };
+
+        unsigned short get_gradient_level(){
+            return update.lock()->grad_level;
+        }
+
+        NodeInVec get_parents(){
+            return {update};
+        }
+
+        NodeInVec get_arguments(){
+            return {shared};
+        }
+
+        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages);
+    };
+
     class UnsupportedGradient : public std::exception {
         const char* what() const throw(){
             return "\nThe gradient operation supports only scalar values";
@@ -333,13 +430,16 @@ namespace metadiff {
     class GraphInternal : public std::enable_shared_from_this<GraphInternal> {
     public:
         std::vector<std::shared_ptr<NodeInternal>> nodes;
+//        std::vector<SharedVar> shared_vars;
         std::string name;
         Device default_device;
         ad_float_type f_type;
         ad_integer_type i_type;
         ad_implicit_broadcast broadcast;
         size_t sym_integer_count;
+
         std::vector<size_t> temporary_constants;
+        std::vector<size_t> temprary_updates;
 
         GraphInternal() {
             // TODO Have a better preference of devices available in order
@@ -478,6 +578,51 @@ namespace metadiff {
             }
         }
 
+        NodeInPtr update_node(size_t shared, size_t update ,
+                              int grad_level = -1) {
+            auto op = std::make_shared<Update>(shared_from_this(), nodes[shared], nodes[update]);
+            int same_node = find_same_node(op);
+            if(same_node == -1) {
+                auto parents = op->get_parents();
+                grad_level = grad_level == -1 ? op->get_gradient_level() : grad_level;
+                auto result = std::make_shared<NodeInternal>(
+                        shared_from_this(),
+                        default_device,
+                        nodes.size(),
+                        "Update Node",
+                        op->get_node_type(),
+                        op->get_value_type(),
+                        op->get_shape(),
+                        op,
+                        grad_level
+                );
+                this->nodes.push_back(result);
+                NodeInVec ancestors = op->get_ancestors();
+                for (int i = 0; i < ancestors.size(); i++) {
+                    ancestors[i].lock()->children.push_back(result);
+                }
+                return result;
+            } else {
+                return nodes[same_node];
+            }
+        }
+
+        void update(Node shared, Node update){
+            shared.graph.lock()->update_node(shared.id, update.id);
+        }
+
+        void add_temporary_updates(const Updates& updates){
+            for(int i=0;i<updates.size();i++){
+                size_t id = this->nodes.size();
+                update_node (updates[i].first.id, updates[i].second.id);
+                this->temprary_updates.push_back(id);
+            }
+        }
+
+        void clear_temprary_updates(){
+            this->temprary_updates.clear();
+        }
+
 //        Node constant_node(double *value, std::array<size_t, 4> dims) {
 //            auto result = std::make_shared<NodeInternal>(
 //                    shared_from_this(),
@@ -579,17 +724,43 @@ namespace metadiff {
 //            this->nodes.push_back(result);
 //            return Node(shared_from_this(), result->id);
 //        }
+//        Node constant_node(af::array value){
+//            ad_value_type dtype;
+//            if(value.type() == af::dtype::b8){
+//                dtype = BOOLEAN;
+//            } else if(value.type() == af::dtype::f32
+//                      or value.type() == af::dtype::f64){
+//                dtype = FLOAT;
+//            } else {
+//                dtype = INTEGER;
+//            }
+//            auto result = std::make_shared<NodeInternal>(
+//                    shared_from_this(),
+//                    default_device,
+//                    nodes.size(),
+//                    "Constant Node",
+//                    ad_node_type::CONSTANT,
+//                    dtype,
+//                    Shape {1, 1, 1, 1},
+//                    std::make_shared<Input>(shared_from_this()),
+//                    0
+//            );
+//            result->value = value;
+//            this->nodes.push_back(result);
+//            return Node(shared_from_this(), result->id);
+//        }
+
         Node constant_node(af::array value){
             ad_value_type dtype;
             if(value.type() == af::dtype::b8){
                 dtype = BOOLEAN;
-            }
-            if(value.type() == af::dtype::f32
-                    or value.type() == af::dtype::f64){
+            } else if(value.type() == af::dtype::f32
+                      or value.type() == af::dtype::f64){
                 dtype = FLOAT;
             } else {
                 dtype = INTEGER;
             }
+            auto dims = value.dims();
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this(),
                     default_device,
@@ -597,7 +768,34 @@ namespace metadiff {
                     "Constant Node",
                     ad_node_type::CONSTANT,
                     dtype,
-                    Shape {1, 1, 1, 1},
+                    Shape {dims[0], dims[1], dims[2], dims[3]},
+                    std::make_shared<Input>(shared_from_this()),
+                    0
+            );
+            result->value = value;
+            this->nodes.push_back(result);
+            return Node(shared_from_this(), result->id);
+        }
+
+        Node shared_var(af::array value, std::string name = "SharedVar"){
+            ad_value_type dtype;
+            if(value.type() == af::dtype::b8){
+                dtype = BOOLEAN;
+            } else if(value.type() == af::dtype::f32
+                      or value.type() == af::dtype::f64){
+                dtype = FLOAT;
+            } else {
+                dtype = INTEGER;
+            }
+            auto dims = value.dims();
+            auto result = std::make_shared<NodeInternal>(
+                    shared_from_this(),
+                    default_device,
+                    nodes.size(),
+                    name,
+                    ad_node_type::SHARED_INPUT,
+                    dtype,
+                    Shape {dims[0], dims[1], dims[2], dims[3]},
                     std::make_shared<Input>(shared_from_this()),
                     0
             );
@@ -1062,6 +1260,33 @@ namespace metadiff {
         }
     };
 
+    void Update::verify_inputs(){
+        if(shared.lock()->type != SHARED_INPUT){
+            throw InvalidArguments(name, {shared, update},
+                                   "First argument should be a shared variable not an expression.");
+        }
+        auto shared_shape = shared.lock()->shape;
+        auto update_shape = update.lock()->shape;
+        for(int i=0;i<4;i++){
+            if(shared_shape[i] != update_shape[i]){
+                throw IncompatibleShapes(name, {shared, update});
+            }
+        }
+        if(shared.lock()->v_type != update.lock()->v_type){
+            throw InvalidArguments(name, {shared, update},
+                                   "Shared variable and update should have same value type");
+        }
+    }
+
+    void Update::generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages){
+        auto graph = this->graph.lock();
+        if (messages.find(current) != messages.end()) {
+            throw UnknownError({shared, update},
+                               "An update operator recieved a gradient message.");
+        }
+        return;
+    }
+
     std::string to_string(ad_node_type const & type){
         switch(type){
             case ad_node_type::SYMBOLIC_INTEGER: return "SYMBOLIC_INTEGER";
@@ -1070,6 +1295,7 @@ namespace metadiff {
             case ad_node_type::SHARED_INPUT : return "SHARED";
             case ad_node_type::INPUT_DERIVED: return "DERIVED";
             case ad_node_type::CONSTANT_DERIVED: return "CONSTANT_DERIVED";
+            case ad_node_type::UPDATE: return "UPDATE";
 
         }
         return "UNREACHABLE";

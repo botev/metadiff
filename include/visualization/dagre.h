@@ -36,7 +36,9 @@ namespace metadiff {
             } else if (node->type == ad_node_type::INPUT) {
                 return node->name +  "[" + std::to_string(node->id) + "]";
             } else if (node->type == ad_node_type::SHARED_INPUT) {
-                return node->name + "SHARED[" + std::to_string(node->id) + "]";
+                return node->name + "[" + std::to_string(node->id) + "]";
+            } else if (node->type == ad_node_type::UPDATE) {
+                return "Update[" + std::to_string(node->id) + "]";
             } else {
                 return node->op->name + "[" + std::to_string(node->id) + "]";
             }
@@ -53,6 +55,7 @@ namespace metadiff {
                     case INPUT_DERIVED: return "#0000ff";
                     case CONSTANT: return "#ffff00";
                     case CONSTANT_DERIVED: return "#ffa500";
+                    case UPDATE: return "#FF1493";
                     default: return "#800080";
                 }
             }
@@ -115,11 +118,16 @@ namespace metadiff {
 //            edges.push_back("g.setParent('" + state_name + "', 'grad_" + std::to_string(node->grad_level) + "');");
         }
 
-        void dagre_to_file(std::string file_name, Graph graph, std::vector<Node> target_nodes) {
+        void dagre_to_file(std::string file_name, Graph graph,
+                           std::vector<Node> target_nodes,
+                           const Updates& updates) {
+            graph->add_temporary_updates(updates);
+
             std::vector<size_t> targets;
             for(size_t i=0;i<target_nodes.size();i++){
                 targets.push_back(target_nodes[i].id);
             }
+
             int max_grad_level = 0;
             for (int i = 0; i < targets.size(); i++) {
                 if (graph->nodes[targets[i]]->grad_level > max_grad_level) {
@@ -211,12 +219,12 @@ namespace metadiff {
             }
             f << "}\n";
             // Print grad boxes
-            f << "// Set the gradient level boxes\n";
-            for (int i = 0; i <= max_grad_level; i++) {
-                auto name = "Calculation Level[" + std::to_string(i) + "]";
-                f << "g.setNode('grad_" + std::to_string(i) + "', {label: '" + name +
-                     "', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});\n";
-            }
+//            f << "// Set the gradient level boxes\n";
+//            for (int i = 0; i <= max_grad_level; i++) {
+//                auto name = "Calculation Level[" + std::to_string(i) + "]";
+//                f << "g.setNode('grad_" + std::to_string(i) + "', {label: '" + name +
+//                     "', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});\n";
+//            }
 
             f << "// Add states to the graph, set labels, and style\n"
                     "Object.keys(states).forEach(function(state) {\n"
@@ -270,6 +278,7 @@ namespace metadiff {
                     "</script>\n"
                     "</body></html>\n";
             f.close();
+            graph->clear_temprary_updates();
         }
     }
 }
