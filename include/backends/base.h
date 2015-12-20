@@ -49,10 +49,9 @@ namespace metadiff{
                                      std::vector<Node> inputs,
                                      std::vector<Node> targets) = 0;
         virtual void compile_file(std::string file_name, std::string dll_name) = 0;
-
         func_ptr link_dll(std::string dll_name){
             char *error_msg;
-            handle = dlopen (dll_name.c_str(), RTLD_LAZY);
+            handle = dlopen (("./" + dll_name).c_str(), RTLD_LAZY);
             if (!handle) {
                 fputs (dlerror(), stderr);
                 exit(1);

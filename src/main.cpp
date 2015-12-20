@@ -4,7 +4,6 @@
 #include "metadiff.h"
 namespace md = metadiff;
 namespace sym = metadiff::symbolic;
-
 void test(){
     af::array i1 = af::randn(100, 100);
     af::array i2 = af::randn(100, 100);
@@ -63,10 +62,10 @@ int main(int argc, char *argv[])
                                  bin, bh, bout};
 
     // Generate inputs
-    int nv = 100; // a
-    auto dinv = 784; // b
+    int nv = 1000; // a
+    auto dinv = 1000; // b
     auto dhv = 1000; // c
-    auto doutv = 10; // d
+    auto doutv = 1000; // d
     af::setSeed(100);
 //    // Input data
 //    auto data_inv = af::randn(dinv, nv);

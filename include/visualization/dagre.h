@@ -14,25 +14,18 @@ namespace metadiff {
             } else if (node->type == ad_node_type::CONSTANT) {
                 if(node->is_scalar()){
                     std::string value;
-                    switch (node->v_type){
-                        case FLOAT: {
-                            double host[1];
-                            node->value.host(host);
-                            value = std::to_string(host[0]);
-                            break;
-                        }
-                        case INTEGER: {
-                            int host[1];
-                            node->value.host(host);
-                            value = std::to_string(host[0]);
-                            break;
-                        }
-                        case BOOLEAN: {
-                            bool host[1];
-                            node->value.host(host);
-                            value = std::to_string(host[0]);
-                            break;
-                        }
+                    if(node->v_type == FLOAT) {
+                        float host[1];
+                        node->value.host(host);
+                        value = std::to_string(host[0]);
+                    } else if(node->v_type == INTEGER){
+                        int host[1];
+                        node->value.host(host);
+                        value = std::to_string(host[0]);
+                    } else {
+                        bool host[1];
+                        node->value.host(host);
+                        value = std::to_string(host[0]);
                     }
                     return value + "[" + std::to_string(node->id) + "]";
                 } else if(node->op->name != "Input") {
