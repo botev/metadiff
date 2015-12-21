@@ -134,6 +134,12 @@ namespace metadiff {
                                                                     graph->nodes[x.id] });
         return Node(graph, graph->derived_node(op).lock()->id);
     }
+
+    Node relu(Node x){
+        auto graph = x.graph.lock();
+        Node ch = x.abs();
+        return graph->constant_node(af::constant(0.5, 1)) * (x + ch);
+    }
 };
 
 

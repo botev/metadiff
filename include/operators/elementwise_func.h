@@ -212,7 +212,7 @@ namespace metadiff {
             zero->grad_level = my_grad->grad_level;
             std::shared_ptr<Operator> op = std::make_shared<GreaterThanOrEqual>(graph, parent, zero);
             auto check = graph->derived_node(op).lock();
-            op = std::make_shared<GreaterThanOrEqual>(graph, my_grad, check);
+            op = std::make_shared<Mul>(graph, my_grad, check);
             auto parent_grad = graph->derived_node(op).lock();
             parent_grad->name = "Grad msg " + std::to_string(current) + " -> " + std::to_string(parent->id);
             send_grad_message(graph, parent->id, parent_grad->id, messages);

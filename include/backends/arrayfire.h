@@ -65,7 +65,6 @@ namespace metadiff{
                     }
                 }
             }
-//            f << "\tstd::cout << \"ADS2\" << std::endl;\n";
 
             // Write all of the input nodes
             f << "\n\t// Set all of the inputs accordingly\n";
@@ -73,7 +72,6 @@ namespace metadiff{
                 f << "\taf::array node_" << inputs[i].id << " = inputs[" << i << "];\n";
             }
 
-//            f << "\tstd::cout << \"ADS3\" << std::endl;\n";
             // Write all of the shared variables
             f << "\n\t// Set all of the shared variables accordingly\n";
             for(int i=0;i<graph->shared_vars.size();i++){
@@ -82,10 +80,8 @@ namespace metadiff{
 //                f << "\tstd::cout << node_" << graph->shared_vars[i]->id << ".dims() << std::endl;\n";
             }
 
-//            f << "\tstd::cout << \"ADS4\" << std::endl;\n";
             // Calculate all of the symbolic integers
             calculate_symbolics(f, graph, inputs);
-//            f << "\tstd::cout << \"ADS5\" << std::endl;\n";
             // Validate input shapes
             validate_input_shapes(f, graph, inputs);
 
@@ -110,9 +106,14 @@ namespace metadiff{
                 if(node->type == UPDATE){
                     auto shared_id = node->op->get_arguments()[0].lock()->id;
                     auto update_id = node->op->get_parents()[0].lock()->id;
-                    for(int ind=0;i<graph->shared_vars.size();ind++){
-                        if(graph->shared_vars[ind]->id == shared_id){
-                            f << "\tshared_vars[" << ind << "]->value = "
+//                    std::cout << "Update id: " << i << std::endl;
+//                    std::cout << "shared id: " <<  shared_id << std::endl;
+//                    std::cout << "expression id: " << update_id << std::endl;
+//                    std::cout << "shared num " << graph->shared_vars.size() << std::endl;
+                    for(int j=0;j<graph->shared_vars.size();j++){
+//                        std::cout << "this shared: " <<  graph->shared_vars[j]->id << std::endl;
+                        if(graph->shared_vars[j]->id == shared_id){
+                            f << "\tshared_vars[" << j << "]->value = "
                                     "node_" << update_id << ";\n";
                         }
                     }
@@ -212,20 +213,24 @@ namespace metadiff{
 //        f << "std::endl;\n";
 
             if(node->type == CONSTANT and node->op->name == "Input"){
+                f << "\taf::array node_" << id << " = af::constant(";
                 if(node->v_type == FLOAT) {
                     float host[1];
                     node->value.host(host);
-                    f << "\tfloat node_" << id << " = " << host[0];
+                    f << host[0];
                 } else if(node->v_type == INTEGER){
                     int host[1];
                     node->value.host(host);
-                    f << "\tfloat node_" << id << " = " << host[0];
+                    f << host[0];
                 } else {
                     bool host[1];
                     node->value.host(host);
-                    f << "\tfloat node_" << id << " = " << host[0];
+                    f << host[0];
                 }
-                f << ";\n";
+                for(int i=0;i<4;i++){
+                    f << ", " << node->shape[i].to_string_with_star();
+                }
+                f << ");\n";
             } else if(node->type != UPDATE and node->type != SHARED_INPUT) {
 //                f << "\tstd::cout << \"Node \" << " << id << " << std::endl;\n";
                 if (op_name == "Broadcast") {
@@ -409,7 +414,9 @@ namespace metadiff{
                 } else if (op_name == "Gt") {
 
                 } else if (op_name == "Ge") {
-
+                    f << "\taf::array node_" << id << " = ";
+                    f << "node_" << parents[0].lock()->id << " >= "
+                            "node_" << parents[1].lock()->id;
                 } else if (op_name == "Lt") {
 
                 } else if (op_name == "Le") {

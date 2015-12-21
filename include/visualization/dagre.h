@@ -27,7 +27,7 @@ namespace metadiff {
                         node->value.host(host);
                         value = std::to_string(host[0]);
                     }
-                    return value + "[" + std::to_string(node->id) + "]";
+                    return "CONST[" + std::to_string(node->id) + "]";
                 } else if(node->op->name != "Input") {
                     return node->op->name + "[" + std::to_string(node->id) + "]";
                 } else {
