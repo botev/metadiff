@@ -11,14 +11,18 @@ namespace metadiff{
     class ArrayfireBackend: public FunctionBackend<af::array>{
     public:
         std::string include_path;
-        ArrayfireBackend(std::string include_path):
-                include_path(include_path)
+        std::string lib_path;
+        ArrayfireBackend(std::string include_path,
+        std::string lib_path):
+                include_path(include_path),
+                lib_path(lib_path)
         {};
 
         void compile_file(std::string file_name, std::string dll_name){
-            std::string command = "g++ -Wall -shared -fPIC -std=c++11 ";
+            std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -lafcpu ";
             command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing";
             command += " -I" + include_path;
+            command += " -L" + lib_path;
 //            command += " -I./";
             command += " -o " + dll_name + " " + file_name;
             std::cout << "Command: " << command << std::endl;

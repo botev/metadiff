@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     md::dagre::dagre_to_file("test_full.html", graph, {loss}, updates);
 
     // Create backend and compile function
-    md::ArrayfireBackend backend("/opt/arrayfire-3/include");
+    md::ArrayfireBackend backend("/opt/arrayfire-3/include", "/opt/arrayfire-3/lib");
     auto train = backend.compile_function(graph, {data_in}, {loss}, updates);
 
     // Run function
