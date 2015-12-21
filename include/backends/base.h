@@ -37,49 +37,114 @@ namespace metadiff{
     };
 
     template<typename T>
-    class FunctionBackend{
+    class FunctionBackend {
     private:
         void *handle;
     public:
-        typedef std::vector<T> (*func_ptr)(std::vector<T>);
-        virtual void initialize(){
+        typedef std::vector<T> (*func_ptr)(std::vector<T>& inputs, std::vector<SharedPtr>& shared);
+        class EvaluationFunction{
+        public:
+            std::vector<SharedPtr> shared_variables;
+            std::vector <T> constant_variables;
+            const func_ptr eval_func;
+
+            EvaluationFunction(func_ptr eval_func):
+                    eval_func(eval_func){};
+
+            std::vector<T> eval(std::vector<T>& inputs){
+                return eval_func(inputs, shared_variables);
+            }
+        };
+
+
+        virtual void initialize() {
 
         };
+
         virtual void generate_source(std::string file_name, Graph graph,
                                      std::vector<Node> inputs,
-                                     std::vector<Node> targets) = 0;
+                                     std::vector<Node> targets,
+                                     Updates &updates) = 0;
+
         virtual void compile_file(std::string file_name, std::string dll_name) = 0;
-        func_ptr link_dll(std::string dll_name){
+
+        EvaluationFunction link_dll(std::string dll_name) {
             char *error_msg;
-            handle = dlopen (("./" + dll_name).c_str(), RTLD_LAZY);
+            handle = dlopen(("./" + dll_name).c_str(), RTLD_LAZY);
             if (!handle) {
-                fputs (dlerror(), stderr);
+                fputs(dlerror(), stderr);
                 exit(1);
             }
             auto func_handle = (func_ptr) dlsym(handle, "eval_func");
-            if ((error_msg = dlerror()) != NULL)  {
+            if ((error_msg = dlerror()) != NULL) {
                 fputs(error_msg, stderr);
                 exit(1);
             }
-            return func_handle;
+            return EvaluationFunction(func_handle);
         };
 
-        void close(){
+        void close() {
             dlclose(handle);
         }
 
-        func_ptr compile_function(Graph graph,
-                           std::vector<Node> inputs,
-                           std::vector<Node> targets){
+        EvaluationFunction compile_function(Graph graph,
+                                  std::vector<Node> inputs,
+                                  std::vector<Node> targets,
+                                  Updates &updates) {
             clock_t start = clock();
             std::string source_name = "test.cpp";
             std::string dll_name = "test.so";
-            generate_source(source_name, graph, inputs, targets);
+            generate_source(source_name, graph, inputs, targets, updates);
             compile_file(source_name, dll_name);
-            func_ptr function = link_dll(dll_name);
+            EvaluationFunction function = link_dll(dll_name);
             clock_t end = clock();
-            std::cout << "Compilation time: " << 1000*(double(end - start))/CLOCKS_PER_SEC << "ms" << std::endl;
+            std::cout << "Compilation time: " << 1000 * (double(end - start)) / CLOCKS_PER_SEC << "ms" << std::endl;
+            function.shared_variables = graph->shared_vars;
             return function;
+        }
+
+        void write_interface(std::ofstream &f) {
+            f << "class InvalidInputShape : public std::exception {\n"
+                         "public:\n"
+                         "    size_t id;\n"
+                         "    size_t expected[4];\n"
+                         "    size_t given[4];\n"
+                         "    std::string msg;\n"
+                         "\n"
+                         "    InvalidInputShape(size_t id,\n"
+                         "                      size_t  expected[4],\n"
+                         "                      size_t  given[4]) :\n"
+                         "            id(id){\n"
+                         "        for(int i=0;i<4;i++){\n"
+                         "            this->expected[i] = expected[i];\n"
+                         "            this->given[i] = given[i];\n"
+                         "        }\n"
+                         "        msg = \"The input node with id \" + std::to_string(id) + \" provided has incorrect shape.\\n\" +\n"
+                         "              \"Expected:\" + std::to_string(expected[0]) + \", \" + std::to_string(expected[1]) + \", \"\n"
+                         "              + std::to_string(expected[2]) + \", \" + std::to_string(expected[3]) + \", \" + \"\\n\" +\n"
+                         "              \"Given:   \" + std::to_string(given[0]) + \", \" + std::to_string(given[1]) + \", \"\n"
+                         "              + std::to_string(given[2]) + \", \" + std::to_string(given[3]) + \", \" + \"\\n\";\n"
+                         "    };\n"
+                         "\n"
+                         "    const char *what() const throw() {\n"
+                         "        return msg.c_str();\n"
+                         "    }\n"
+                         "};\n"
+                         "\n"
+                         "class SharedVariable{\n"
+                         "public:\n"
+                         "    size_t id;\n"
+                         "    af::array value;\n"
+                         "    SharedVariable():\n"
+                         "            id(0),\n"
+                         "            value(af::array())\n"
+                         "    {};\n"
+                         "    SharedVariable(size_t id, af::array value):\n"
+                         "            id(id),\n"
+                         "            value(value)\n"
+                         "    {};\n"
+                         "};\n"
+                         "typedef std::shared_ptr<SharedVariable> SharedPtr;\n";
         }
     };
 }

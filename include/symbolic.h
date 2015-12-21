@@ -162,14 +162,15 @@ namespace metadiff {
                     return "0";
                 }
                 std::string result;
+                bool first = true;
                 if (this->coefficient != 1) {
                     if (this->coefficient == -1) {
                         result += "-";
                     } else {
                         result += std::to_string(this->coefficient);
+                        first = false;
                     }
                 }
-                bool first = true;
                 for (int i = 0; i < N; i++) {
                     if (powers[i] > 0) {
                         char variable = ('a' + i);

@@ -15,6 +15,7 @@
 #include <dlfcn.h>
 
 #include "symbolic.h"
+#include "interface.h"
 #include "core.h"
 #include "operators.h"
 #include "visual.h"

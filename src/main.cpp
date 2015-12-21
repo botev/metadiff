@@ -54,7 +54,6 @@ int main(int argc, char *argv[])
     auto bh = graph->shared_var(af::randn(dh) / 100, "bh");
     auto bout = graph->shared_var(af::randn(dout) / 100, "bout");
 
-
     // Computation
     auto h1 = md::tanh(md::dot(Win, data_in) + bin);
     auto h2 = md::tanh(md::dot(Wh, h1) + bh);
@@ -74,19 +73,17 @@ int main(int argc, char *argv[])
 //    auto targets = grads;
 //    targets.push_back(sum_error);
     md::dagre::dagre_to_file("test_full.html", graph, {sum_error}, updates);
-    std::vector<md::Node> inputs{data_in, data_t,
-                                 Win, Wh, Wout,
-                                 bin, bh, bout};
+    std::vector<md::Node> inputs{data_in, data_t};
 
     // Generate inputs
     int nv = 1000; // a
-    auto dinv = 1000; // b
-    auto dhv = 1000; // c
-    auto doutv = 1000; // d
+//    auto dinv = 1000; // b
+//    auto dhv = 1000; // c
+//    auto doutv = 1000; // d
     af::setSeed(100);
-//    // Input data
-//    auto data_inv = af::randn(dinv, nv);
-//    auto data_tv = af::randu(doutv, nv);
+    // Input data
+//    auto data_inv = af::randn(din, nv);
+//    auto data_tv = af::randu(dout, nv);
 //    // Parameters
 //    auto Winv = af::randn(dhv, dinv);
 //    auto Whv = af::randn(dhv, dhv);
@@ -97,38 +94,38 @@ int main(int argc, char *argv[])
 //    std::vector<af::array> inputv{data_inv, data_tv,
 //                                  Winv, Whv, Woutv,
 //                                  binv, bhv, boutv};
-//    md::ArrayfireBackend backend("/opt/arrayfire-3/include");
+    md::ArrayfireBackend backend("/opt/arrayfire-3/include");
     // Compile function
-//    auto train = backend.compile_function(graph, inputs, targets);
+    auto train = backend.compile_function(graph, inputs, {sum_error}, updates);
 
     // Run function
-//    long long time = 0;
-//    int N = 100;
-//    for(int i=0;i<N;i++){
-//        // Input data
-//        auto data_inv = af::randn(dinv, nv) / 10;
-//        auto data_tv = af::randu(doutv, nv);
-//        // Parameters
+    long long time = 0;
+    int N = 100;
+//    af::array c = train.shared_variables[0]->value;
+//    af_print(c);
+    for(int i=0;i<N;i++){
+        // Input data
+        auto data_inv = af::randn(din, nv);
+        auto data_tv = af::randu(dout, nv);
+        // Parameters
 //        auto Winv = af::randn(dhv, dinv);
 //        auto Whv = af::randn(dhv, dhv);
 //        auto Woutv = af::randn(doutv, dhv);
 //        auto binv = af::randn(dhv);
 //        auto bhv = af::randn(dhv);
 //        auto boutv = af::randn(doutv);
-//        std::vector<af::array> inputv{data_inv, data_tv,
-//                                      Winv, Whv, Woutv,
-//                                      binv, bhv, boutv};
-//        clock_t start = clock();
-//        auto result = train(inputv);
-//        clock_t end = clock();
-//        float *hv = result[6].host<float>();
-//        std::cout << "Value: " << hv[0] << std::endl;
-//        std::cout << "Elapsed time: " << 1000*(double(end - start))/CLOCKS_PER_SEC << "ms" << std::endl;
-//        time += (end-start);
-//    }
-//    backend.close();
-//    std::cout << "Mean Elapsed time: " << (1000/N)*(double (time))/CLOCKS_PER_SEC << "ms" << std::endl;
-//    std::cout << "Saving" << std::endl;
+        std::vector<af::array> inputv{data_inv, data_tv};
+        clock_t start = clock();
+        auto result = train.eval(inputv);
+        clock_t end = clock();
+        float *hv = result[0].host<float>();
+        std::cout << "Value: " << hv[0] << std::endl;
+        std::cout << "Elapsed time: " << 1000*(double(end - start))/CLOCKS_PER_SEC << "ms" << std::endl;
+        time += (end-start);
+    }
+    backend.close();
+    std::cout << "Mean Elapsed time: " << (1000/N)*(double (time))/CLOCKS_PER_SEC << "ms" << std::endl;
+    std::cout << "Saving" << std::endl;
     // Save parameters
 //    af::saveArray("Win_grad", result[0], "test.b", true);
 //    af::saveArray("bin_grad", result[1], "test.b", true);

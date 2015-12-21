@@ -5,6 +5,22 @@
 #ifndef METADIFF_CORE_H
 #define METADIFF_CORE_H
 
+//class SharedVariable{
+//public:
+//    size_t id;
+//    af::array value;
+//    SharedVariable():
+//            id(0),
+//            value(af::array())
+//    {};
+//    SharedVariable(size_t id, af::array value):
+//            id(id),
+//            value(value)
+//    {};
+//};
+//
+//typedef std::shared_ptr<SharedVariable> SharedPtr;
+
 namespace metadiff {
     const size_t N = 100;
 
@@ -32,7 +48,6 @@ namespace metadiff {
                 id(id)
         {};
     };
-
 
 //    class ConstValue{
 //    public:
@@ -160,7 +175,7 @@ namespace metadiff {
         NodeInVec children;
         unsigned short grad_level;
         af::array value;
-//        SharedVar shared;
+        SharedPtr shared;
 
         NodeInternal(GraphInPtr graph, Device device):
                 graph(graph),
@@ -437,6 +452,7 @@ namespace metadiff {
         ad_integer_type i_type;
         ad_implicit_broadcast broadcast;
         size_t sym_integer_count;
+        std::vector<SharedPtr> shared_vars;
 
         std::vector<size_t> temporary_constants;
         std::vector<size_t> temprary_updates;
@@ -481,6 +497,10 @@ namespace metadiff {
             std::vector<bool> ancestors_mask(n, false);
             for(int i=0;i<marked.size();i++){
                 ancestors_mask[marked[i].id] = true;
+            }
+            for(int i=0;i<temprary_updates.size();i++){
+                auto node = nodes[temprary_updates[i]];
+                ancestors_mask[node->op->get_parents()[0].lock()->id] = true;
             }
 
             // Mark all direct ancesotrs
@@ -620,6 +640,9 @@ namespace metadiff {
         }
 
         void clear_temprary_updates(){
+            for(int i=0;i<temprary_updates.size();i++){
+                this->nodes.pop_back();
+            }
             this->temprary_updates.clear();
         }
 
@@ -799,7 +822,8 @@ namespace metadiff {
                     std::make_shared<Input>(shared_from_this()),
                     0
             );
-            result->value = value;
+            result->shared = std::make_shared<SharedVariable>(result->id, value);
+            this->shared_vars.push_back(result->shared);
             this->nodes.push_back(result);
             return Node(shared_from_this(), result->id);
         }
