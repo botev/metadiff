@@ -137,6 +137,9 @@ namespace metadiff {
 
     Node relu(Node x){
         auto graph = x.graph.lock();
+//        auto zero = graph->constant_node(af::constant(0.0, 1));
+//        return select(x >= zero, x, zero);
+//
         Node ch = x.abs();
         return graph->constant_node(af::constant(0.5, 1)) * (x + ch);
     }

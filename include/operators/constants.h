@@ -91,5 +91,33 @@ namespace metadiff{
             shape = {size, size, 1, 1};
         }
     };
+
+    class Zeros: public ConstantOperator{
+    public:
+        Zeros(GraphInPtr graph, Shape shape):
+                ConstantOperator("Zeros", graph)
+        {
+            this->shape = shape;
+        }
+    };
+
+    class Ones: public ConstantOperator{
+    public:
+        Ones(GraphInPtr graph, Shape shape):
+                ConstantOperator("Ones", graph)
+        {
+            this->shape = shape;
+        }
+    };
+
+    class ConstantValue: public ConstantOperator{
+        double value;
+        ConstantValue(GraphInPtr graph, Shape shape, double value):
+                ConstantOperator("Value", graph),
+                value(value)
+        {
+            this->shape = shape;
+        }
+    };
 }
 #endif //METADIFF_OPERATORS_CONSTANTS_H

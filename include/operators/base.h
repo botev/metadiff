@@ -752,6 +752,9 @@ namespace metadiff {
                     // => dE/dp_i = dE/df * p_{1-i}
                     auto op = std::make_shared<Mul>(graph, my_grad, other_parent);
                     auto parent_grad = graph->derived_node(op).lock();
+                    if(parent_grad->type == CONSTANT){
+                        parent_grad->value = my_grad->value * other_parent->value;
+                    }
                     send_grad_message(graph, parent->id, parent_grad->id, messages);
                 }
             }

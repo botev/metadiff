@@ -87,13 +87,14 @@ namespace metadiff{
             dlclose(handle);
         }
 
-        EvaluationFunction compile_function(Graph graph,
+        EvaluationFunction compile_function(std::string base_name,
+                                  Graph graph,
                                   std::vector<Node> inputs,
                                   std::vector<Node> targets,
                                   Updates &updates) {
             clock_t start = clock();
-            std::string source_name = "test.cpp";
-            std::string dll_name = "test.so";
+            std::string source_name = base_name + ".cpp";
+            std::string dll_name = base_name + ".so";
             generate_source(source_name, graph, inputs, targets, updates);
             compile_file(source_name, dll_name);
             EvaluationFunction function = link_dll(dll_name);

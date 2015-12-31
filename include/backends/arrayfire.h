@@ -13,14 +13,14 @@ namespace metadiff{
         std::string include_path;
         std::string lib_path;
         ArrayfireBackend(std::string include_path,
-        std::string lib_path):
+                         std::string lib_path):
                 include_path(include_path),
                 lib_path(lib_path)
         {};
 
         void compile_file(std::string file_name, std::string dll_name){
-            std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -lafcpu ";
-            command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing";
+            std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
+            command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
             command += " -I" + include_path;
             command += " -L" + lib_path;
 //            command += " -I./";
@@ -47,10 +47,24 @@ namespace metadiff{
             f << "\n";
             // Write the interface definitions
             this->write_interface(f);
+
+            f << "void print_mem_info(std::string name){\n"
+                    "    size_t alloc_bytes,alloc_buffers,lock_bytes,lock_buffers;\n"
+                    "    af::deviceMemInfo(&alloc_bytes,&alloc_buffers,&lock_bytes,&lock_buffers);\n"
+                    "    std::cout << \"Memory info\" << name << std::endl;\n"
+                    "    std::cout << \"Allocated: \" << alloc_bytes / 1024 << \" KB\" << std::endl;\n"
+                    "    std::cout << \"Buffers allocated: \" << alloc_buffers << std::endl;\n"
+                    "    std::cout << \"In use: \" << lock_bytes / 1024 << \" KB\" << std::endl;\n"
+                    "    std::cout << \"Buffers in use: \" << lock_buffers << std::endl;\n"
+                    "    return;\n"
+                    "};\n\n";
+
             f << "\n";
             f << "extern \"C\" std::vector<af::array> eval_func(std::vector<af::array>& inputs, std::vector<SharedPtr>& shared_vars){\n";
 //            f << "\tstd::cout << \"ADS\" << std::endl;\n";
             f << "\tstd::vector<af::array> outputs;\n";
+//            f << "print_mem_info(\"Initial\");\n";
+//            f << "\taf::setBackend(AF_BACKEND_OPENCL);\n";
             f << "\t// Set up automatic broadcasting\n";
             f << "\taf::gforSet(true);\n";
             // Get ancestors mask
@@ -76,6 +90,8 @@ namespace metadiff{
                 f << "\taf::array node_" << inputs[i].id << " = inputs[" << i << "];\n";
             }
 
+//            f << "print_mem_info(\"Post input\");\n";
+
             // Write all of the shared variables
             f << "\n\t// Set all of the shared variables accordingly\n";
             for(int i=0;i<graph->shared_vars.size();i++){
@@ -83,6 +99,8 @@ namespace metadiff{
                 f << "\taf::array node_" << graph->shared_vars[i]->id << " = shared_vars[" << i << "]->value;\n";
 //                f << "\tstd::cout << node_" << graph->shared_vars[i]->id << ".dims() << std::endl;\n";
             }
+
+//            f << "print_mem_info(\"Post shared\");\n";
 
             // Calculate all of the symbolic integers
             calculate_symbolics(f, graph, inputs);
@@ -94,6 +112,7 @@ namespace metadiff{
             for(int i=0;i<ancestor_mask.size();i++){
                 if(ancestor_mask[i] and graph->nodes[i]->type != INPUT){
                     calculate_node(f, graph, i);
+//                    f << "print_mem_info(\"Post " << i << "\");\n";
                 }
             }
 
@@ -101,7 +120,6 @@ namespace metadiff{
 
             // Disable the automatic broadcasting
             f << "\taf::gforSet(false);";
-
 
             // Update all of the shared_variables
             f << "\n\t// Update all shared variables\n";
@@ -135,6 +153,7 @@ namespace metadiff{
 //            f << "\taf_print(node_24);\n";
 //            f << "\taf_print(node_25);\n";
 
+//            f << "\taf::sync();\n";
             // Write all of the output nodes as the result
             f << "\n\t// Write all of the output nodes in correct order\n";
             f << "\treturn {";
@@ -316,6 +335,44 @@ namespace metadiff{
                         }
                     }
                     f << ")";
+
+//                    for (int i = 0; i < parents.size(); i++) {
+//                        f << "\tauto node_" << parents[i].lock()->id << "_" << id << "_ptr = "
+//                                "node_" << parents[i].lock()->id << ".host<float>();\n";
+//                        f << "\tauto node_" << parents[i].lock()->id << "_" << id << "_dims = "
+//                                "node_" << parents[i].lock()->id << ".dims();\n";
+//                    }
+//                    f << "\taf::setBackend(AF_BACKEND_CPU);\n";
+//                    for (int i = 0; i < parents.size(); i++) {
+//                        f << "\taf::array node_" << parents[i].lock()->id << "_" << id << "_cpu("
+//                                "node_" << parents[i].lock()->id << "_" << id << "_dims, "
+//                                "node_" << parents[i].lock()->id << "_" << id << "_ptr, afDevice);\n";
+//                    }
+//                    f << "\taf::array node_" << id << "_cpu = ";
+//                    f << "af::matmul(";
+//                    for (int i = 0; i < parents.size(); i++) {
+//                        f << "node_" << parents[i].lock()->id << "_" << id << "_cpu";
+//                        if (i < parents.size() - 1) {
+//                            f << ", ";
+//                        }
+//                    }
+//                    f << ");\n";
+//                    for (int i = 0; i < parents.size(); i++) {
+//                        f << "\tdelete[] node_" << parents[i].lock()->id << "_" << id << "_ptr;\n";
+//                    }
+//                    f << "\tauto node_" << id << "_ptr = "  << "node_" << id << "_cpu.host<float>();\n";
+//                    f << "\tauto node_" << id << "_dims = "  << "node_" << id << "_cpu.dims();\n";
+//                    f << "\taf::setBackend(AF_BACKEND_OPENCL);\n";
+//                    f << "\taf::array node_" << id << "("  << "node_" << id << "_dims, "
+//                            "node_" << id << "_ptr, afHost);\n";
+//                    f << "\tdelete[] node_" << id << "_ptr";
+
+
+//                    f << "std::cout << node_" << id << ".dims() << std::endl\n;\n";
+//                    f << "\tfor(int i=0;i<10;i++){\n"
+//                    "\t\tnode_" << id << " = " << "af::matmul(node_" <<  parents[0].lock()->id <<
+//                            ", node_" << id << ");\n"
+//                    "\t}";
                 } else if (op_name == "MatrixInv") {
                     f << "\taf::array node_" << id << " = ";
                     f << "af::inverse(node_" << parents[0].lock()->id << ")";
@@ -409,6 +466,12 @@ namespace metadiff{
                     // Calculate p*(sf(-x)-sf(x)) + sf(x)
                     f << "\taf::array node_" << id << " = " << "node_" << p->id << " * (node_" << sfm->id
                     << " - node_" << sf->id << ") + node_" << sf->id;
+                } else if (op_name == "Select") {
+                    auto trueParent = parents[0].lock();
+                    auto falseParent = parents[1].lock();
+                    auto condition = node->op->get_arguments()[0].lock();
+                    f << "\taf::array node_" << id << " = " << "select(node_" << condition->id <<
+                    ", node_" << trueParent->id << ", node_" << falseParent->id << ")";
                 } else if (op_name == "MaxAndArgMax") {
 
                 } else if (op_name == "SortAndArgSort") {
@@ -416,7 +479,9 @@ namespace metadiff{
                 } else if (op_name == "Eye") {
 
                 } else if (op_name == "Gt") {
-
+                    f << "\taf::array node_" << id << " = ";
+                    f << "node_" << parents[0].lock()->id << " > "
+                            "node_" << parents[1].lock()->id;
                 } else if (op_name == "Ge") {
                     f << "\taf::array node_" << id << " = ";
                     f << "node_" << parents[0].lock()->id << " >= "
@@ -445,7 +510,10 @@ namespace metadiff{
                     f << "WTF" << node->id << " " << node->type;
                 }
                 f << ";\n";
-//                f << "\tstd::cout << node_" << id << ".dims() << std::endl;\n";
+                if(op_name == "MatrixMul"){
+//                    f << "\taf::setBackend(AF_BACKEND_OPENCL);\n";
+                }
+//                f << "\tstd::cout << " << id << " << node_" << id << ".dims() << std::endl;\n";
             }
 //        f << "\taf_print(af::anyTrue(af::anyTrue(af::isNaN(node_" << id <<"))));\n";
         }
