@@ -10,6 +10,7 @@ link_directories(/opt/arrayfire-3/lib /usr/local/lib /opt/intel/intel-opencl-1.2
 link_libraries(af)
 link_libraries(dl)
 link_libraries(OpenCL)
+link_libraries(curl)
 
 add_subdirectory(tests)
-add_executable(mnist_hinton examples/mnist_hinton.cpp)
+add_executable(mnist_hinton.o examples/mnist_hinton.cpp)
