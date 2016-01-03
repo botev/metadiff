@@ -285,7 +285,7 @@ int main(int argc, char **argv)
     for(int i=0;i<epochs;i++){
         int ind = i % (num_images / batch_size);
         // Input data
-        data_inv = {data.cols(ind*batch_size, (ind+1)*batch_size)};
+        data_inv = {data.cols(ind*batch_size, (ind+1)*batch_size-1)};
         clock_t start = clock();
         auto result = train.eval(data_inv);
         clock_t end = clock();
