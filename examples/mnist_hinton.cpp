@@ -255,7 +255,7 @@ int main(int argc, char **argv)
     // Get grads
     auto grads = graph->gradient(loss, params);
     // Learning rate
-    auto learning_rate = graph->constant_node(af::constant(0.0001, 1));
+    auto learning_rate = graph->constant_node(af::constant(0.01, 1));
 
     // Set up sgd
     md::Updates updates;
@@ -280,7 +280,7 @@ int main(int argc, char **argv)
     int burnout = 20;
     // Number of epochs
     int epochs = 100 + burnout;
-
+    float *hv;
     std::vector<af::array> data_inv = {af::randn(d[0], batch_size)};
     for(int i=0;i<epochs;i++){
         int ind = i % (num_images / batch_size);
@@ -289,9 +289,9 @@ int main(int argc, char **argv)
         clock_t start = clock();
         auto result = train.eval(data_inv);
         clock_t end = clock();
-        float *hv = result[0].host<float>();
-        std::cout << "Value: " << hv[0] << std::endl;
-        std::cout << "Elapsed time: " << 1000*(double(end - start))/CLOCKS_PER_SEC << "ms" << std::endl;
+        hv = result[0].host<float>();
+//        std::cout << "Value: " << hv[0] << std::endl;
+//        std::cout << "Elapsed time: " << 1000*(double(end - start))/CLOCKS_PER_SEC << "ms" << std::endl;
         if(i >= burnout) {
             auto run_time = (end - start);
             if(run_time < min_time){
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
         }
     }
     md_backend.close();
-
+    std::cout << "Final Value: " << hv[0] << std::endl;
     std::cout << "Mean run time: " << 1000*(double (time))/(CLOCKS_PER_SEC*(epochs - burnout)) << "ms" << std::endl;
     std::cout << "Max run time: " << 1000*(double (max_time))/CLOCKS_PER_SEC << "ms" << std::endl;
     std::cout << "Min run time: " << 1000*(double (min_time))/CLOCKS_PER_SEC << "ms" << std::endl;
