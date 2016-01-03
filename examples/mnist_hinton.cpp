@@ -147,7 +147,7 @@ void ReadTrainMNIST(std::string folder, float* data, int* labels){
                 {
                     unsigned char temp=0;
                     file.read((char*)&temp,sizeof(temp));
-                    data[i*28*28 + (r + c*rows)]= ((float)temp) / float(255.0);
+                    data[(r*cols + c)*num_images + i]= ((float)temp) / float(255.0);
                 }
             }
         }
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
     af_backend backend = AF_BACKEND_CPU;
     // Default batch size of 1000
     int batch_size = 1000;
-    if(argc > 2){
+    if(argc > 3){
         std::cerr << "Expecting two optional arguments - backend and batch size" << std::endl;
         exit(1);
     }
@@ -219,9 +219,18 @@ int main(int argc, char **argv)
     af::setBackend(backend);
 
     // Transfer data to Arrayfire
-    af::array data(28*28, num_images, data_ptr, afHost);
+    af::array data(num_images, 28*28, data_ptr, afHost);
     af::array l_in(num_images, labels_ptr, afHost);
 
+//    int ind = 2;
+//    af_print(af::moddims(data(ind, af::span)>0.5, 28, 28));
+//    std::cout << labels_ptr[ind] << std::endl;
+//    for(int i=0;i<28;i++){
+//        for(int j=0;j<28;j++){
+//            std::cout << (data_ptr[(i*28+j)*num_images + ind] > 0.5);
+//        }
+//        std::cout << std::endl;
+//    }
     // Create graph
     auto graph = md::create_graph();
     graph->name = name;
@@ -233,21 +242,21 @@ int main(int argc, char **argv)
     // Architecture
     int d[9] = {784, 1000, 500, 250, 30, 250, 500, 1000, 784};
     // Input data
-    auto data_in = graph->matrix(md::FLOAT, {d[0], n}, "Input");
+    auto data_in = graph->matrix(md::FLOAT, {n, d[0]}, "Input");
     // Parameters
     std::vector<md::Node> params;
     for(int i=1;i<9;i++){
-        params.push_back(graph->shared_var(af::randn(d[i], d[i-1]) / 100, "W_" + std::to_string(i)));
-        params.push_back(graph->shared_var(af::constant(0.0, d[i]), "b_" + std::to_string(i)));
+        params.push_back(graph->shared_var(af::randn(d[i-1], d[i]) / 100.0, "W_" + std::to_string(i)));
+        params.push_back(graph->shared_var(af::constant(0.0, 1, d[i]), "b_" + std::to_string(i)));
     }
     // Input Layer
-    auto h = md::relu(md::dot(params[0], data_in) + params[1]);
+    auto h = md::relu(md::dot(data_in, params[0]) + params[1]);
     // All layers except one
     for(int i=1;i<7;i++){
-        h = md::relu(md::dot(params[2*i], h) + params[2*i+1]);
+        h = md::relu(md::dot(h, params[2*i]) + params[2*i+1]);
     }
     // Calculate only logits here
-    h = md::dot(params[14], h) + params[15];
+    h = md::dot(h, params[14]) + params[15];
     // Loss
     auto error = md::binary_cross_entropy_logit(data_in, h);
     // Mean loss
@@ -285,7 +294,8 @@ int main(int argc, char **argv)
     for(int i=0;i<epochs;i++){
         int ind = i % (num_images / batch_size);
         // Input data
-        data_inv = {data.cols(ind*batch_size, (ind+1)*batch_size-1)};
+        data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
+//        std::cout << data_inv[0].dims() << std::cout;
         clock_t start = clock();
         auto result = train.eval(data_inv);
         clock_t end = clock();
