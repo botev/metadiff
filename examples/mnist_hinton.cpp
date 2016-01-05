@@ -206,7 +206,7 @@ int main(int argc, char **argv)
             backend = AF_BACKEND_CUDA;
         } else {
             std::cout << (argv[1] == "opencl") << std::endl;
-            std::cerr << "The first argument should be one of 'cpu', 'opencl' and 'gpu' - " << argv[1] << std::endl;
+            std::cerr << "The first argument should be one of 'cpu', 'opencl' and 'cuda' - " << argv[1] << std::endl;
             exit(1);
         }
     }
@@ -277,7 +277,7 @@ int main(int argc, char **argv)
     md::dagre::dagre_to_file(name + ".html", graph, {loss}, updates);
 
     // Create backend and compile function
-    md::ArrayfireBackend md_backend("/opt/arrayfire-3/include", "/opt/arrayfire-3/lib");
+    md::ArrayfireBackend md_backend = md::ArrayfireBackend();
     auto train = md_backend.compile_function(name, graph, {data_in}, {loss}, updates);
 
     // Run function

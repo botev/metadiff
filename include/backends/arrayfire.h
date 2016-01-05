@@ -18,6 +18,19 @@ namespace metadiff{
                 lib_path(lib_path)
         {};
 
+        ArrayfireBackend(){
+            // Create backend and compile function
+            const char *AF_PATH = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
+            include_path = std::string(AF_PATH) + "/include";
+            lib_path = std::string(AF_PATH) + "/lib";
+        };
+
+        ArrayfireBackend(std::string AF_PATH){
+            // Create backend and compile function
+            include_path = AF_PATH + "/include";
+            lib_path = AF_PATH + "/lib";
+        };
+
         void compile_file(std::string file_name, std::string dll_name){
             std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
             command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
