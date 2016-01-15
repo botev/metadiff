@@ -11,13 +11,13 @@ namespace metadiff{
     // Because of how the gradients are set up only one node can be differentiable
     class MultiNode : public UnaryOperator{
     public:
-        NodeInPtr parent;
+        Node parent;
         std::vector<Shape> results_shapes;
         std::vector<ad_node_type> results_types;
         std::vector<ad_value_type> results_v_types;
         MultiNode(std::string const name,
                   GraphInPtr graph,
-                  NodeInPtr parent):
+                  Node parent):
                 UnaryOperator(name, graph, parent)
         {}
 
@@ -39,17 +39,16 @@ namespace metadiff{
 // Such as MaxAndArgMax, SortAndArgSort
     class MultiNodeIndex : public Operator {
     public:
-        NodeInPtr parent;
+        Node parent;
         size_t index;
         MultiNodeIndex(GraphInPtr graph,
-                       NodeInPtr parent,
+                       Node parent,
                        size_t index):
                 Operator("MultyNodeIndex", graph),
                 parent(parent),
                 index(index)
         {
-            auto parent_op = parent.lock()->op;
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent_op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
             if(not multi_op){
                 throw UnknownError({parent}, "The operator 'MultiNodeIndex' can be applied only to nodes, "
                         "whose operators are subclasses of 'MultiNode'");
@@ -60,54 +59,34 @@ namespace metadiff{
         }
 
         ad_value_type get_value_type(){
-            auto parent_op = parent.lock()->op;
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent_op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
             return multi_op->results_v_types[index];
         }
 
         Shape get_shape(){
-            auto parent_op = parent.lock()->op;
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent_op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
             return multi_op->results_shapes[index];
         }
 
         ad_node_type get_node_type(){
-            auto parent_op = parent.lock()->op;
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent_op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
             return multi_op->results_types[index];
         };
 
-        unsigned short get_gradient_level(){
-            return parent.lock()->grad_level;
+        size_t get_gradient_level(){
+            return parent->grad_level;
         }
 
-        NodeInVec get_parents(){
+        NodeVec get_parents(){
             return {parent};
         }
 
-        NodeInVec get_arguments(){
-            return NodeInVec {};
+        NodeVec get_arguments(){
+            return NodeVec {};
         }
 
-        void generate_gradients(size_t current, std::unordered_map<size_t, size_t>& messages){
-            auto graph = this->graph.lock();
-
-            // Check for any incoming messages
-            if(messages.find(current) == messages.end()){
-                return;
-            }
-
-            // Get the gradient with respect to this node
-            auto my_grad = graph->nodes[messages[current]];
-            update_grad_name(my_grad, current);
-
-            auto parent = this->parent.lock();
-            if(parent->is_constant()){
-                throw UnknownError({parent}, "Gradient message present, but parents are " + to_string(parent->type));
-            }
-
-            auto parent_grad = my_grad;
-            send_grad_message(graph, parent->id, parent_grad->id, messages);
+        Node get_parent_grad(Node my_grad, size_t index){
+            return my_grad;
         }
     };
 
@@ -116,7 +95,7 @@ namespace metadiff{
     public:
         std::vector<size_t> axes;
         MaxAndArgMax(GraphInPtr graph,
-                     NodeInPtr parent, std::vector<size_t> axes):
+                     Node parent, std::vector<size_t> axes):
                 MultiNode("MaxAndArgMax", graph, parent),
                 axes(axes){
             if(not validate_axes(axes)){
@@ -132,32 +111,32 @@ namespace metadiff{
                 }
                 throw InvalidArguments(name, {parent}, axes_str);
             }
-            auto parent_node = this->parent.lock();
-            if(parent_node->v_type == BOOLEAN){
+            if(parent->v_type == BOOLEAN){
                 throw InvalidArguments(name, {parent}, "Operator 'MaxAndArgMax' can not be "
-                "applied to a BOOLEAN node");
+                        "applied to a BOOLEAN node");
             }
-            if(parent_node->type == SYMBOLIC_INTEGER){
+            if(parent->type == SYMBOLIC_INTEGER){
                 throw InvalidArguments(name, {parent}, "Operator 'MaxAndArgMax' can not be "
                         "applied to a SYMBOLIC_INTEGER node");
             }
-            Shape shape = parent_node->shape;
+            Shape shape = parent->shape;
             for(int i=0;i<axes.size();i++){
                 shape[axes[i]] = 1;
             }
             this->results_shapes = {shape, shape};
-            if(parent_node->type == INPUT or parent_node->type == SHARED_INPUT or parent_node->type == INPUT_DERIVED){
+            if(parent->type == INPUT or parent->type == SHARED_INPUT or parent->type == INPUT_DERIVED){
                 this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
-            } else if(parent_node->type == CONSTANT_DERIVED){
+            } else if(parent->type == CONSTANT_DERIVED){
                 this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
             } else {
                 this->results_types = {CONSTANT, CONSTANT};
             }
-            this->results_v_types = {parent_node->v_type, INTEGER};
+            this->results_v_types = {parent->v_type, INTEGER};
         }
 
-        void generate_gradients(size_t current, std::unordered_map<size_t , size_t>& messages){
+        Node get_parent_grad(Node my_grad, size_t index){
             // TODO
+            return my_grad;
         }
     };
 
@@ -166,7 +145,7 @@ namespace metadiff{
     public:
         std::vector<size_t> axes;
         SortAndArgSort(GraphInPtr graph,
-                     NodeInPtr parent, std::vector<size_t> axes):
+                       Node parent, std::vector<size_t> axes):
                 MultiNode("SortAndArgSort", graph, parent),
                 axes(axes){
             if(not validate_axes(axes)){
@@ -182,29 +161,29 @@ namespace metadiff{
                 }
                 throw InvalidArguments(name, {parent}, axes_str);
             }
-            auto parent_node = this->parent.lock();
-            if(parent_node->v_type == BOOLEAN){
+            if(parent->v_type == BOOLEAN){
                 throw InvalidArguments(name, {parent}, "Operator 'SortAndArgSort' can not be "
                         "applied to a BOOLEAN node");
             }
-            if(parent_node->type == SYMBOLIC_INTEGER){
+            if(parent->type == SYMBOLIC_INTEGER){
                 throw InvalidArguments(name, {parent}, "Operator 'SortAndArgSort' can not be "
                         "applied to a SYMBOLIC_INTEGER node");
             }
-            Shape shape = parent_node->shape;
+            Shape shape = parent->shape;
             this->results_shapes = {shape, shape};
-            if(parent_node->type == INPUT or parent_node->type == SHARED_INPUT or parent_node->type == INPUT_DERIVED){
+            if(parent->type == INPUT or parent->type == SHARED_INPUT or parent->type == INPUT_DERIVED){
                 this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
-            } else if(parent_node->type == CONSTANT_DERIVED){
+            } else if(parent->type == CONSTANT_DERIVED){
                 this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
             } else {
                 this->results_types = {CONSTANT, CONSTANT};
             }
-            this->results_v_types = {parent_node->v_type, INTEGER};
+            this->results_v_types = {parent->v_type, INTEGER};
         }
 
-        void generate_gradients(size_t current, std::unordered_map<size_t , size_t>& messages){
+        Node get_parent_grad(Node my_grad, size_t index){
             // TODO
+            return my_grad;
         }
     };
 }

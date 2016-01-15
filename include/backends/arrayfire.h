@@ -290,9 +290,13 @@ namespace metadiff{
                     auto parent = parents[0].lock();
                     auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
                     std::string code = "node_" + std::to_string(parent->id);
-                    for (int i = 0; i < axes.size(); i++) {
-                        if (parent->shape[axes[i]] != 1) {
-                            code = "af::sum(" + code + ", " + std::to_string(axes[i]) + ")";
+                    if(node->is_scalar()){
+                        code = "af::sum(af::flat(node_" + std::to_string(parent->id) + "))";
+                    } else {
+                        for (int i = 0; i < axes.size(); i++) {
+                            if (parent->shape[axes[i]] != 1) {
+                                code = "af::sum(" + code + ", " + std::to_string(axes[i]) + ")";
+                            }
                         }
                     }
                     f << code;

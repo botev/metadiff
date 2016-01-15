@@ -290,16 +290,17 @@ int main(int argc, char **argv)
     // Number of epochs
     int epochs = 100 + burnout;
     float *hv;
-    std::vector<af::array> data_inv = {af::randn(d[0], batch_size)};
+    std::vector<af::array> data_inv;
     for(int i=0;i<epochs;i++){
         int ind = i % (num_images / batch_size);
         // Input data
-        data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
 //        std::cout << data_inv[0].dims() << std::cout;
+        auto ptr = data_ptr + ind * batch_size * 28 * 28;
         clock_t start = clock();
+        data_inv = {af::array(batch_size,  28*28,  ptr,  afHost)};
         auto result = train.eval(data_inv);
-        clock_t end = clock();
         hv = result[0].host<float>();
+        clock_t end = clock();
 //        std::cout << "Value: " << hv[0] << std::endl;
 //        std::cout << "Elapsed time: " << 1000*(double(end - start))/CLOCKS_PER_SEC << "ms" << std::endl;
         if(i >= burnout) {

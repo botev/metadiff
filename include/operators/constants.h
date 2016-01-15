@@ -9,39 +9,27 @@ namespace metadiff{
     class MakeConstant: public UnaryOperator{
     public:
         MakeConstant(GraphInPtr graph,
-                     NodeInPtr parent):
+                     Node parent):
                 UnaryOperator("Const", graph, parent)
         {};
 
         ad_node_type get_node_type(){
-            auto parent_type = parent.lock()->type;
-            if(parent_type == CONSTANT){
+            if(parent->type == CONSTANT){
                 return CONSTANT;
             } else {
                 return CONSTANT_DERIVED;
             }
         };
 
-        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
-            auto graph = this->graph.lock();
-            if (messages.find(current) != messages.end()) {
-                this->throw_grad_type_error();
-            }
-            return;
-        };
+        Node get_parent_grad(Node my_grad, size_t index){
+            return my_grad;
+        }
     };
 
-    Node Node::constant() {
-        auto graph = this->graph.lock();
-        auto arg = graph->nodes[this->id];
-        auto op = std::make_shared<MakeConstant>(graph, arg);
-        return Node(graph, graph->derived_node(op).lock()->id);
+    Node NodeInternal::constant() {
+        return apply<MakeConstant>();
     }
-
-    Node to_constant(Node node){
-        return node.constant();
-    }
-
+    
     class ConstantOperator: public Operator{
     public:
         Shape shape;
@@ -50,7 +38,7 @@ namespace metadiff{
                 Operator(name, graph)
         {};
 
-        NodeInVec get_parents() {
+        NodeVec get_parents() {
             return {};
         };
 
@@ -59,28 +47,29 @@ namespace metadiff{
         };
 
         ad_node_type get_node_type(){
-            return CONSTANT_DERIVED;
+            for(int i=0;i<4;i++){
+                if(not shape[i].is_constant()){
+                    return CONSTANT_DERIVED;
+                }
+            }
+            return CONSTANT;
         };
 
         Shape get_shape(){
             return shape;
         }
 
-        unsigned short get_gradient_level(){
+        size_t get_gradient_level(){
             return 0;
         };
 
-        NodeInVec get_arguments() {
-            return NodeInVec {};
+        NodeVec get_arguments() {
+            return NodeVec {};
         }
 
-        void generate_gradients(size_t current, std::unordered_map<size_t, size_t> &messages) {
-            auto graph = this->graph.lock();
-            if (messages.find(current) != messages.end()) {
-                throw UnknownError({}, "The constant operator recieved a gradient message.");
-            }
-            return;
-        };
+        Node get_parent_grad(Node my_grad, size_t index){
+            return my_grad;
+        }
     };
 
     class Eye: public ConstantOperator{
@@ -92,6 +81,10 @@ namespace metadiff{
         }
     };
 
+    Node GraphInternal::eye(SymInt size) {
+        return derived_node(std::make_shared<Eye>(this, size));
+    }
+
     class Zeros: public ConstantOperator{
     public:
         Zeros(GraphInPtr graph, Shape shape):
@@ -100,6 +93,10 @@ namespace metadiff{
             this->shape = shape;
         }
     };
+
+    Node GraphInternal::zeros(Shape shape) {
+        return derived_node(std::make_shared<Zeros>(this, shape));
+    }
 
     class Ones: public ConstantOperator{
     public:
@@ -110,6 +107,10 @@ namespace metadiff{
         }
     };
 
+    Node GraphInternal::ones(Shape shape) {
+        return derived_node(std::make_shared<Ones>(this, shape));
+    }
+
     class ConstantValue: public ConstantOperator{
         double value;
         ConstantValue(GraphInPtr graph, Shape shape, double value):
@@ -119,5 +120,15 @@ namespace metadiff{
             this->shape = shape;
         }
     };
+
+    Node GraphInternal::value(double value, Shape shape){
+        if(value == 0.0){
+            return zeros(shape);
+        } else if(value == 1.0){
+            return ones(shape);
+        } else{
+            return derived_node(std::make_shared<ConstantValue>(this, shape, value));
+        }
+    }
 }
 #endif //METADIFF_OPERATORS_CONSTANTS_H
