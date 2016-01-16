@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 
 
     // Create backend and compile function
-    md::ArrayfireBackend backend("/opt/arrayfire-3/include", "/opt/arrayfire-3/lib");
+    md::ArrayfireBackend backend = md::ArrayfireBackend();
     auto train = backend.compile_function(graph, {data_in}, {loss}, updates);
 
     // Run function
