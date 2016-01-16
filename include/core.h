@@ -175,6 +175,12 @@ namespace metadiff {
 
 //        template <typename T>
 //        Node apply();
+        Node broadcast(Shape shape);
+        Node broadcast_to(Node other);
+        Node neg();
+        Node div();
+        Node sum(std::vector<size_t> axes = {0, 1, 2, 3});
+        Node square();
 
         Node constant();
         Node gt(Node node);
@@ -193,16 +199,9 @@ namespace metadiff {
         Node is_inf();
         Node select(Node result_true, Node result_false);
 
-        Node broadcast(Shape shape);
-        Node broadcast_to(Node other);
-        Node neg();
-        Node div();
-        Node sum(std::vector<size_t> axes = {0, 1, 2, 3});
-        Node square();
-
         Node exp();
         Node log();
-        Node softplus(double threshold = 50);
+        Node softplus(size_t threshold = 50);
         Node abs();
         Node sigmoid();
         Node relu();
@@ -275,7 +274,7 @@ namespace metadiff {
         virtual NodeVec get_arguments() = 0;
         virtual Node get_parent_grad(Node my_grad, size_t index) = 0;
         void send_grad_message(size_t target, Node msg, std::vector<Node>& messages);
-        void generate_gradients(std::vector<Node>& messages);
+        virtual void generate_gradients(std::vector<Node>& messages);
         double get_scalar_value();
 
         NodeVec get_ancestors(){

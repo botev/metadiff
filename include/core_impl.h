@@ -195,11 +195,9 @@ namespace metadiff{
         new_graph->broadcast = broadcast;
         new_graph->sym_integer_count = sym_integer_count;
         new_graph->shared_vars = shared_vars;
-        size_t mapping[nodes.size()];
-        for(int i=0;i<nodes.size();i++){
-            mapping[i] = 0;
-        }
-        for(int i=0;i<nodes.size();i++){
+        size_t n = nodes.size();
+        std::vector<size_t> mapping(n, n);
+        for(int i=0;i<n;i++){
             if(mask[i]){
                 NodeVec ancestors = nodes[i]->op->get_ancestors();
                 NodeVec new_ancestors;

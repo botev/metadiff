@@ -11,7 +11,6 @@
 #include "iostream"
 #include <fstream>
 #include "memory"
-#include <unordered_map>
 #include <dlfcn.h>
 
 #include "symbolic.h"

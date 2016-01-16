@@ -251,7 +251,7 @@ int main(int argc, char **argv)
     // Loss
     auto error = md::binary_cross_entropy_logit(data_in, h);
     // Mean loss
-    auto loss = error.sum() * graph->constant_node(af::constant(1.0 / float(batch_size), 1));
+    auto loss = error.sum() * graph->constant_value(1.0 / float(batch_size));
     // Get grads
     auto grads = graph->gradient(loss, params);
     // Learning rate
@@ -283,13 +283,10 @@ int main(int argc, char **argv)
         int ind = i % (num_images / batch_size);
         // Input data
         data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
-//        std::cout << data_inv[0].dims() << std::cout;
         clock_t start = clock();
         auto result = train.eval(data_inv);
         clock_t end = clock();
         hv = result[0].host<float>();
-//        std::cout << "Value: " << hv[0] << std::endl;
-//        std::cout << "Elapsed time: " << 1000*(double(end - start))/CLOCKS_PER_SEC << "ms" << std::endl;
         if(i >= burnout) {
             auto run_time = (end - start);
             if(run_time < min_time){

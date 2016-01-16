@@ -72,12 +72,14 @@ namespace metadiff{
                     "    return;\n"
                     "};\n\n";
 
+            f << "inline af::array softplus(af::array& input, int threshold) {\n"
+                    "            af::array result = af::log1p(af::exp(input));\n"
+                    "            af::replace(result, input < threshold, input);\n"
+                    "            return result;\n"
+                    "        }\n";
+
             f << "\n";
             f << "extern \"C\" std::vector<af::array> eval_func(std::vector<af::array>& inputs, std::vector<SharedPtr>& shared_vars){\n";
-//            f << "\tstd::cout << \"ADS\" << std::endl;\n";
-            f << "\tstd::vector<af::array> outputs;\n";
-//            f << "print_mem_info(\"Initial\");\n";
-//            f << "\taf::setBackend(AF_BACKEND_OPENCL);\n";
             f << "\t// Set up automatic broadcasting\n";
             f << "\taf::gforSet(true);\n";
             // Get ancestors mask
@@ -97,39 +99,44 @@ namespace metadiff{
                 }
             }
 
-            // Write all of the input nodes
-            f << "\n\t// Set all of the inputs accordingly\n";
+            std::vector<std::string> expression_table(graph->nodes.size(), "WTF");
+
+            // Expressions for all inputs
             for(int i=0;i<inputs.size();i++){
-                f << "\taf::array node_" << inputs[i].ptr->id << " = inputs[" << i << "];\n";
+                expression_table[inputs[i].ptr->id] = "inputs[" + std::to_string(i) + "]";
+                ancestor_mask[inputs[i].ptr->id] = false;
             }
-
-//            f << "print_mem_info(\"Post input\");\n";
-
-            // Write all of the shared variables
-            f << "\n\t// Set all of the shared variables accordingly\n";
+            // Expressions for all shared variables
             for(int i=0;i<graph->shared_vars.size();i++){
-//                f << "\tstd::cout << \"Node \" << " << graph->shared_vars[i]->id << " << std::endl;\n";
-                f << "\taf::array node_" << graph->shared_vars[i]->id << " = shared_vars[" << i << "]->value;\n";
-//                f << "\tstd::cout << node_" << graph->shared_vars[i]->id << ".dims() << std::endl;\n";
+                expression_table[graph->shared_vars[i]->id] = "shared_vars[" + std::to_string(i) + "]->value";
+                ancestor_mask[graph->shared_vars[i]->id] = false;
             }
 
-//            f << "print_mem_info(\"Post shared\");\n";
-
-            // Calculate all of the symbolic integers
-            calculate_symbolics(f, graph, inputs);
-            // Validate input shapes
-            validate_input_shapes(f, graph, inputs);
+//            // Calculate all of the symbolic integers
+//            calculate_symbolics(f, graph, inputs);
+//            // Validate input shapes
+//            validate_input_shapes(f, graph, inputs);
 
             // Calculate all of the other nodes
             f << "\n\t// Calculate all of the computation nodes\n";
             for(size_t i=0;i<ancestor_mask.size();i++){
                 if(ancestor_mask[i] and graph->nodes[i]->type != INPUT){
-                    calculate_node(f, graph, i);
-//                    f << "print_mem_info(\"Post " << i << "\");\n";
+                    std::string expression = calculate_node(graph, i, expression_table);
+                    if(graph->nodes[i]->execution.inlined or graph->nodes[i]->op->name == "Broadcast"){
+                        expression_table[i] = expression;
+                    } else {
+//                        f << "\tstd::cout<< \"Evaluating node " << i << "...\" << std::endl;\n";
+                        if(graph->nodes[i]->type == CONSTANT and Node(graph->nodes[i]).is_scalar()){
+                            f << "\tfloat ";
+                        }
+                        else{
+                            f << "\taf::array ";
+                        }
+                        f << "node_" << i << " = " << expression << ";\n";
+                        expression_table[i] = "node_" + std::to_string(i);
+                    }
                 }
             }
-
-//            f << "std::cout << \"End\" << std::endl;\n";
 
             // Disable the automatic broadcasting
             f << "\taf::gforSet(false);";
@@ -141,395 +148,326 @@ namespace metadiff{
                 if(node->type == UPDATE){
                     auto shared_id = node->op->get_arguments()[0].ptr->id;
                     auto update_id = node->op->get_parents()[0].ptr->id;
-//                    std::cout << "Update id: " << i << std::endl;
-//                    std::cout << "shared id: " <<  shared_id << std::endl;
-//                    std::cout << "expression id: " << update_id << std::endl;
-//                    std::cout << "shared num " << graph->shared_vars.size() << std::endl;
                     for(int j=0;j<graph->shared_vars.size();j++){
-//                        std::cout << "this shared: " <<  graph->shared_vars[j]->id << std::endl;
                         if(graph->shared_vars[j]->id == shared_id){
-                            f << "\tshared_vars[" << j << "]->value = "
-                                    "node_" << update_id << ";\n";
+                            f << "\tshared_vars[" << j << "]->value = " << expression_table[update_id] << ";\n";
                         }
                     }
                 }
             }
             graph->clear_temporary_updates();
-
-//            //   Debugging
-//            f << "\taf_print(node_18);\n";
-//            f << "\taf_print(node_19_cond);\n";
-//            f << "\taf_print(node_19);\n";
-//            f << "\taf_print(node_21);\n";
-//            f << "\taf_print(node_22);\n";
-//            f << "\taf_print(node_23);\n";
-//            f << "\taf_print(node_24);\n";
-//            f << "\taf_print(node_25);\n";
-
-//            f << "\taf::sync();\n";
             // Write all of the output nodes as the result
             f << "\n\t// Write all of the output nodes in correct order\n";
             f << "\treturn {";
             for(int i=0;i<targets.size();i++){
                 if(i < targets.size() - 1){
-                    f << "node_" << targets[i].ptr->id << ", ";
+                    f << expression_table[targets[i].ptr->id] << ", ";
                 } else {
-                    f << "node_" << targets[i].ptr->id << "};\n";
+                    f << expression_table[targets[i].ptr->id] << "};\n";
                 }
             }
             f << "}\n";
             f.close();
         }
 
-        void calculate_symbolics(std::ofstream& f, Graph graph, std::vector<Node> inputs){
-            f << "\n\t// Set all of the symbolic variables\n";
-            for(size_t i=0;i<graph->sym_integer_count;i++){
-                SymInt variable = SymInt::variable(i);
-                f << "\tint " << variable << " = ";
-                bool done = false;
-                for(int j=0;j<inputs.size();j++){
-                    auto shape = graph->nodes[inputs[j].ptr->id]->shape;
-                    for(int s=0;s<4;s++){
-                        if(shape[s] == variable){
-                            f << "node_" << inputs[j].ptr->id << ".dims(" << s << ")";
-                            done = true;
-                            break;
-                        }
-                    }
-                    if(done){
-                        break;
-                    }
-                }
-                f << ";\n";
-            }
-        }
+//        void calculate_symbolics(std::ofstream& f, Graph graph, std::vector<Node> inputs){
+//            f << "\n\t// Set all of the symbolic variables\n";
+//            for(size_t i=0;i<graph->sym_integer_count;i++){
+//                SymInt variable = SymInt::variable(i);
+//                f << "\tint " << variable << " = ";
+//                bool done = false;
+//                for(int j=0;j<inputs.size();j++){
+//                    auto shape = graph->nodes[inputs[j].ptr->id]->shape;
+//                    for(int s=0;s<4;s++){
+//                        if(shape[s] == variable){
+//                            f << "node_" << inputs[j].ptr->id << ".dims(" << s << ")";
+//                            done = true;
+//                            break;
+//                        }
+//                    }
+//                    if(done){
+//                        break;
+//                    }
+//                }
+//                f << ";\n";
+//            }
+//        }
+//
+//        void validate_input_shapes(std::ofstream& f, Graph graph, std::vector<Node> inputs){
+//            f <<"\n\t// Verify input sizes are correct\n";
+//            for(int i=0;i<inputs.size();i++){
+//                auto node = graph->nodes[i];
+//                f << "\tsize_t node_" << node->id << "_expected_shape[4]{";
+//                for(int j=0;j<4;j++){
+//                    f << node->shape[j].to_string_with_star();
+//                    if(j<3){
+//                        f << ", ";
+//                    }
+//                }
+//                f << "};\n";
+//                f << "\tsize_t node_" << node->id << "_actual_shape[4]{";
+//                for(int j=0;j<4;j++){
+//                    f << "node_" << node->id << ".dims(" << j << ")";
+//                    if(j<3){
+//                        f << ", ";
+//                    }
+//                }
+//                f << "};\n";
+//                f << "\tif(node_" << node->id << "_expected_shape[0] != node_" << node->id << "_actual_shape[0]\n"
+//                        "\t\tor node_" << node->id << "_expected_shape[1] != node_" << node->id << "_actual_shape[1]\n"
+//                        "\t\tor node_" << node->id << "_expected_shape[2] != node_" << node->id << "_actual_shape[2]\n"
+//                        "\t\tor node_" << node->id << "_expected_shape[3] != node_" << node->id << "_actual_shape[3]){\n"
+//                        "\t\t throw InvalidInputShape(" << node->id <<
+//                ", node_" << node->id << "_expected_shape, node_" << node->id << "_actual_shape);\n"
+//                        "\t}\n";
+//            }
+//        }
 
-        void validate_input_shapes(std::ofstream& f, Graph graph, std::vector<Node> inputs){
-            f <<"\n\t// Verify input sizes are correct\n";
-            for(int i=0;i<inputs.size();i++){
-                auto node = graph->nodes[i];
-                f << "\tsize_t node_" << node->id << "_expected_shape[4]{";
-                for(int j=0;j<4;j++){
-                    f << node->shape[j].to_string_with_star();
-                    if(j<3){
-                        f << ", ";
-                    }
-                }
-                f << "};\n";
-                f << "\tsize_t node_" << node->id << "_actual_shape[4]{";
-                for(int j=0;j<4;j++){
-                    f << "node_" << node->id << ".dims(" << j << ")";
-                    if(j<3){
-                        f << ", ";
-                    }
-                }
-                f << "};\n";
-                f << "\tif(node_" << node->id << "_expected_shape[0] != node_" << node->id << "_actual_shape[0]\n"
-                        "\t\tor node_" << node->id << "_expected_shape[1] != node_" << node->id << "_actual_shape[1]\n"
-                        "\t\tor node_" << node->id << "_expected_shape[2] != node_" << node->id << "_actual_shape[2]\n"
-                        "\t\tor node_" << node->id << "_expected_shape[3] != node_" << node->id << "_actual_shape[3]){\n"
-                        "\t\t throw InvalidInputShape(" << node->id <<
-                ", node_" << node->id << "_expected_shape, node_" << node->id << "_actual_shape);\n"
-                        "\t}\n";
-            }
-        }
-
-        static void calculate_node(std::ofstream& f, Graph graph, size_t id){
+        static std::string calculate_node(Graph graph, size_t id,
+                                          std::vector<std::string>& expression_table){
             auto node = graph->nodes[id];
             auto op_name = node->op->name;
             auto parents = node->op->get_parents();
             auto args = node->op->get_arguments();
             auto children = node->children;
-//        f << "\tstd::cout << \"Parents dims: \" << ";
-//        for(int i=0;i<parents.size();i++){
-//            if(not parents[i].lock()->is_constant()) {
-//                f << "node_" << parents[i].lock()->id << ".dims() << \"|\" << ";
-//            }
-//        }
-//        f << "std::endl;\n";
-
-            if(node->type == CONSTANT and node->op->name == "Input"){
-                f << "\taf::array node_" << id << " = af::constant(";
-                if(node->v_type == FLOAT) {
-                    float host[1];
-                    node->value.host(host);
-                    f << host[0];
-                } else if(node->v_type == INTEGER){
-                    int host[1];
-                    node->value.host(host);
-                    f << host[0];
-                } else {
-                    bool host[1];
-                    node->value.host(host);
-                    f << host[0];
-                }
-                for(int i=0;i<4;i++){
-                    f << ", " << node->shape[i].to_string_with_star();
-                }
-                f << ");\n";
-            } else if(node->type != UPDATE and node->type != SHARED_INPUT) {
-//                f << "\tstd::cout << \"Node \" << " << id << " << std::endl;\n";
-                if (op_name == "Broadcast") {
-                    f << "\taf::array node_" << id << " = ";
-                    bool not_supproted = false;
-                    for (int i = 0; i < children.size(); i++) {
-                        auto name = children[i].ptr->op->name;
-                        if (name != "Add" and name != "Mul"
-                            and name != "Neg" and name != "Div") {
-                            not_supproted = true;
-                            break;
-                        }
-                    }
-                    if (not_supproted) {
-                        f << "af::tile(node_" << parents[0].ptr->id << ", ";
-                        for (int i = 0; i < 4; i++) {
-                            if (node->shape[i] != parents[0].ptr->shape[i]) {
-                                f << node->shape[i].to_string_with_star();
-                            } else {
-                                f << "1";
-                            }
-                            if (i < 3) {
-                                f << ", ";
-                            }
-                        }
-                        f << ")";
-                    } else {
-                        f << "node_" << parents[0].ptr->id;
-                    }
-                } else if (op_name == "Sum") {
-                    f << "\taf::array node_" << id << " = ";
-                    auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
-                    std::string code = "node_" + std::to_string(parents[0].ptr->id);
-                    if(Node(node).is_scalar()){
-                        code = "af::sum(af::flat(node_" + std::to_string(parents[0].ptr->id) + "))";
-                    } else {
-                        for (int i = 0; i < axes.size(); i++) {
-                            if (parents[0].ptr->shape[axes[i]] != 1) {
-                                code = "af::sum(" + code + ", " + std::to_string(axes[i]) + ")";
-                            }
-                        }
-                    }
-                    f << code;
-                } else if (op_name == "Add") {
-                    f << "\taf::array node_" << id << " = ";
-                    for (int i = 0; i < parents.size(); i++) {
-                        f << "node_" << parents[i].ptr->id;
-                        if (i < parents.size() - 1) {
-                            f << " + ";
-                        }
-                    }
-                } else if (op_name == "Neg") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "- node_" << parents[0].ptr->id << "";
-                } else if (op_name == "Mul") {
-                    f << "\taf::array node_" << id << " = ";
-                    for (int i = 0; i < parents.size(); i++) {
-                        f << "node_" << parents[i].ptr->id;
-                        if (i < parents.size() - 1) {
-                            f << " * ";
-                        }
-                    }
-                } else if (op_name == "Div") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "1 / node_" << parents[0].ptr->id << "";
-                } else if (op_name == "Square") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "node_" << parents[0].ptr->id << " * "
-                    << parents[0].ptr->id << "";
-                } else if (op_name == "Transpose") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::transpose(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "MatrixMul") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::matmul(";
-                    for (int i = 0; i < parents.size(); i++) {
-                        f << "node_" << parents[i].ptr->id;
-                        if (i < parents.size() - 1) {
-                            f << ", ";
-                        }
-                    }
-                    f << ")";
-
-//                    for (int i = 0; i < parents.size(); i++) {
-//                        f << "\tauto node_" << parents[i].lock()->id << "_" << id << "_ptr = "
-//                                "node_" << parents[i].lock()->id << ".host<float>();\n";
-//                        f << "\tauto node_" << parents[i].lock()->id << "_" << id << "_dims = "
-//                                "node_" << parents[i].lock()->id << ".dims();\n";
-//                    }
-//                    f << "\taf::setBackend(AF_BACKEND_CPU);\n";
-//                    for (int i = 0; i < parents.size(); i++) {
-//                        f << "\taf::array node_" << parents[i].lock()->id << "_" << id << "_cpu("
-//                                "node_" << parents[i].lock()->id << "_" << id << "_dims, "
-//                                "node_" << parents[i].lock()->id << "_" << id << "_ptr, afDevice);\n";
-//                    }
-//                    f << "\taf::array node_" << id << "_cpu = ";
-//                    f << "af::matmul(";
-//                    for (int i = 0; i < parents.size(); i++) {
-//                        f << "node_" << parents[i].lock()->id << "_" << id << "_cpu";
-//                        if (i < parents.size() - 1) {
-//                            f << ", ";
-//                        }
-//                    }
-//                    f << ");\n";
-//                    for (int i = 0; i < parents.size(); i++) {
-//                        f << "\tdelete[] node_" << parents[i].lock()->id << "_" << id << "_ptr;\n";
-//                    }
-//                    f << "\tauto node_" << id << "_ptr = "  << "node_" << id << "_cpu.host<float>();\n";
-//                    f << "\tauto node_" << id << "_dims = "  << "node_" << id << "_cpu.dims();\n";
-//                    f << "\taf::setBackend(AF_BACKEND_OPENCL);\n";
-//                    f << "\taf::array node_" << id << "("  << "node_" << id << "_dims, "
-//                            "node_" << id << "_ptr, afHost);\n";
-//                    f << "\tdelete[] node_" << id << "_ptr";
-
-
-//                    f << "std::cout << node_" << id << ".dims() << std::endl\n;\n";
-//                    f << "\tfor(int i=0;i<10;i++){\n"
-//                    "\t\tnode_" << id << " = " << "af::matmul(node_" <<  parents[0].lock()->id <<
-//                            ", node_" << id << ");\n"
-//                    "\t}";
-                } else if (op_name == "MatrixInv") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::inverse(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Det") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::det(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "LogDet") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::log(af::det(node_" << parents[0].ptr->id << "))";
-                } else if (op_name == "Trace") {
-                    f << "\taf::array node_" << id << " = ";
-
-                } else if (op_name == "Exp") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::exp(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Log") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::log(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Pow") {
-                    f << "\taf::array node_" << id << " = ";
-
-                } else if (op_name == "Abs") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::abs(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Sin") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::sin(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Cos") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::cos(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Tan") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::tan(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Cot") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::cot(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Sinh") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::sinh(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Cosh") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::cosh(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Tanh") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::tanh(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Coth") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::coth(node_" << parents[0].ptr->id << ")";
-                } else if (op_name == "Sigmoid") {
-                    f << "\taf::array node_" << id << " =  1 / (1 + af::exp(-node_" << parents[0].ptr->id << "))";
-                } else if (op_name == "Diag") {
-                    f << "\taf::array node_" << id << " = ";
-                    if (node->shape[1] == 1) {
-                        f << "af::diag(node_" << parents[0].ptr->id << ", 0, true)";
-                    } else {
-                        f << "af::diag(node_" << parents[0].ptr->id << ", 0, false)";
-                    }
-                } else if (op_name == "Reshape") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::moddims(node_" << parents[0].ptr->id << ", ";
-                    for (int i = 0; i < 4; i++) {
-                        f << node->shape[i].to_string_with_star();
-                        if (i < 3) {
-                            f << ", ";
-                        }
-                    }
-                    f << ")";
-                } else if (op_name == "Reorder") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "af::reorder(node_" << parents[0].ptr->id << ", ";
-                    auto op_1 = dynamic_cast<Reorder *>(node->op.get());
-                    auto order = op_1->order;
-                    for (int i = 0; i < 4; i++) {
-                        f << order[i];
-                        if (i < 3) {
-                            f << ", ";
-                        }
-                    }
-                    f << ")";
-                } else if (op_name == "Softplus") {
-                    auto parent = parents[0].ptr;
-                    double th = dynamic_cast<Softplus *>(node->op.get())->threshold;
-                    f << "\taf::array node_" << id << "_cond = node_" << parent->id << " < " << th << ";\n";
-                    f << "\taf::array node_" << id << "_exp = af::exp(node_" << parent->id << ");\n";
-                    f << "\taf::array node_" << id << " = af::log1p(node_" << id << "_exp);\n";
-                    f << "\taf::replace(node_" << id << ", node_" << id << "_cond, node_" << parent->id << ")";
-                } else if (op_name == "BinCrossEntropyLogit") {
-                    auto p = parents[0].ptr;
-                    auto sf = parents[1].ptr;
-                    auto sfm = parents[2].ptr;
-                    // Calculate p*(sf(-x)-sf(x)) + sf(x)
-                    f << "\taf::array node_" << id << " = " << "node_" << p->id << " * (node_" << sfm->id
-                    << " - node_" << sf->id << ") + node_" << sf->id;
-                } else if (op_name == "Select") {
-                    auto trueParent = parents[0].ptr;
-                    auto falseParent = parents[1].ptr;
-                    auto condition = node->op->get_arguments()[0].ptr;
-                    f << "\taf::array node_" << id << " = " << "select(node_" << condition->id <<
-                    ", node_" << trueParent->id << ", node_" << falseParent->id << ")";
-                } else if (op_name == "MaxAndArgMax") {
-
-                } else if (op_name == "SortAndArgSort") {
-
-                } else if (op_name == "Eye") {
-
-                } else if (op_name == "Gt") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "node_" << parents[0].ptr->id << " > "
-                            "node_" << parents[1].ptr->id;
-                } else if (op_name == "Ge") {
-                    f << "\taf::array node_" << id << " = ";
-                    f << "node_" << parents[0].ptr->id << " >= "
-                            "node_" << parents[1].ptr->id;
-                } else if (op_name == "Lt") {
-
-                } else if (op_name == "Le") {
-
-                } else if (op_name == "Eq") {
-
-                } else if (op_name == "Ne") {
-
-                } else if (op_name == "ApproxEq") {
-
-                } else if (op_name == "ApproxNe") {
-
-                } else if (op_name == "ZeroElem") {
-
-                } else if (op_name == "NonZeroElem") {
-
-                } else if (op_name == "IsNaN") {
-
-                } else if (op_name == "IsInf") {
-
-                } else {
-                    f << "WTF" << node->id << " " << node->type;
-                }
-                f << ";\n";
-                if(op_name == "MatrixMul"){
-//                    f << "\taf::setBackend(AF_BACKEND_OPENCL);\n";
-                }
-//                f << "\tstd::cout << " << id << " << node_" << id << ".dims() << std::endl;\n";
+            if(node->type == UPDATE or node->type == INPUT) {
+                throw 22;
             }
-//        f << "\taf_print(af::anyTrue(af::anyTrue(af::isNaN(node_" << id <<"))));\n";
+            if(node->type == CONSTANT and
+                    (op_name == "Zeros" or op_name == "Ones" or op_name == "Value")){
+                return std::to_string(node->op->get_scalar_value());
+            }
+            if (op_name == "Broadcast") {
+                bool not_supported = false;
+                for (int i = 0; i < children.size(); i++) {
+                    auto name = children[i].ptr->op->name;
+                    if (name != "Add" and name != "Mul"
+                        and name != "Neg" and name != "Div") {
+                        not_supported = true;
+                        break;
+                    }
+                }
+//                std::cout << id << " Broadcast " << not_supported << std::endl;
+                if (not_supported) {
+                    std::string expression = "af::tile(" + expression_table[parents[0].ptr->id] + ", ";
+                    for (int i = 0; i < 4; i++){
+                        if (node->shape[i] != parents[0].ptr->shape[i]) {
+                            expression += node->shape[i].to_string_with_star();
+                        } else {
+                            expression += "1";
+                        }
+                        if (i < 3) {
+                            expression += ", ";
+                        }
+                    }
+                    std::cout << id << " " << parents[0].ptr->id << " : " << expression_table[parents[0].ptr->id] << std::endl;
+                    return expression + ")";
+                } else {
+                    std::cout << id << " " << parents[0].ptr->id << " : " << expression_table[parents[0].ptr->id] << std::endl;
+                    return expression_table[parents[0].ptr->id];
+                }
+            }
+            if (op_name == "Add") {
+                std::string expression = "";
+                for (int i = 0; i < parents.size(); i++) {
+                    expression += expression_table[parents[i].ptr->id];
+                    if (i < parents.size() - 1) {
+                        expression += " + ";
+                    }
+                }
+                return expression;
+            }
+            if (op_name == "Neg") {
+                return "-" + expression_table[parents[0].ptr->id];
+            }
+            if (op_name == "Mul") {
+                std::string expression = "";
+                for (int i = 0; i < parents.size(); i++) {
+                    expression += expression_table[parents[i].ptr->id];
+                    if (i < parents.size() - 1) {
+                        expression += " * ";
+                    }
+                }
+                return expression;
+            }
+            if (op_name == "Div") {
+                return "/" + expression_table[parents[0].ptr->id];
+            }
+            if (op_name == "Sum") {
+                auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
+                if (Node(node).is_scalar()) {
+                    return "af::sum(af::flat(" + expression_table[parents[0].ptr->id] + "))";
+                } else {
+                    std::string expression = expression_table[parents[0].ptr->id];
+                    for (size_t i = 0; i < axes.size(); i++) {
+                        expression = "af::sum(" + expression + ", " + std::to_string(i) + ")";
+                    }
+                    return expression;
+                }
+            }
+            if (op_name == "Square") {
+                return expression_table[parents[0].ptr->id] + " * " + expression_table[parents[0].ptr->id];
+            }
+            if (op_name == "Const") {
+                return expression_table[parents[0].ptr->id];
+            }
+            if (op_name == "Gt") {
+                return expression_table[parents[0].ptr->id] + " > " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "Ge") {
+                return expression_table[parents[0].ptr->id] + " >= " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "Lt") {
+                return expression_table[parents[0].ptr->id] + " < " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "Lte") {
+                return expression_table[parents[0].ptr->id] + " <= " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "Eq") {
+                return expression_table[parents[0].ptr->id] + " == " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "Neq") {
+                return expression_table[parents[0].ptr->id] + " != " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "ApproxEq") {
+                // TODO
+                return "WTF";
+            }
+            if (op_name == "ApproxNe") {
+                return "WTF";
+            }
+            if (op_name == "And") {
+                return expression_table[parents[0].ptr->id] + " && " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "Or") {
+                return expression_table[parents[0].ptr->id] + " || " + expression_table[parents[1].ptr->id];
+            }
+            if (op_name == "ZeroElem") {
+                return "af::iszero(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "NoneZeroElem") {
+                return "!af::iszero(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "IsNaN") {
+                return "af::isNaN(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "IsInf") {
+                return "af::isInf(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if(op_name == "Select") {
+                return "af::select(" + expression_table[args[0].ptr->id] + ", " +
+                       expression_table[parents[0].ptr->id] + ", " +
+                       expression_table[parents[1].ptr->id] + ")";
+            }
+            if (op_name == "Exp") {
+                return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Log") {
+                return "af::log(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Exp") {
+                return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Log") {
+                return "af::log(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Exp") {
+                return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Softplus") {
+                size_t threshold = dynamic_cast<Softplus*>(node->op.get())->threshold;
+                return "softplus(" + expression_table[parents[0].ptr->id] + ", " + std::to_string(threshold) + ")";
+            }
+            if (op_name == "Abs") {
+                return "af::abs(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Sigmoid") {
+                return "1.0 / (1.0 + af::exp(-" + expression_table[parents[0].ptr->id] + "))";
+            }
+            if (op_name == "Sin") {
+                return "af::sin(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Cos") {
+                return "af::cos(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Tan") {
+                return "af::tan(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Sinh") {
+                return "af::sinh(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Cosh") {
+                return "af::cosh(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Tanh") {
+                return "af::tanh(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Pow") {
+                return "af::pow(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Transpose") {
+                return "af::transpose(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "MatrixMul") {
+                std::string expression = "af::matmul(";
+                for (int i = 0; i < parents.size(); i++) {
+                    expression += expression_table[parents[i].ptr->id];
+                    if (i < parents.size() - 1) {
+                        expression += ", ";
+                    }
+                }
+                return expression + ")";
+            }
+            if (op_name == "MatrixInv") {
+                return "af::inverse(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Det") {
+                return "af::det(" + expression_table[parents[0].ptr->id] + ")";
+            }
+            if (op_name == "Logdet") {
+                return "af::log(af::det(" + expression_table[parents[0].ptr->id] + "))";
+            }
+            if (op_name == "Trace") {
+                return "af::sum(af::diag(" + expression_table[parents[0].ptr->id] + "))";
+            }
+            if (op_name == "Diag") {
+                return "af::diag(" + expression_table[parents[0].ptr->id] + ", 0, " +
+                       std::to_string(node->shape[1] == 1) + ")";
+            }
+            if (op_name == "Reshape") {
+                std::string expression = "af::moddims(" + expression_table[parents[0].ptr->id] + ", ";
+                for (int i = 0; i < 4; i++) {
+                    expression += node->shape[i].to_string_with_star();
+                    if (i < 3) {
+                        expression += ", ";
+                    }
+                }
+                return expression + ")";
+            }
+            if (op_name == "Reorder") {
+                std::string expression = "af::reorder(" + expression_table[parents[0].ptr->id] + ", ";
+                auto order = dynamic_cast<Reorder *>(node->op.get())->order;
+                for (int i = 0; i < 4; i++) {
+                    expression += order[i];
+                    if (i < 3) {
+                        expression += ", ";
+                    }
+                }
+                return expression + ")";
+            }
+            if (op_name == "BinCrossEntropyLogit") {
+                std::string p = expression_table[parents[0].ptr->id];
+                std::string sfx = expression_table[parents[1].ptr->id];
+                std::string sfmx = expression_table[parents[2].ptr->id];
+                return p + " * (" + sfmx + " - " + sfx + ") + " + sfx;
+            }
+            if (op_name == "MaxAndArgMax") {
+                return "WTF";
+            }
+            if (op_name == "SortAndArgSort") {
+                return "WTF";
+            }
+            return "WTF2";
         }
 
         void print_shape_esception(std::ofstream& f){

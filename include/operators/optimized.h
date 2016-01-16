@@ -82,7 +82,7 @@ namespace metadiff {
                 Node parent_grad = mul(my_grad, add(sigmoid, neg));
                 parent_grad.ptr->name =
                         "Grad msg " + std::to_string(owner.ptr->id) + " -> " + std::to_string(x.ptr->id);
-                send_grad_message(p.ptr->id, parent_grad, messages);
+                send_grad_message(x.ptr->id, parent_grad, messages);
             }
         }
     };

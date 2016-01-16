@@ -131,10 +131,10 @@ namespace metadiff {
 
     class Softplus : public UnaryOperator{
     public:
-        double threshold;
+        size_t threshold;
         Softplus(GraphInPtr graph,
                  Node parent,
-                 double threshold = 50):
+                 size_t threshold = 50):
                 UnaryOperator("Softplus", graph, parent),
                 threshold(threshold)
         {};
@@ -146,11 +146,11 @@ namespace metadiff {
         }
     };
 
-    Node Node::softplus(double threshold) {
+    Node Node::softplus(size_t threshold) {
         return ptr->graph->derived_node(std::make_shared<Softplus>(ptr->graph, this, threshold));
     }
 
-    Node softplus(Node node, double threshold = 50){
+    Node softplus(Node node, size_t threshold = 50){
         return node.softplus(threshold);
     }
 
