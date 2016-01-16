@@ -7,49 +7,58 @@
 
 namespace metadiff {
     namespace dagre {
-        std::string node_name_html(std::weak_ptr<const NodeInternal> node_ptr) {
-            auto node = node_ptr.lock();
-            if(node->type == ad_node_type::SYMBOLIC_INTEGER){
-                return "SYMINT[" + std::to_string(node->id) + "]";
-            } else if (node->type == ad_node_type::CONSTANT) {
-                if(node.is_scalar()){
-                    std::string value;
-                    if(node->v_type == FLOAT) {
-                        float host[1];
-                        node->value.host(host);
-                        value = std::to_string(host[0]);
-                    } else if(node->v_type == INTEGER){
-                        int host[1];
-                        node->value.host(host);
-                        value = std::to_string(host[0]);
-                    } else {
-                        bool host[1];
-                        node->value.host(host);
-                        value = std::to_string(host[0]);
-                    }
-                    return "CONST[" + std::to_string(node->id) + "]";
-                } else if(node->op->name != "Input") {
-                    return node->op->name + "[" + std::to_string(node->id) + "]";
-                } else {
-                    return "CONST[" + std::to_string(node->id) + "]";
+        bool exists_in(Node node, std::vector<Node>& nodes){
+            for(int i=0;i<nodes.size();i++){
+                if(nodes[i].ptr == node.ptr){
+                    return true;
                 }
-            } else if (node->type == ad_node_type::INPUT) {
-                return node->name +  "[" + std::to_string(node->id) + "]";
-            } else if (node->type == ad_node_type::SHARED_INPUT) {
-                return node->name + "[" + std::to_string(node->id) + "]";
-            } else if (node->type == ad_node_type::UPDATE) {
-                return "Update[" + std::to_string(node->id) + "]";
+            }
+            return false;
+        }
+
+        std::string node_name_html(Node node) {
+            if(node.ptr->type == ad_node_type::SYMBOLIC_INTEGER){
+                return "SYMINT[" + std::to_string(node.ptr->id) + "]";
+            } else if (node.ptr->type == ad_node_type::CONSTANT) {
+                if(node.is_scalar()){
+//                    std::string value;
+//                    if(node.ptr->v_type == FLOAT) {
+//                        float host[1];
+//                        node.ptr->value.host(host);
+//                        value = std::to_string(host[0]);
+//                    } else if(node.ptr->v_type == INTEGER){
+//                        int host[1];
+//                        node.ptr->value.host(host);
+//                        value = std::to_string(host[0]);
+//                    } else {
+//                        bool host[1];
+//                        node.ptr->value.host(host);
+//                        value = std::to_string(host[0]);
+//                    }
+                    std::stringstream name;
+                    name << node.ptr->op->get_scalar_value() << "[" << node.ptr->id << "]";
+                    return name.str();
+                } else if(node.ptr->op->name != "Input") {
+                    return node.ptr->op->name + "[" + std::to_string(node.ptr->id) + "]";
+                } else {
+                    return "CONST[" + std::to_string(node.ptr->id) + "]";
+                }
+            } else if (node.ptr->type == ad_node_type::INPUT) {
+                return node.ptr->name +  "[" + std::to_string(node.ptr->id) + "]";
+            } else if (node.ptr->type == ad_node_type::SHARED_INPUT) {
+                return node.ptr->name + "[" + std::to_string(node.ptr->id) + "]";
+            } else if (node.ptr->type == ad_node_type::UPDATE) {
+                return "Update[" + std::to_string(node.ptr->id) + "]";
             } else {
-                return node->op->name + "[" + std::to_string(node->id) + "]";
+                return node.ptr->op->name + "[" + std::to_string(node.ptr->id) + "]";
             }
         }
 
-        std::string node_color_html(std::weak_ptr<const NodeInternal> node_ptr, std::vector<size_t > targets) {
-            auto node = node_ptr.lock();
-            if (std::find(targets.begin(), targets.end(), node->id) != targets.end()) {
+        std::string node_color_html(Node node, std::vector<Node> targets) {
+            if (exists_in(node, targets)) {
                 return "#ff0000";
             } else {
-                switch(node->type){
+                switch(node.ptr->type){
                     case INPUT: return "#00ff00";
                     case SHARED_INPUT:  return "#006400";
                     case INPUT_DERIVED: return "#0000ff";
@@ -61,53 +70,49 @@ namespace metadiff {
             }
         }
 
-        void node_to_html(std::weak_ptr<const NodeInternal> node_ptr, std::vector<size_t > &targets,
+        void node_to_html(Node node, std::vector<Node> &targets,
                           std::vector<std::string> &names) {
-            auto node = node_ptr.lock();
             std::string state_name = node_name_html(node);
             std::string state_color = node_color_html(node, targets);
 
-            auto ancestors = node->op->get_ancestors();
+            NodeVec ancestors = node.ptr->op->get_ancestors();
             std::string anc_id_str = "[";
             for (int i = 0; i < ancestors.size(); i++) {
-                anc_id_str += std::to_string(ancestors[i].lock()->id);
+                anc_id_str += std::to_string(ancestors[i].ptr->id);
                 if (i < ancestors.size() - 1) {
                     anc_id_str += ", ";
                 }
             }
             anc_id_str += "]";
             std::string child_id_str = "[";
-            for (int i=0;i<node->children.size(); i++){
-                child_id_str += std::to_string(node->children[i].lock()->id);
-                if (i < node->children.size() - 1) {
+            for (int i=0;i<node.ptr->children.size(); i++){
+                child_id_str += std::to_string(node.ptr->children[i].ptr->id);
+                if (i < node.ptr->children.size() - 1) {
                     child_id_str += ", ";
                 }
             }
             child_id_str += "]";
             names.push_back("'" + state_name + "': {\n"
-                    "\t\tdescription: \"Name: " + node->name + " <br> "
-                                    "Type: " + to_string(node->type) + " <br> "
-                                    "Device: " + to_string(node->device) + " <br> "
-                                    "Value type: " + to_string(node->v_type) + " <br> "
-                                    "Shape: [" + node->shape[0].to_string() + ", " +
-                            node->shape[1].to_string() + ", " + node->shape[2].to_string() + ", " +
-                            node->shape[3].to_string() + "] <br> "
-                                    "Gradient Level:" + std::to_string(node->grad_level) + " <br> "
+                    "\t\tdescription: \"Name: " + node.ptr->name + " <br> "
+                                    "Type: " + to_string(node.ptr->type) + " <br> "
+                                    "Device: " + to_string(node.ptr->device) + " <br> "
+                                    "Value type: " + to_string(node.ptr->v_type) + " <br> "
+                                    "Shape: [" + node.ptr->shape[0].to_string() + ", " +
+                            node.ptr->shape[1].to_string() + ", " + node.ptr->shape[2].to_string() + ", " +
+                            node.ptr->shape[3].to_string() + "] <br> "
+                                    "Gradient Level:" + std::to_string(node.ptr->grad_level) + " <br> "
                                     "Parents: " + anc_id_str + " <br> "
                                     "Children: " + child_id_str +
                             "\",\n\t\tstyle: \"fill: " + state_color + "\"\n"
                                     "\t}");
         }
 
-        void edges_to_html(std::weak_ptr<const NodeInternal> node_ptr,
-                           std::vector<std::string> &edges) {
-            auto node = node_ptr.lock();
+        void edges_to_html(Node node, std::vector<std::string> &edges) {
             std::string state_name = node_name_html(node);
-            auto ancestors = node->op->get_ancestors();
+            auto ancestors = node.ptr->op->get_ancestors();
             std::vector<std::string> anc_names;
             for (int i = 0; i < ancestors.size(); i++) {
-                auto anc = ancestors[i].lock();
-                anc_names.push_back(node_name_html(anc));
+                anc_names.push_back(node_name_html(ancestors[i]));
             }
 
             for (int i = 0; i < ancestors.size(); i++) {
@@ -119,19 +124,14 @@ namespace metadiff {
         }
 
         void dagre_to_file(std::string file_name, Graph graph,
-                           std::vector<Node> target_nodes,
+                           std::vector<Node> targets,
                            const Updates& updates) {
             graph->add_temporary_updates(updates);
 
-            std::vector<size_t> targets;
-            for(size_t i=0;i<target_nodes.size();i++){
-                targets.push_back(target_nodes[i].id);
-            }
-
-            int max_grad_level = 0;
-            for (int i = 0; i < targets.size(); i++) {
-                if (graph->nodes[targets[i]]->grad_level > max_grad_level) {
-                    max_grad_level = graph->nodes[targets[i]]->grad_level;
+            size_t max_grad_level = 0;
+            for (size_t i = 0; i < targets.size(); i++) {
+                if (targets[i].ptr->grad_level > max_grad_level) {
+                    max_grad_level = targets[i].ptr->grad_level;
                 }
             }
             std::vector<std::string> nodes;
@@ -278,7 +278,7 @@ namespace metadiff {
                     "</script>\n"
                     "</body></html>\n";
             f.close();
-            graph->clear_temprary_updates();
+            graph->clear_temporary_updates();
         }
     }
 }

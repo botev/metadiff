@@ -471,7 +471,7 @@ namespace metadiff {
     }
 
     Node operator*(Node node1, Node node2){
-        return mul({node1, node2});
+        return mul(NodeVec{node1, node2});
     };
 
     class Div : public UnaryOperator {

@@ -276,6 +276,7 @@ namespace metadiff {
         virtual Node get_parent_grad(Node my_grad, size_t index) = 0;
         void send_grad_message(size_t target, Node msg, std::vector<Node>& messages);
         void generate_gradients(std::vector<Node>& messages);
+        double get_scalar_value();
 
         NodeVec get_ancestors(){
             auto parents = this->get_parents();
@@ -340,8 +341,8 @@ namespace metadiff {
         size_t sym_integer_count;
         std::vector<SharedPtr> shared_vars;
 
-        std::vector<size_t> temporary_constants;
-        std::vector<size_t> temporary_updates;
+        std::vector<Node> temporary_constants;
+        std::vector<Node> temporary_updates;
 
         GraphInternal() {
             // TODO Have a better preference of devices available in order
@@ -666,17 +667,6 @@ namespace metadiff {
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
         }
-
-        void generate_gradients(std::vector<Node>& messages){
-            if(messages[owner.ptr->id].empty()){
-                return;
-            }
-            if(owner.ptr->name == "Derived Node"){
-                owner.ptr->name = "Grad of " + std::to_string(owner.ptr->id);
-            } else {
-                owner.ptr->name += "|Grad of " + std::to_string(owner.ptr->id);
-            }
-        };
     };
 
     class Update : public Operator {

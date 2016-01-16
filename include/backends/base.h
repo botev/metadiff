@@ -19,7 +19,7 @@ namespace metadiff{
                 input_id(input_id)
         {
             for(int i=0;i<targets.size();i++){
-                this->target_ids.push_back(targets[i].id);
+                this->target_ids.push_back(targets[i].ptr->id);
             }
         }
 

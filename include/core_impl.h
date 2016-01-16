@@ -23,6 +23,11 @@ namespace metadiff{
     }
 
     bool Node::is_constant() const{
+        for(int i=0;i<ptr->graph->temporary_constants.size(); i++){
+            if(ptr->graph->temporary_constants[i].ptr == ptr){
+                return true;
+            }
+        }
         if(ptr->type == CONSTANT or ptr->type == CONSTANT_DERIVED
            or ptr->type == SYMBOLIC_INTEGER or ptr->type == UPDATE){
             return true;
@@ -155,7 +160,7 @@ namespace metadiff{
         // If that is the case this node should have been constant as well
         // and no message should have been sent to it
         NodeVec parents = get_parents();
-        bool constant = true;
+        bool constant = not (owner.ptr->op->name == "Input");
         for(int i=0;i<parents.size();i++){
             if(not parents[i].is_constant()){
                 constant = false;
@@ -247,15 +252,13 @@ namespace metadiff{
         for(int i=0;i<marked.size();i++){
             ancestors_mask[marked[i].ptr->id] = true;
         }
-        for(int i=0;i<temporary_updates.size();i++){
-            auto node = nodes[temporary_updates[i]];
-            ancestors_mask[node->op->get_parents()[0].ptr->id] = true;
+        for(size_t i=0;i<temporary_updates.size();i++){
+            ancestors_mask[temporary_updates[i].ptr->op->get_parents()[0].ptr->id] = true;
         }
-
         // Mark all direct ancestors
-        for(size_t i=n-1;i >= 0; i--){
+        for(size_t i=n-1;i < n; i--){
             if(ancestors_mask[i]){
-                auto ancestors = nodes[i]->op->get_ancestors();
+                NodeVec ancestors = nodes[i]->op->get_ancestors();
                 for(int j=0;j<ancestors.size();j++){
                     ancestors_mask[ancestors[j].ptr->id] = true;
                 }
@@ -270,9 +273,7 @@ namespace metadiff{
 
     void GraphInternal::add_temporary_updates(const Updates& updates){
         for(int i=0;i<updates.size();i++){
-            size_t id = nodes.size();
-            update_node (updates[i].first, updates[i].second);
-            temporary_updates.push_back(id);
+            temporary_updates.push_back(update_node (updates[i].first, updates[i].second));
         }
     };
 
@@ -288,7 +289,6 @@ namespace metadiff{
             throw UnsupportedGradient();
         }
         std::vector<Node> grad_messages(nodes.size(), Node());
-
         // Extract the flow tree between params and objective
         std::vector<bool> descendants_mask = get_descendants_mask(params);
         std::vector<bool> ancestors_mask = get_ancestors_mask({objective});
@@ -298,7 +298,7 @@ namespace metadiff{
             if(ancestors_mask[i] and descendants_mask[i]){
                 flow_tree.push_back(nodes[i]);
             } else {
-                temporary_constants.push_back(i);
+                temporary_constants.push_back(nodes[i]);
             }
         }
         // Send the first message as 1 to the objective
@@ -306,20 +306,17 @@ namespace metadiff{
         unity_grad.ptr->grad_level = objective.ptr->grad_level + ((unsigned short) 1);
         unity_grad.ptr->name = "";
         grad_messages[objective.ptr->id] = unity_grad;
-
         // Send all gradient messages
         for (size_t i = flow_tree.size(); i > 0; i--) {
-            if (grad_messages[flow_tree[i-1].ptr->id].empty()) {
+            if (not grad_messages[flow_tree[i-1].ptr->id].empty()) {
                 flow_tree[i-1].ptr->op->generate_gradients(grad_messages);
             }
         }
-
         // Extract the gradients for each parameter
         std::vector<Node> grads;
         for (int i = 0; i < params.size(); i++) {
             grads.push_back(grad_messages[params[i].ptr->id]);
         }
-
         // Restore types of other inputs
         temporary_constants.clear();
         return grads;
