@@ -14,7 +14,7 @@ namespace metadiff{
         {};
 
         ad_node_type get_node_type(){
-            if(parent->type == CONSTANT){
+            if(parent.ptr->type == CONSTANT){
                 return CONSTANT;
             } else {
                 return CONSTANT_DERIVED;
@@ -26,8 +26,8 @@ namespace metadiff{
         }
     };
 
-    Node NodeInternal::constant() {
-        return apply<MakeConstant>();
+    Node Node::constant() {
+        return apply<MakeConstant>(this);
     }
     
     class ConstantOperator: public Operator{
@@ -112,6 +112,7 @@ namespace metadiff{
     }
 
     class ConstantValue: public ConstantOperator{
+    public:
         double value;
         ConstantValue(GraphInPtr graph, Shape shape, double value):
                 ConstantOperator("Value", graph),
@@ -121,7 +122,7 @@ namespace metadiff{
         }
     };
 
-    Node GraphInternal::value(double value, Shape shape){
+    Node GraphInternal::constant_value(double value, Shape shape){
         if(value == 0.0){
             return zeros(shape);
         } else if(value == 1.0){
@@ -130,5 +131,30 @@ namespace metadiff{
             return derived_node(std::make_shared<ConstantValue>(this, shape, value));
         }
     }
+
+//    Node mul_const_operators(Node node1, Node node2){
+//        if(node1->op->name == "Ones"){
+//            return node2;
+//        }
+//        if(node1->op->name == "Zeros"){
+//            return node1;
+//        }
+//        if(node2->op->name == "Ones"){
+//            return node1;
+//        }
+//        if(node2->op->name == "Zeros"){
+//            return node2;
+//        }
+//        if(node1->op->name == "Value" and node2->op->name == "Value"){
+//            double value1 = dynamic_cast<ConstantValue*>(node1->op.get())->value;
+//            double value2 = dynamic_cast<ConstantValue*>(node2->op.get())->value;
+//            return node1->graph->value(value1 * value2);
+//        }
+//        Node result = mul(node1, node2);
+//        if(node1->op->name == "Value"){
+//            result->value = node->value *
+//        }
+//        result->value =
+//    }
 }
 #endif //METADIFF_OPERATORS_CONSTANTS_H

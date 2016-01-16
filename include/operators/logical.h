@@ -21,7 +21,7 @@ namespace metadiff {
         };
 
         ad_node_type get_node_type(){
-            if(parent1->type == CONSTANT and parent2->type == CONSTANT){
+            if(parent1.ptr->type == CONSTANT and parent2.ptr->type == CONSTANT){
                 return CONSTANT;
             } else {
                 return CONSTANT_DERIVED;
@@ -46,7 +46,7 @@ namespace metadiff {
         };
 
         ad_node_type get_node_type(){
-            if(parent->type == CONSTANT){
+            if(parent.ptr->type == CONSTANT){
                 return CONSTANT;
             } else {
                 return CONSTANT_DERIVED;
@@ -67,12 +67,12 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::gt(Node node) {
-        return apply<GreaterThan>(this, node);
-    }
-
     Node gt(Node node1, Node node2){
         return apply<GreaterThan>(node1, node2);
+    }
+
+    Node Node::gt(Node node) {
+        return apply<GreaterThan>(this, node);
     }
 
     Node operator>(Node node1, Node node2){
@@ -88,7 +88,7 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::ge(Node node) {
+    Node Node::ge(Node node) {
         return apply<GreaterThanOrEqual>(this, node);
     }
 
@@ -109,7 +109,7 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::lt(Node node) {
+    Node Node::lt(Node node) {
         return apply<LessThan>(this, node);
     }
 
@@ -130,7 +130,7 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::le(Node node) {
+    Node Node::le(Node node) {
         return apply<LessThanOrEqual>(this, node);
     }
 
@@ -151,7 +151,7 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::eq(Node node){
+    Node Node::eq(Node node){
         return apply<Equals>(this, node);
     }
 
@@ -172,7 +172,7 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::neq(Node node){
+    Node Node::neq(Node node){
         return apply<NotEquals>(this, node);
     }
 
@@ -196,12 +196,14 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::approx_eq(Node node){
-        return apply<ApproximatelyEquals>(this, node);
+    Node Node::approx_eq(Node node, double tol){
+        GraphInPtr graph = ptr->graph;
+        return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, this, node, tol));
     }
 
-    Node approx_eq(Node node1, Node node2){
-        return apply<ApproximatelyEquals>(node1, node2);
+    Node approx_eq(Node node1, Node node2, double tol = 0.00001){
+        GraphInPtr graph = node1.ptr->graph;
+        return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, node1, node2, tol));
     }
 
     class ApproximatelyNotEquals : public LogicalBinary {
@@ -216,12 +218,14 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::approx_neq(Node node){
-        return apply<ApproximatelyNotEquals>(this, node);
+    Node Node::approx_neq(Node node, double tol){
+        GraphInPtr graph = ptr->graph;
+        return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, this, node, tol));
     }
 
-    Node approx_neq(Node node1, Node node2){
-        return apply<ApproximatelyNotEquals>(node1, node2);
+    Node approx_neq(Node node1, Node node2, double tol=0.00001){
+        GraphInPtr graph = node1.ptr->graph;
+        return graph->derived_node(std::make_shared<ApproximatelyNotEquals>(graph, node1, node2, tol));
     }
 
     class And : public LogicalBinary {
@@ -231,13 +235,13 @@ namespace metadiff {
             Node parent2) :
                 LogicalBinary("And", graph, parent1, parent2)
         {
-            if(parent1->v_type != BOOLEAN or parent2->v_type != BOOLEAN){
+            if(parent1.ptr->v_type != BOOLEAN or parent2.ptr->v_type != BOOLEAN){
                 throw UnknownError({parent1, parent2}, "Operator 'And' accepts only BOOLEAN inputs");
             }
         };
     };
 
-    Node NodeInternal::logical_and(Node node){
+    Node Node::logical_and(Node node){
         return apply<And>(this, node);
     }
 
@@ -256,13 +260,13 @@ namespace metadiff {
            Node parent2) :
                 LogicalBinary("Or", graph, parent1, parent2)
         {
-            if(parent1->v_type != BOOLEAN or parent2->v_type != BOOLEAN){
+            if(parent1.ptr->v_type != BOOLEAN or parent2.ptr->v_type != BOOLEAN){
                 throw UnknownError({parent1, parent2}, "Operator 'Or' accepts only BOOLEAN inputs");
             }
         };
     };
 
-    Node NodeInternal::logical_or(Node node){
+    Node Node::logical_or(Node node){
         return apply<Or>(this, node);
     }
 
@@ -282,12 +286,12 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::zero_elem() {
-        return apply<ZeroElements>();
+    Node Node::zero_elem() {
+        return apply<ZeroElements>(this);
     }
 
     Node zero_elem(Node node){
-        return node->apply<ZeroElements>();
+        return apply<ZeroElements>(node);
     }
 
     class NonZeroElements : public LogicalUnary {
@@ -298,8 +302,12 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::non_zero_elem() {
-        return apply<NonZeroElements>();
+    Node Node::non_zero_elem() {
+        return apply<NonZeroElements>(this);
+    }
+
+    Node non_zero_elem(Node node){
+        return apply<NonZeroElements>(node);
     }
 
     class IsNaN : public LogicalUnary {
@@ -310,12 +318,12 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::is_nan(){
-        return apply<IsNaN>();
+    Node Node::is_nan(){
+        return apply<IsNaN>(this);
     }
 
     Node is_nan(Node node){
-        return node->is_nan();
+        return apply<IsNaN>(node);
     }
 
     class IsInf : public LogicalUnary {
@@ -326,12 +334,12 @@ namespace metadiff {
         {};
     };
 
-    Node NodeInternal::is_inf(){
-        return apply<IsInf>();
+    Node Node::is_inf(){
+        return apply<IsInf>(this);
     }
 
     Node is_inf(Node node){
-        return node->is_inf();
+        return apply<IsInf>(node);
     }
 
     class Select: public BinaryOperator{
@@ -345,18 +353,18 @@ namespace metadiff {
                 condition(condition)
         {
             shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent});
-            if(condition->v_type != BOOLEAN){
+            if(condition.ptr->v_type != BOOLEAN){
                 throw InvalidArguments(name, {condition, trueParent, falseParent},
                                        "The condition must have a value type BOOLEAN");
             }
-            if(trueParent->v_type != falseParent->v_type){
+            if(trueParent.ptr->v_type != falseParent.ptr->v_type){
                 throw InvalidArguments(name, {condition, trueParent, falseParent},
                                        "The true and false statement must be of the same value type");
             }
-            if(trueParent->is_constant()){
-                this->parent1 = parent1->broadcast(shape);
-            } else if(falseParent->is_constant()){
-                this->parent1 = parent2->broadcast(shape);
+            if(trueParent.is_constant()){
+                this->parent1 = parent1.broadcast(shape);
+            } else if(falseParent.is_constant()){
+                this->parent1 = parent2.broadcast(shape);
             }
         };
 
@@ -365,22 +373,22 @@ namespace metadiff {
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node zero = graph->value(0.0);
-            zero->grad_level = my_grad->grad_level;
+            Node zero = graph->constant_value(0.0);
+            zero.ptr->grad_level = my_grad.ptr->grad_level;
             if(index == 0){
-                return condition->select(my_grad, zero);
+                return condition.select(my_grad, zero);
             } else {
-                return condition->select(zero, my_grad);
+                return condition.select(zero, my_grad);
             }
         };
     };
 
-    Node NodeInternal::select(Node result_true, Node result_false){
-        return  graph->derived_node(std::make_shared<Select>(graph, this, result_true, result_false));
+    Node Node::select(Node result_true, Node result_false){
+        return ptr->graph->derived_node(std::make_shared<Select>(ptr->graph, this, result_true, result_false));
     }
 
     Node select(Node condition, Node result_true, Node result_false){
-        return  condition->select(result_true, result_false);
+        return  condition.select(result_true, result_false);
     }
 }
 #endif //METADIFF_OPERATORS_LOGICAL_H

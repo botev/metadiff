@@ -12,7 +12,7 @@ namespace metadiff {
             if(node->type == ad_node_type::SYMBOLIC_INTEGER){
                 return "SYMINT[" + std::to_string(node->id) + "]";
             } else if (node->type == ad_node_type::CONSTANT) {
-                if(node->is_scalar()){
+                if(node.is_scalar()){
                     std::string value;
                     if(node->v_type == FLOAT) {
                         float host[1];

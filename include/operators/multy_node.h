@@ -48,7 +48,7 @@ namespace metadiff{
                 parent(parent),
                 index(index)
         {
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.ptr->op.get());
             if(not multi_op){
                 throw UnknownError({parent}, "The operator 'MultiNodeIndex' can be applied only to nodes, "
                         "whose operators are subclasses of 'MultiNode'");
@@ -59,22 +59,22 @@ namespace metadiff{
         }
 
         ad_value_type get_value_type(){
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.ptr->op.get());
             return multi_op->results_v_types[index];
         }
 
         Shape get_shape(){
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.ptr->op.get());
             return multi_op->results_shapes[index];
         }
 
         ad_node_type get_node_type(){
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent->op.get());
+            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.ptr->op.get());
             return multi_op->results_types[index];
         };
 
         size_t get_gradient_level(){
-            return parent->grad_level;
+            return parent.ptr->grad_level;
         }
 
         NodeVec get_parents(){
@@ -111,27 +111,27 @@ namespace metadiff{
                 }
                 throw InvalidArguments(name, {parent}, axes_str);
             }
-            if(parent->v_type == BOOLEAN){
+            if(parent.ptr->v_type == BOOLEAN){
                 throw InvalidArguments(name, {parent}, "Operator 'MaxAndArgMax' can not be "
                         "applied to a BOOLEAN node");
             }
-            if(parent->type == SYMBOLIC_INTEGER){
+            if(parent.ptr->type == SYMBOLIC_INTEGER){
                 throw InvalidArguments(name, {parent}, "Operator 'MaxAndArgMax' can not be "
                         "applied to a SYMBOLIC_INTEGER node");
             }
-            Shape shape = parent->shape;
+            Shape shape = parent.ptr->shape;
             for(int i=0;i<axes.size();i++){
                 shape[axes[i]] = 1;
             }
             this->results_shapes = {shape, shape};
-            if(parent->type == INPUT or parent->type == SHARED_INPUT or parent->type == INPUT_DERIVED){
+            if(parent.ptr->type == INPUT or parent.ptr->type == SHARED_INPUT or parent.ptr->type == INPUT_DERIVED){
                 this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
-            } else if(parent->type == CONSTANT_DERIVED){
+            } else if(parent.ptr->type == CONSTANT_DERIVED){
                 this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
             } else {
                 this->results_types = {CONSTANT, CONSTANT};
             }
-            this->results_v_types = {parent->v_type, INTEGER};
+            this->results_v_types = {parent.ptr->v_type, INTEGER};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
@@ -161,24 +161,24 @@ namespace metadiff{
                 }
                 throw InvalidArguments(name, {parent}, axes_str);
             }
-            if(parent->v_type == BOOLEAN){
+            if(parent.ptr->v_type == BOOLEAN){
                 throw InvalidArguments(name, {parent}, "Operator 'SortAndArgSort' can not be "
                         "applied to a BOOLEAN node");
             }
-            if(parent->type == SYMBOLIC_INTEGER){
+            if(parent.ptr->type == SYMBOLIC_INTEGER){
                 throw InvalidArguments(name, {parent}, "Operator 'SortAndArgSort' can not be "
                         "applied to a SYMBOLIC_INTEGER node");
             }
-            Shape shape = parent->shape;
+            Shape shape = parent.ptr->shape;
             this->results_shapes = {shape, shape};
-            if(parent->type == INPUT or parent->type == SHARED_INPUT or parent->type == INPUT_DERIVED){
+            if(parent.ptr->type == INPUT or parent.ptr->type == SHARED_INPUT or parent.ptr->type == INPUT_DERIVED){
                 this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
-            } else if(parent->type == CONSTANT_DERIVED){
+            } else if(parent.ptr->type == CONSTANT_DERIVED){
                 this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
             } else {
                 this->results_types = {CONSTANT, CONSTANT};
             }
-            this->results_v_types = {parent->v_type, INTEGER};
+            this->results_v_types = {parent.ptr->v_type, INTEGER};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){

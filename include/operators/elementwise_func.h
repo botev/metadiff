@@ -18,12 +18,12 @@ namespace metadiff {
         }
     };
 
-    Node NodeInternal::exp() {
-        return apply<Exp>();
+    Node Node::exp() {
+        return apply<Exp>(this);
     }
 
     Node exp(Node node){
-        return node->exp();
+        return node.exp();
     }
 
     class Log: public UnaryOperator {
@@ -33,18 +33,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node div = parent->div();
-            div->update_grad_level();
+            Node div = parent.div();
+            div.update_grad_level();
             return mul(my_grad, div);
         }
     };
 
-    Node NodeInternal::log() {
-        return apply<Log>();
+    Node Node::log() {
+        return apply<Log>(this);
     }
 
     Node log(Node node){
-        return node->log();
+        return node.log();
     }
 
     class Pow : public ElementwiseBinary {
@@ -54,33 +54,33 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node product = mul(my_grad, owner);
-            product->update_grad_level();
+            product.update_grad_level();
             if(index == 0){
-                Node div = parent1->div();
-                div->update_grad_level();
+                Node div = parent1.div();
+                div.update_grad_level();
                 return mul(NodeVec{product, parent2, div});
             } else {
-                return mul(NodeVec{product, parent1->log()});
+                return mul(NodeVec{product, parent1.log()});
             }
         }
     };
 
-    Node NodeInternal::pow(Node power) {
-        return graph->derived_node(std::make_shared<Pow>(graph, this, power));
+    Node Node::pow(Node power) {
+        return ptr->graph->derived_node(std::make_shared<Pow>(ptr->graph, this, power));
     }
 
-    Node NodeInternal::pow(double d_power) {
-        Node power = graph->value(d_power);
-        return graph->derived_node(std::make_shared<Pow>(graph, this, power));
+    Node Node::pow(double d_power) {
+        Node power = ptr->graph->constant_value(d_power);
+        return ptr->graph->derived_node(std::make_shared<Pow>(ptr->graph, this, power));
     }
 
     Node pow(Node node, Node power){
-        return node->pow(power);
+        return node.pow(power);
     }
 
     Node pow(double value, Node power){
-        Node node = power->graph->value(value);
-        return power->graph->derived_node(std::make_shared<Pow>(power->graph, node, power));
+        Node node = power.ptr->graph->constant_value(value);
+        return power.ptr->graph->derived_node(std::make_shared<Pow>(power.ptr->graph, node, power));
     }
 
     class Abs: public UnaryOperator {
@@ -90,20 +90,20 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node zero = graph->value(0.0);
-            zero->grad_level = my_grad->grad_level;
-            Node ge = parent->ge(zero);
-            ge->update_grad_level();
+            Node zero = graph->constant_value(0.0);
+            zero.ptr->grad_level = my_grad.ptr->grad_level;
+            Node ge = parent.ge(zero);
+            ge.update_grad_level();
             return mul(my_grad, ge);
         }
     };
 
-    Node NodeInternal::abs() {
-        return apply<Abs>();
+    Node Node::abs() {
+        return apply<Abs>(this);
     }
 
     Node abs(Node node){
-        return node->abs();
+        return node.abs();
     }
 
     class Sigmoid: public UnaryOperator {
@@ -113,20 +113,20 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node one = graph->value(1.0);
-            one->grad_level = my_grad->grad_level;
-            Node neg = owner->neg();
-            neg->update_grad_level();
-            return mul({my_grad, owner, add(one, owner->neg())});
+            Node one = graph->constant_value(1.0);
+            one.ptr->grad_level = my_grad.ptr->grad_level;
+            Node neg = owner.neg();
+            neg.update_grad_level();
+            return mul({my_grad, owner, add(one, owner.neg())});
         }
     };
 
-    Node NodeInternal::sigmoid() {
-        return apply<Sigmoid>();
+    Node Node::sigmoid() {
+        return apply<Sigmoid>(this);
     }
 
     Node sigmoid(Node node){
-        return node->sigmoid();
+        return node.sigmoid();
     }
 
     class Softplus : public UnaryOperator{
@@ -140,18 +140,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node sigmoid = parent->sigmoid();
-            sigmoid->update_grad_level();
+            Node sigmoid = parent.sigmoid();
+            sigmoid.update_grad_level();
             return mul({my_grad, sigmoid});
         }
     };
 
-    Node NodeInternal::softplus(double threshold) {
-        return graph->derived_node(std::make_shared<Softplus>(graph, this, threshold));
+    Node Node::softplus(double threshold) {
+        return ptr->graph->derived_node(std::make_shared<Softplus>(ptr->graph, this, threshold));
     }
 
     Node softplus(Node node, double threshold = 50){
-        return node->softplus(threshold);
+        return node.softplus(threshold);
     }
 
     class Sin: public UnaryOperator {
@@ -161,18 +161,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node cos = parent->cos();
-            cos->update_grad_level();
+            Node cos = parent.cos();
+            cos.update_grad_level();
             return mul(my_grad, cos);
         }
     };
 
-    Node NodeInternal::sin() {
-        return apply<Sin>();
+    Node Node::sin() {
+        return apply<Sin>(this);
     }
 
     Node sin(Node node){
-        return node->sin();
+        return node.sin();
     }
 
     class Cos: public UnaryOperator {
@@ -182,18 +182,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node sin = parent->cos();
-            sin->update_grad_level();
-            return mul(my_grad, sin->neg());
+            Node sin = parent.cos();
+            sin.update_grad_level();
+            return mul(my_grad, sin.neg());
         }
     };
 
-    Node NodeInternal::cos(){
-        return apply<Cos>();
+    Node Node::cos(){
+        return apply<Cos>(this);
     }
 
     Node cos(Node node){
-        return node->cos();
+        return node.cos();
     }
 
     class Tan: public UnaryOperator {
@@ -203,18 +203,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node cos = parent->cos();
-            cos->update_grad_level();
-            return mul(my_grad, cos->square()->div());
+            Node cos = parent.cos();
+            cos.update_grad_level();
+            return mul(my_grad, cos.square().div());
         }
     };
 
-    Node NodeInternal::tan() {
-        return apply<Tan>();
+    Node Node::tan() {
+        return apply<Tan>(this);
     }
 
     Node tan(Node node){
-        return node->tan();
+        return node.tan();
     }
 
     class Cot: public UnaryOperator {
@@ -224,18 +224,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node sin = parent->cos();
-            sin->update_grad_level();
-            return mul(my_grad, sin->square()->neg())->neg();
+            Node sin = parent.cos();
+            sin.update_grad_level();
+            return mul(my_grad, sin.square().neg()).neg();
         }
     };
 
-    Node NodeInternal::cot() {
-        return apply<Cot>();
+    Node Node::cot() {
+        return apply<Cot>(this);
     }
 
     Node cot(Node node){
-        return node->cot();
+        return node.cot();
     }
 
     class Sinh: public UnaryOperator {
@@ -245,18 +245,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node cosh = parent->cosh();
-            cosh->update_grad_level();
+            Node cosh = parent.cosh();
+            cosh.update_grad_level();
             return mul(my_grad, cosh);
         }
     };
 
-    Node NodeInternal::sinh() {
-        return apply<Sinh>();
+    Node Node::sinh() {
+        return apply<Sinh>(this);
     }
 
     Node sinh(Node node){
-        return node->sinh();
+        return node.sinh();
     }
 
     class Cosh: public UnaryOperator {
@@ -266,18 +266,18 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node sinh = parent->sinh();
-            sinh->update_grad_level();
+            Node sinh = parent.sinh();
+            sinh.update_grad_level();
             return mul(my_grad, sinh);
         }
     };
 
-    Node NodeInternal::cosh() {
-        return apply<Cosh>();
+    Node Node::cosh() {
+        return apply<Cosh>(this);
     }
 
     Node cosh(Node node){
-        return node->cosh();
+        return node.cosh();
     }
 
     class Tanh: public UnaryOperator {
@@ -287,20 +287,20 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node one = graph->value(1.0);
-            one->grad_level = my_grad->grad_level;
-            Node square = owner->square();
-            square->update_grad_level();
-            return mul(my_grad, add(one, square->neg()));
+            Node one = graph->constant_value(1.0);
+            one.ptr->grad_level = my_grad.ptr->grad_level;
+            Node square = owner.square();
+            square.update_grad_level();
+            return mul(my_grad, add(one, square.neg()));
         }
     };
 
-    Node NodeInternal::tanh() {
-        return apply<Tanh>();
+    Node Node::tanh() {
+        return apply<Tanh>(this);
     }
 
     Node tanh(Node node){
-        return node->tanh();
+        return node.tanh();
     }
 
     class Coth: public UnaryOperator {
@@ -310,20 +310,20 @@ namespace metadiff {
         {};
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node one = graph->value(1.0);
-            one->grad_level = my_grad->grad_level;
-            Node square = owner->square();
-            square->update_grad_level();
-            return mul(my_grad, add(one, square->neg()));
+            Node one = graph->constant_value(1.0);
+            one.ptr->grad_level = my_grad.ptr->grad_level;
+            Node square = owner.square();
+            square.update_grad_level();
+            return mul(my_grad, add(one, square.neg()));
         }
     };
 
-    Node NodeInternal::coth() {
-        return apply<Coth>();
+    Node Node::coth() {
+        return apply<Coth>(this);
     }
 
     Node coth(Node node){
-        return node->coth();
+        return node.coth();
     }
 }
 

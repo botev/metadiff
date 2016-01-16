@@ -16,9 +16,11 @@
 
 #include "symbolic.h"
 #include "interface.h"
+//#include "test.h"
 #include "core.h"
+#include "core_impl.h"
 #include "operators.h"
-#include "visual.h"
-#include "backends.h"
+//#include "visual.h"
+//#include "backends.h"
 
 #endif //METADIFF_METADIFF_H
