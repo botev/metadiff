@@ -396,9 +396,27 @@ namespace metadiff {
         }
     };
 
-    Node add(std::vector<Node> nodes){
-        auto graph = nodes[0].ptr->graph;
-        return graph->derived_node(std::make_shared<Add>(graph, nodes));
+    Node add(NodeVec nodes){
+        std::vector<size_t> neg_indexes;
+        for(size_t i=0;i<nodes.size();i++){
+            if(nodes[i].ptr->op->name == "Neg"){
+                neg_indexes.push_back(i);
+            }
+        }
+        if(neg_indexes.size() == 0 or neg_indexes.size() == nodes.size()){
+            return apply<Add>(nodes);
+        } else {
+            NodeVec reordered;
+            for(size_t i=0;i<nodes.size();i++){
+                if (std::find(neg_indexes.begin(), neg_indexes.end(), i) == neg_indexes.end()) {
+                    reordered.push_back(nodes[i]);
+                }
+            }
+            for(size_t i=0;i<neg_indexes.size();i++){
+                reordered.push_back(nodes[neg_indexes[i]]);
+            }
+            return apply<Add>(reordered);
+        }
     };
 
     Node add(Node node1, Node node2){
@@ -483,7 +501,28 @@ namespace metadiff {
     };
 
     Node mul(NodeVec nodes){
-        return apply<Mul>(nodes);
+        // Reorder so that Div operators are always at the end
+        std::vector<size_t> div_indexes;
+        for(size_t i=0;i<nodes.size();i++){
+            if(nodes[i].ptr->op->name == "Div"){
+                div_indexes.push_back(i);
+            }
+        }
+        if(div_indexes.size() == 0 or div_indexes.size() == nodes.size()){
+            return apply<Mul>(nodes);
+        } else {
+            NodeVec reordered;
+            for(size_t i=0;i<nodes.size();i++){
+                if (std::find(div_indexes.begin(), div_indexes.end(), i) == div_indexes.end()) {
+                    reordered.push_back(nodes[i]);
+                }
+            }
+            for(size_t i=0;i<div_indexes.size();i++){
+                reordered.push_back(nodes[div_indexes[i]]);
+            }
+            return apply<Mul>(reordered);
+        }
+
     };
 
     Node mul(Node node1, Node node2){

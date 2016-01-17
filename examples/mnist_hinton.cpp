@@ -189,6 +189,8 @@ int main(int argc, char **argv)
     af_backend backend = AF_BACKEND_CPU;
     // Default batch size of 1000
     int batch_size = 1000;
+    // Default period
+    int period = 1;
     if(argc > 3){
         std::cerr << "Expecting two optional arguments - backend and batch size" << std::endl;
         exit(1);
@@ -280,39 +282,46 @@ int main(int argc, char **argv)
 
     // Run function
     long long time = 0;
-    long long min_time = 1000 * 60 * 60 * 24;
-    long long max_time = 0;
+//    long long min_time = 1000 * 60 * 60 * 24;
+//    long long max_time = 0;
 
     // Number of epochs for burnout, to be discarded
-    int burnout = 20;
+    int burnout = 50;
     // Number of epochs
     int epochs = 100 + burnout;
     float *hv;
-    std::vector<af::array> data_inv = {af::randn(d[0], batch_size)};
+    clock_t start;
+    std::vector<af::array> result;
+    std::vector<af::array> data_inv;
     for(int i=0;i<epochs;i++){
+        if(i == burnout){
+             start = clock();
+        }
         int ind = i % (num_images / batch_size);
         // Input data
         data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
-        clock_t start = clock();
 //        auto result = train_org.eval(data_inv);
-        auto result = train_optim.eval(data_inv);
-        clock_t end = clock();
-        hv = result[0].host<float>();
-        if(i >= burnout) {
-            auto run_time = (end - start);
-            if(run_time < min_time){
-                min_time = run_time;
-            }
-            if(run_time > max_time){
-                max_time = run_time;
-            }
-            time += run_time;
+        result = train_optim.eval(data_inv);
+        if(i & period == 0) {
+            hv = result[0].host<float>();
         }
+//        if(i >= burnout) {
+//            auto run_time = (end - start);
+//            if(run_time < min_time){
+//                min_time = run_time;
+//            }
+//            if(run_time > max_time){
+//                max_time = run_time;
+//            }
+//            time += run_time;
+//        }
     }
+    hv = result[0].host<float>();
+    time = (clock() - start);
     md_backend.close();
     std::cout << "Final Value: " << hv[0] << std::endl;
     std::cout << "Mean run time: " << 1000*(double (time))/(CLOCKS_PER_SEC*(epochs - burnout)) << "ms" << std::endl;
-    std::cout << "Max run time: " << 1000*(double (max_time))/CLOCKS_PER_SEC << "ms" << std::endl;
-    std::cout << "Min run time: " << 1000*(double (min_time))/CLOCKS_PER_SEC << "ms" << std::endl;
+//    std::cout << "Max run time: " << 1000*(double (max_time))/CLOCKS_PER_SEC << "ms" << std::endl;
+//    std::cout << "Min run time: " << 1000*(double (min_time))/CLOCKS_PER_SEC << "ms" << std::endl;
     return 0;
 }

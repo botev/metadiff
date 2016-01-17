@@ -147,11 +147,11 @@ namespace metadiff{
             // Update all of the shared_variables
             f << "\n\t// Update all shared variables\n";
             for(int i=0;i<graph->nodes.size();i++){
-                auto node = graph->nodes[i];
-                if(node->type == UPDATE){
-                    auto shared_id = node->op->get_arguments()[0].ptr->shared->id;
-                    auto update_id = node->op->get_parents()[0].ptr->id;
-                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update_id] << ";\n";
+                if(graph->nodes[i]->type == UPDATE){
+//                    auto shared_id = graph->nodes[i]->op->get_arguments()[0].ptr->shared->id;
+//                    auto update_id = graph->nodes[i]->op->get_parents()[0].ptr->id;
+//                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update_id] << ";\n";
+                    print_update_node(f, graph->nodes[i], expression_table);
                 }
             }
             graph->clear_temporary_updates();
@@ -167,6 +167,116 @@ namespace metadiff{
             }
             f << "}\n";
             f.close();
+        }
+
+        void print_update_node(std::ofstream& f, Node node, std::vector<std::string>& expression_table){
+//            f << "\tstd::cout << \"Updating node \" << " << node.ptr->id << " << std::endl;\n";
+            size_t shared_id = node.ptr->op->get_arguments()[0].ptr->shared->id;
+            Node update =  node.ptr->op->get_parents()[0];
+
+            if(node.ptr->op->get_parents()[0].ptr->execution.inlined){
+                if(update.ptr->op->name == "Mul"){
+                    NodeVec parents = update.ptr->op->get_parents();
+                    int index = -1;
+                    bool all_div = true;
+                    for(int j=0;j<parents.size();j++){
+                        if(parents[j].ptr->type == SHARED_INPUT){
+                            if(parents[j].ptr->shared->id == shared_id){
+                                index = j;
+                            } else {
+                                all_div = false;
+                            }
+                        } else if(parents[j].ptr->op->name != "Div"){
+                            all_div = false;
+                        }
+                    }
+                    if(index == -1){
+                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+                    } else if (all_div){
+                        f << "\tshared_vars[" << shared_id << "]->value /= ";
+                        bool first = true;
+                        for (int j = 0; j < parents.size(); j++) {
+                            if (j != index){
+                                if(first){
+                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    first = false;
+                                } else {
+                                    f << " * " << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                }
+                            }
+                        }
+                        f << ";\n";
+                    } else {
+                        f << "\tshared_vars[" << shared_id << "]->value *= ";
+                        bool first = true;
+                        for (int j = 0; j < parents.size(); j++) {
+                            if (j != index){
+                                if(first){
+                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    first = false;
+                                } else if(parents[j].ptr->op->name == "Div"){
+                                    f << " / " + expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                } else {
+                                    f << " * " + expression_table[parents[j].ptr->id];
+                                }
+                            }
+                        }
+                        f << ";\n";
+                    }
+                } else if(update.ptr->op->name == "Add"){
+                    NodeVec parents = update.ptr->op->get_parents();
+                    int index = -1;
+                    bool all_neg = true;
+                    for(int j=0;j<parents.size();j++){
+                        if(parents[j].ptr->type == SHARED_INPUT){
+                            if(parents[j].ptr->shared->id == shared_id){
+                                index = j;
+                            } else {
+                                all_neg = false;
+                            }
+                        } else if(parents[j].ptr->op->name != "Neg"){
+                            all_neg = false;
+                        }
+                    }
+                    if(index == -1){
+                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+                    } else if (all_neg){
+                        f << "\tshared_vars[" << shared_id << "]->value -= ";
+                        bool first = true;
+                        for (int j = 0; j < parents.size(); j++) {
+                            if (j != index){
+                                if(first){
+                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    first = false;
+                                } else {
+                                    f << " + " << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                }
+                            }
+                        }
+                        f << ";\n";
+                    } else {
+                        f << "\tshared_vars[" << shared_id << "]->value += ";
+                        bool first = true;
+                        for (int j = 0; j < parents.size(); j++) {
+                            if (j != index){
+                                if(first){
+                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    first = false;
+                                } else if(parents[j].ptr->op->name == "Neg"){
+                                    f << " - " + expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                } else {
+                                    f << " + " + expression_table[parents[j].ptr->id];
+                                }
+                            }
+                        }
+                        f << ";\n";
+                    }
+                } else {
+                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+                }
+            } else {
+                f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+            }
         }
 
 //        void calculate_symbolics(std::ofstream& f, Graph graph, std::vector<Node> inputs){
