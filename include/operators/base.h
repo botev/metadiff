@@ -301,6 +301,10 @@ namespace metadiff {
             }
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Broadcast>(graph, ancestors[0], to_shape);
+        }
+
         Shape get_shape(){
             return to_shape;
         }
@@ -351,6 +355,10 @@ namespace metadiff {
             }
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Sum>(graph, ancestors[0], axes);
+        }
+
         Shape get_shape(){
             Shape p_shape = parent.ptr->shape;
             for(int i=0;i<axes.size();i++){
@@ -378,6 +386,10 @@ namespace metadiff {
         Add(GraphInPtr graph, Node parent1, Node parent2) :
                 Add(graph, {parent1, parent2})
         {}
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Add>(graph, ancestors);
+        }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
@@ -414,6 +426,10 @@ namespace metadiff {
                 UnaryOperator("Neg", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Neg>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad.neg();
         };
@@ -440,6 +456,10 @@ namespace metadiff {
         Mul(GraphInPtr graph, Node p1, Node p2) :
                 ElementwiseNary("Mul", graph, {p1, p2})
         {};
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Mul>(graph, ancestors);
+        }
 
         Node get_parent_grad(Node my_grad, size_t index){
             if(parents.size() == 2){
@@ -480,10 +500,12 @@ namespace metadiff {
                 UnaryOperator("Div", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Div>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
-            Node square = parent.square();
-            square.update_grad_level();
-            return mul(my_grad, square).neg();
+            return mul(my_grad, parent.square().div()).neg();
         }
     };
 
@@ -504,6 +526,10 @@ namespace metadiff {
         Square(GraphInPtr graph, Node parent) :
                 UnaryOperator("Square", graph, parent)
         {};
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Square>(graph, ancestors[0]);
+        }
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node two = graph->constant_value(2.0);

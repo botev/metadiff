@@ -13,6 +13,10 @@ namespace metadiff{
                 UnaryOperator("Const", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<MakeConstant>(graph, ancestors[0]);
+        }
+
         ad_node_type get_node_type(){
             if(parent.ptr->type == CONSTANT){
                 return CONSTANT;
@@ -29,14 +33,18 @@ namespace metadiff{
     Node Node::constant() {
         return apply<MakeConstant>(this);
     }
-    
+
     class ConstantOperator: public Operator{
     public:
         Shape shape;
         ConstantOperator(std::string const name,
                          GraphInPtr graph):
-                Operator(name, graph)
-        {};
+                Operator(name, graph) {};
+
+        ConstantOperator(std::string const name,
+                         GraphInPtr graph,
+                         Shape shape):
+                Operator(name, graph), shape(shape) {};
 
         NodeVec get_parents() {
             return {};
@@ -79,6 +87,10 @@ namespace metadiff{
         {
             shape = {size, size, 1, 1};
         }
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Eye>(graph, shape[0]);
+        }
     };
 
     Node GraphInternal::eye(SymInt size) {
@@ -88,9 +100,10 @@ namespace metadiff{
     class Zeros: public ConstantOperator{
     public:
         Zeros(GraphInPtr graph, Shape shape):
-                ConstantOperator("Zeros", graph)
-        {
-            this->shape = shape;
+                ConstantOperator("Zeros", graph, shape){};
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Zeros>(graph, shape);
         }
     };
 
@@ -101,9 +114,10 @@ namespace metadiff{
     class Ones: public ConstantOperator{
     public:
         Ones(GraphInPtr graph, Shape shape):
-                ConstantOperator("Ones", graph)
-        {
-            this->shape = shape;
+                ConstantOperator("Ones", graph, shape) {};
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Ones>(graph, shape);
         }
     };
 
@@ -115,10 +129,11 @@ namespace metadiff{
     public:
         double value;
         ConstantValue(GraphInPtr graph, Shape shape, double value):
-                ConstantOperator("Value", graph),
-                value(value)
-        {
-            this->shape = shape;
+                ConstantOperator("Value", graph, shape),
+                value(value) {};
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<ConstantValue>(graph, shape, value);
         }
     };
 

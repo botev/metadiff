@@ -175,7 +175,6 @@ void ReadTrainMNIST(std::string folder, float* data, int* labels){
     }
     file.close();
 }
-
 int main(int argc, char **argv)
 {
     // Download and load MNIST
@@ -233,7 +232,8 @@ int main(int argc, char **argv)
     // Architecture
     int d[9] = {784, 1000, 500, 250, 30, 250, 500, 1000, 784};
     // Input data
-    auto data_in = graph->matrix(md::FLOAT, {n, d[0]}, "Input");
+    auto test = graph->constant_value(20);
+    md::NodeVec inputs = {graph->matrix(md::FLOAT, {n, d[0]}, "Input")};
     // Parameters
     std::vector<md::Node> params;
     for(int i=1;i<9;i++){
@@ -241,19 +241,19 @@ int main(int argc, char **argv)
         params.push_back(graph->shared_var(af::constant(0.0, 1, d[i]), "b_" + std::to_string(i)));
     }
     // Input Layer
-    auto h = md::relu(md::dot(data_in, params[0]) + params[1]);
+    auto h = md::tanh(md::dot(inputs[0], params[0]) + params[1]);
     // All layers except one
     for(int i=1;i<7;i++){
-        h = md::relu(md::dot(h, params[2*i]) + params[2*i+1]);
+        h = md::tanh(md::dot(h, params[2*i]) + params[2*i+1]);
     }
     // Calculate only logits here
     h = md::dot(h, params[14]) + params[15];
     // Loss
-    auto error = md::binary_cross_entropy_logit(data_in, h);
+    auto error = md::binary_cross_entropy_logit(inputs[0], h);
     // Mean loss
-    auto loss = error.sum() * graph->constant_value(1.0 / float(batch_size));
+    md::NodeVec loss = {error.sum() * graph->constant_value(1.0 / float(batch_size))};
     // Get grads
-    auto grads = graph->gradient(loss, params);
+    auto grads = graph->gradient(loss[0], params);
     // Learning rate
     auto learning_rate = graph->constant_value(0.01);
     // Set up sgd
@@ -263,10 +263,20 @@ int main(int argc, char **argv)
     }
     name += kPathSeparator + name;
     // Print to file
-    md::dagre::dagre_to_file(name + ".html", graph, {loss}, updates);
+    md::dagre::dagre_to_file(name + ".html", graph, loss, updates);
+    // Optimize
+    md::NodeVec new_inputs;
+    md::NodeVec new_loss;
+    md::Updates new_updates;
+    md::Graph optimized =  graph->optimize(loss, updates, inputs,
+                                           new_loss, new_updates, new_inputs);
+    std::cout << "Original:" << graph->nodes.size() << std::endl;
+    std::cout << "Optimized:" << optimized->nodes.size() << std::endl;
+    md::dagre::dagre_to_file(name + "_optim.html", optimized, new_loss, new_updates);
     // Create backend and compile function
     md::ArrayfireBackend md_backend = md::ArrayfireBackend();
-    auto train = md_backend.compile_function(name, graph, {data_in}, {loss}, updates);
+    auto train_org = md_backend.compile_function(name, graph, inputs, loss, updates);
+    auto train_optim = md_backend.compile_function(name + "_optim", optimized, new_inputs, new_loss, new_updates);
 
     // Run function
     long long time = 0;
@@ -284,7 +294,8 @@ int main(int argc, char **argv)
         // Input data
         data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
         clock_t start = clock();
-        auto result = train.eval(data_inv);
+//        auto result = train_org.eval(data_inv);
+        auto result = train_optim.eval(data_inv);
         clock_t end = clock();
         hv = result[0].host<float>();
         if(i >= burnout) {

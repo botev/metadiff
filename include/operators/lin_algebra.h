@@ -14,6 +14,10 @@ namespace metadiff{
                 UnaryOperator("Transpose", graph, parent)
         {}
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Transpose>(graph, ancestors[0]);
+        }
+
         Shape get_shape(){
             auto parent_shape = parent.ptr->shape;
             Shape shape {1, 1, 1, 1};
@@ -63,6 +67,10 @@ namespace metadiff{
             shape = Shape{parents[0].ptr->shape[0], parents.back().ptr->shape[1], 1, 1};
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors){
+            return std::make_shared<MatrixMultiplication>(graph, ancestors);
+        }
+
         MatrixMultiplication(GraphInPtr graph,
                              Node parent1,
                              Node parent2) :
@@ -82,19 +90,15 @@ namespace metadiff{
             Node right_tr = Node();
             if (left_nodes.size() == 1) {
                 left_tr = left_nodes[0].transpose();
-                left_tr.update_grad_level();
             } else if (left_nodes.size() > 1) {
                 left_tr = apply<MatrixMultiplication>(left_nodes);
-                left_tr.update_grad_level();
                 left_tr = left_tr.transpose();
             }
 
             if (right_nodes.size() == 1) {
                 right_tr = right_nodes[0].transpose();
-                right_tr.update_grad_level();
             } else if (right_nodes.size() > 1) {
                 right_tr = apply<MatrixMultiplication>(right_nodes);
-                right_tr.update_grad_level();
                 right_tr = right_tr.transpose();
             }
 
@@ -128,9 +132,12 @@ namespace metadiff{
             }
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<MatrixInverse>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node this_tr = owner.transpose();
-            this_tr.update_grad_level();
             return dot(NodeVec{this_tr, my_grad, this_tr}).neg();
         }
     };
@@ -157,13 +164,16 @@ namespace metadiff{
             }
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Determinant>(graph, ancestors[0]);
+        }
+
         Shape get_shape(){
             return {1, 1, 1, 1};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node inv = parent.minv();
-            inv.update_grad_level();
             return mul(NodeVec{my_grad, owner, inv.transpose()});
         }
     };
@@ -190,13 +200,16 @@ namespace metadiff{
             }
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<LogDeterminant>(graph, ancestors[0]);
+        }
+
         Shape get_shape(){
             return {1, 1, 1, 1};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node inv = parent.minv();
-            inv.update_grad_level();
             return mul(NodeVec{my_grad, owner, inv});
         }
     };
@@ -218,6 +231,10 @@ namespace metadiff{
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
                 throw UnknownError({parent}, "Operator 'Trace' takes only squared matrices");
             }
+        }
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Trace>(graph, ancestors[0]);
         }
 
         Shape get_shape(){

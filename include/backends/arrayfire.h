@@ -72,7 +72,7 @@ namespace metadiff{
                     "    return;\n"
                     "};\n\n";
 
-            f << "inline af::array softplus(af::array& input, int threshold) {\n"
+            f << "inline af::array softplus(af::array input, int threshold) {\n"
                     "            af::array result = af::log1p(af::exp(input));\n"
                     "            af::replace(result, input < threshold, input);\n"
                     "            return result;\n"
@@ -107,9 +107,12 @@ namespace metadiff{
                 ancestor_mask[inputs[i].ptr->id] = false;
             }
             // Expressions for all shared variables
-            for(int i=0;i<graph->shared_vars.size();i++){
-                expression_table[graph->shared_vars[i]->id] = "shared_vars[" + std::to_string(i) + "]->value";
-                ancestor_mask[graph->shared_vars[i]->id] = false;
+            for(int i=0;i<graph->nodes.size();i++){
+                Node node = graph->nodes[i];
+                if(node.ptr->type == SHARED_INPUT) {
+                    expression_table[i] = "shared_vars[" + std::to_string(node.ptr->shared->id) + "]->value";
+                    ancestor_mask[i] = false;
+                }
             }
 
 //            // Calculate all of the symbolic integers
@@ -120,12 +123,12 @@ namespace metadiff{
             // Calculate all of the other nodes
             f << "\n\t// Calculate all of the computation nodes\n";
             for(size_t i=0;i<ancestor_mask.size();i++){
-                if(ancestor_mask[i] and graph->nodes[i]->type != INPUT){
+                if(ancestor_mask[i]){
                     std::string expression = calculate_node(graph, i, expression_table);
                     if(graph->nodes[i]->execution.inlined or graph->nodes[i]->op->name == "Broadcast"){
                         expression_table[i] = expression;
                     } else {
-//                        f << "\tstd::cout<< \"Evaluating node " << i << "...\" << std::endl;\n";
+//                        f << "\tstd::cout << \"Evaluating: \" << " << i << " << std::endl;\n";
                         if(graph->nodes[i]->type == CONSTANT and Node(graph->nodes[i]).is_scalar()){
                             f << "\tfloat ";
                         }
@@ -146,13 +149,9 @@ namespace metadiff{
             for(int i=0;i<graph->nodes.size();i++){
                 auto node = graph->nodes[i];
                 if(node->type == UPDATE){
-                    auto shared_id = node->op->get_arguments()[0].ptr->id;
+                    auto shared_id = node->op->get_arguments()[0].ptr->shared->id;
                     auto update_id = node->op->get_parents()[0].ptr->id;
-                    for(int j=0;j<graph->shared_vars.size();j++){
-                        if(graph->shared_vars[j]->id == shared_id){
-                            f << "\tshared_vars[" << j << "]->value = " << expression_table[update_id] << ";\n";
-                        }
-                    }
+                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update_id] << ";\n";
                 }
             }
             graph->clear_temporary_updates();
@@ -247,7 +246,6 @@ namespace metadiff{
                         break;
                     }
                 }
-//                std::cout << id << " Broadcast " << not_supported << std::endl;
                 if (not_supported) {
                     std::string expression = "af::tile(" + expression_table[parents[0].ptr->id] + ", ";
                     for (int i = 0; i < 4; i++){
@@ -260,38 +258,38 @@ namespace metadiff{
                             expression += ", ";
                         }
                     }
-                    std::cout << id << " " << parents[0].ptr->id << " : " << expression_table[parents[0].ptr->id] << std::endl;
                     return expression + ")";
                 } else {
-                    std::cout << id << " " << parents[0].ptr->id << " : " << expression_table[parents[0].ptr->id] << std::endl;
                     return expression_table[parents[0].ptr->id];
                 }
             }
             if (op_name == "Add") {
-                std::string expression = "";
-                for (int i = 0; i < parents.size(); i++) {
-                    expression += expression_table[parents[i].ptr->id];
-                    if (i < parents.size() - 1) {
-                        expression += " + ";
+                std::string expression = expression_table[parents[0].ptr->id];
+                for (int i = 1; i < parents.size(); i++) {
+                    if(parents[i].ptr->op->name == "Neg"){
+                        expression += " - " + expression_table[parents[i].ptr->op->get_parents()[0].ptr->id];
+                    } else {
+                        expression += " + " + expression_table[parents[i].ptr->id];
                     }
                 }
-                return expression;
+                return "(" + expression + ")";
             }
             if (op_name == "Neg") {
-                return "-" + expression_table[parents[0].ptr->id];
+                return "(-" + expression_table[parents[0].ptr->id] + ")";
             }
             if (op_name == "Mul") {
-                std::string expression = "";
-                for (int i = 0; i < parents.size(); i++) {
-                    expression += expression_table[parents[i].ptr->id];
-                    if (i < parents.size() - 1) {
-                        expression += " * ";
+                std::string expression = expression_table[parents[0].ptr->id];
+                for (int i = 1; i < parents.size(); i++) {
+                    if(parents[i].ptr->op->name == "Div"){
+                        expression += " / " + expression_table[parents[i].ptr->op->get_parents()[0].ptr->id];
+                    } else {
+                        expression += " * " + expression_table[parents[i].ptr->id];
                     }
                 }
                 return expression;
             }
             if (op_name == "Div") {
-                return "/" + expression_table[parents[0].ptr->id];
+                return "(1.0/" + expression_table[parents[0].ptr->id] + ")";
             }
             if (op_name == "Sum") {
                 auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
@@ -409,14 +407,27 @@ namespace metadiff{
                 return "af::transpose(" + expression_table[parents[0].ptr->id] + ")";
             }
             if (op_name == "MatrixMul") {
-                std::string expression = "af::matmul(";
-                for (int i = 0; i < parents.size(); i++) {
-                    expression += expression_table[parents[i].ptr->id];
-                    if (i < parents.size() - 1) {
-                        expression += ", ";
-                    }
+                if(parents.size() > 2){
+                    throw "Currently only matmul of 2 parents is supported";
                 }
-                return expression + ")";
+                std::string p0;
+                std::string flag0 = "AF_MAT_NONE";
+                std::string p1;
+                std::string flag1 = "AF_MAT_NONE";
+                std::string expr;
+                if(parents[0].ptr->op->name == "Transpose"){
+                    p0 = expression_table[parents[0].ptr->op->get_parents()[0].ptr->id];
+                    flag0 = "AF_MAT_TRANS";
+                } else {
+                    p0 =  expression_table[parents[0].ptr->id];
+                }
+                if(parents[1].ptr->op->name == "Transpose"){
+                    p1 = expression_table[parents[1].ptr->op->get_parents()[0].ptr->id];
+                    flag1 = "AF_MAT_TRANS";
+                } else {
+                    p1 =  expression_table[parents[1].ptr->id];
+                }
+                return "af::matmul(" + p0 + ", " + p1 + ", " + flag0 + ", " + flag1 + ")";
             }
             if (op_name == "MatrixInv") {
                 return "af::inverse(" + expression_table[parents[0].ptr->id] + ")";
@@ -457,8 +468,8 @@ namespace metadiff{
             }
             if (op_name == "BinCrossEntropyLogit") {
                 std::string p = expression_table[parents[0].ptr->id];
-                std::string sfx = expression_table[parents[1].ptr->id];
-                std::string sfmx = expression_table[parents[2].ptr->id];
+                std::string sfx = expression_table[args[0].ptr->id];
+                std::string sfmx = expression_table[args[1].ptr->id];
                 return p + " * (" + sfmx + " - " + sfx + ") + " + sfx;
             }
             if (op_name == "MaxAndArgMax") {

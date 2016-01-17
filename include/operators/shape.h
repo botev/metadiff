@@ -29,6 +29,10 @@ namespace metadiff{
             }
         };
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Diagonal>(graph, ancestors[0]);
+        }
+
         Shape get_shape(){
             return shape;
         }
@@ -60,6 +64,10 @@ namespace metadiff{
                                        "Operator 'Reshape' must not change the total number of elemetns");
             }
         };
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Reshape>(graph, ancestors[0], shape);
+        }
 
         Shape get_shape(){
             return shape;
@@ -112,6 +120,10 @@ namespace metadiff{
                 }
             }
         };
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Reorder>(graph, ancestors[0], order);
+        }
 
         Shape get_shape(){
             return {parent.ptr->shape[order[0]], parent.ptr->shape[order[1]],

@@ -62,8 +62,7 @@ namespace metadiff {
         bool empty(){
             return ptr == NULL;
         }
-
-        void update_grad_level();
+        void copy_to(GraphInPtr graph, std::vector<Node> ancestors);
         void update(Node update);
 
         bool is_constant() const;
@@ -242,6 +241,10 @@ namespace metadiff {
         Device(const ad_device_type type, const size_t id):
                 type(type),
                 id(id) {};
+
+        Device(Device& device):
+                type(device.type),
+                id(device.id) {};
     };
 
     class ExecutionData{
@@ -252,8 +255,12 @@ namespace metadiff {
         ExecutionData():
                 inlined(false),
                 register_id(0),
-                lifespan(0)
-        {}
+                lifespan(0) {};
+
+        ExecutionData(const ExecutionData& data):
+                inlined(data.inlined),
+                register_id(data.register_id),
+                lifespan(data.lifespan) {};
     };
 
     class Operator{
@@ -266,6 +273,7 @@ namespace metadiff {
                 name(name),
                 graph(graph){};
 
+        virtual std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) = 0;
         virtual ad_value_type get_value_type() = 0;
         virtual Shape get_shape() = 0;
         virtual ad_node_type get_node_type() = 0;
@@ -339,6 +347,7 @@ namespace metadiff {
         ad_implicit_broadcast broadcast;
         size_t sym_integer_count;
         std::vector<SharedPtr> shared_vars;
+        size_t gradient_mode;
 
         std::vector<Node> temporary_constants;
         std::vector<Node> temporary_updates;
@@ -351,20 +360,22 @@ namespace metadiff {
             f_type = ad_float_type::f32;
             i_type = ad_integer_type::s32;
             broadcast = ad_implicit_broadcast::RAISE;
+            gradient_mode = 0;
         }
-        Graph copy(std::vector<bool> mask);
+        NodeVec copy(GraphInPtr new_graph, std::vector<bool> mask);
         SymInt get_new_symbolic_integer() {
             this->sym_integer_count++;
             return SymInt::variable(this->sym_integer_count - 1);
         }
 
-        std::vector<bool> get_descendants_mask(std::vector<Node> marked);
-        std::vector<bool> get_ancestors_mask(std::vector<Node> marked);
+        std::vector<bool> get_descendants_mask(std::vector<Node>& marked);
+        std::vector<bool> get_ancestors_mask(std::vector<Node>& marked);
         size_t find_same_node(std::shared_ptr<Operator> op);
         void add_temporary_updates(const Updates& updates);
         void clear_temporary_updates();
         std::vector<Node> gradient(Node objective, std::vector<Node> params);
-        Graph optimize(std::vector<Node> targets, Updates& updates);
+        Graph optimize(NodeVec& targets, Updates& updates,NodeVec& inputs,
+                       NodeVec& new_targets, Updates& new_updates, NodeVec& new_inputs);
 
         Node shared_var(af::array value, std::string name = "SharedVar");
         Node derived_node(std::shared_ptr<Operator> op, size_t grad_level = GRAD_LEVEL_BAR);
@@ -639,6 +650,10 @@ namespace metadiff {
         Input(GraphInPtr graph):
                 Operator("Input", graph){}
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Input>(graph);
+        }
+
         ad_value_type get_value_type(){
             return ad_value_type::FLOAT;
         }
@@ -698,6 +713,10 @@ namespace metadiff {
                 shared(shared),
                 update(update){
             verify_inputs();
+        }
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Update>(graph, ancestors[0], ancestors[1]);
         }
 
         ad_value_type get_value_type(){

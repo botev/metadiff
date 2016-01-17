@@ -12,6 +12,9 @@ namespace metadiff {
                 UnaryOperator("Exp", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Exp>(graph, ancestors[0]);
+        }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return mul(my_grad, owner);
@@ -32,9 +35,12 @@ namespace metadiff {
                 UnaryOperator("Log", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Log>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node div = parent.div();
-            div.update_grad_level();
             return mul(my_grad, div);
         }
     };
@@ -52,12 +58,14 @@ namespace metadiff {
         Pow(GraphInPtr graph, Node parent1, Node parent2) :
                 ElementwiseBinary("Pow", graph, parent1, parent2) { };
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Pow>(graph, ancestors[0], ancestors[1]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node product = mul(my_grad, owner);
-            product.update_grad_level();
             if(index == 0){
                 Node div = parent1.div();
-                div.update_grad_level();
                 return mul(NodeVec{product, parent2, div});
             } else {
                 return mul(NodeVec{product, parent1.log()});
@@ -89,11 +97,14 @@ namespace metadiff {
                 UnaryOperator("Abs", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Abs>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node zero = graph->constant_value(0.0);
             zero.ptr->grad_level = my_grad.ptr->grad_level;
             Node ge = parent.ge(zero);
-            ge.update_grad_level();
             return mul(my_grad, ge);
         }
     };
@@ -112,11 +123,14 @@ namespace metadiff {
                 UnaryOperator("Sigmoid", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Sigmoid>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
             one.ptr->grad_level = my_grad.ptr->grad_level;
             Node neg = owner.neg();
-            neg.update_grad_level();
             return mul({my_grad, owner, add(one, owner.neg())});
         }
     };
@@ -139,9 +153,12 @@ namespace metadiff {
                 threshold(threshold)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Softplus>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node sigmoid = parent.sigmoid();
-            sigmoid.update_grad_level();
             return mul({my_grad, sigmoid});
         }
     };
@@ -160,9 +177,12 @@ namespace metadiff {
                 UnaryOperator("Sin", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Sin>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node cos = parent.cos();
-            cos.update_grad_level();
             return mul(my_grad, cos);
         }
     };
@@ -181,9 +201,12 @@ namespace metadiff {
                 UnaryOperator("Cos", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Cos>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node sin = parent.cos();
-            sin.update_grad_level();
             return mul(my_grad, sin.neg());
         }
     };
@@ -202,9 +225,12 @@ namespace metadiff {
                 UnaryOperator("Tan", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Tan>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node cos = parent.cos();
-            cos.update_grad_level();
             return mul(my_grad, cos.square().div());
         }
     };
@@ -223,9 +249,12 @@ namespace metadiff {
                 UnaryOperator("Cot", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Cot>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node sin = parent.cos();
-            sin.update_grad_level();
             return mul(my_grad, sin.square().neg()).neg();
         }
     };
@@ -244,9 +273,12 @@ namespace metadiff {
                 UnaryOperator("Sinh", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Sinh>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node cosh = parent.cosh();
-            cosh.update_grad_level();
             return mul(my_grad, cosh);
         }
     };
@@ -265,9 +297,12 @@ namespace metadiff {
                 UnaryOperator("Cosh", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Cosh>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node sinh = parent.sinh();
-            sinh.update_grad_level();
             return mul(my_grad, sinh);
         }
     };
@@ -286,11 +321,14 @@ namespace metadiff {
                 UnaryOperator("Tanh", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Tanh>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
             one.ptr->grad_level = my_grad.ptr->grad_level;
             Node square = owner.square();
-            square.update_grad_level();
             return mul(my_grad, add(one, square.neg()));
         }
     };
@@ -309,11 +347,14 @@ namespace metadiff {
                 UnaryOperator("Coth", graph, parent)
         {};
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Coth>(graph, ancestors[0]);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
             one.ptr->grad_level = my_grad.ptr->grad_level;
             Node square = owner.square();
-            square.update_grad_level();
             return mul(my_grad, add(one, square.neg()));
         }
     };

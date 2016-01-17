@@ -58,6 +58,10 @@ namespace metadiff{
             }
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<MultiNodeIndex>(graph, ancestors[0], index);
+        }
+
         ad_value_type get_value_type(){
             MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.ptr->op.get());
             return multi_op->results_v_types[index];
@@ -134,6 +138,10 @@ namespace metadiff{
             this->results_v_types = {parent.ptr->v_type, INTEGER};
         }
 
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<MaxAndArgMax>(graph, ancestors[0], axes);
+        }
+
         Node get_parent_grad(Node my_grad, size_t index){
             // TODO
             return my_grad;
@@ -179,6 +187,10 @@ namespace metadiff{
                 this->results_types = {CONSTANT, CONSTANT};
             }
             this->results_v_types = {parent.ptr->v_type, INTEGER};
+        }
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<SortAndArgSort>(graph, ancestors[0], axes);
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
