@@ -191,7 +191,7 @@ int main(int argc, char **argv)
     int batch_size = 1000;
     // Default period
     int period = 1;
-    if(argc > 3){
+    if(argc > 4){
         std::cerr << "Expecting two optional arguments - backend and batch size" << std::endl;
         exit(1);
     }
@@ -215,6 +215,12 @@ int main(int argc, char **argv)
         std::istringstream ss(argv[2]);
         if(!(ss >> batch_size)) {
             std::cerr << "Invalid number " << argv[2] << '\n';
+        }
+    }
+    if(argc > 3){
+        std::istringstream ss(argv[3]);
+        if(!(ss >> period)) {
+            std::cerr << "Invalid number " << argv[3] << '\n';
         }
     }
     af::setBackend(backend);
@@ -302,7 +308,7 @@ int main(int argc, char **argv)
         data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
 //        auto result = train_org.eval(data_inv);
         result = train_optim.eval(data_inv);
-        if(i & period == 0) {
+        if(i >= burnout and (i - burnout) % period == 0) {
             hv = result[0].host<float>();
         }
 //        if(i >= burnout) {
