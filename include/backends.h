@@ -6,6 +6,7 @@
 #define METADIFF_BACKENDS_H
 
 #include "backends/base.h"
-#include "backends/arrayfire.h"
+//#include "backends/arrayfire.h"
+#include "backends/eigen.h"
 
 #endif //METADIFF_BACKENDS_H

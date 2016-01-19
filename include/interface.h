@@ -37,12 +37,11 @@ public:
 class SharedVariable{
 public:
     size_t id;
-    af::array value;
+    Eigen::ArrayXXf value;
     SharedVariable():
-            id(0),
-            value(af::array())
+            id(0)
     {};
-    SharedVariable(size_t id, af::array value):
+    SharedVariable(size_t id, Eigen::ArrayXXf value):
             id(id),
             value(value)
     {};

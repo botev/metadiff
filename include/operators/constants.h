@@ -157,7 +157,7 @@ namespace metadiff{
         if(name == "Value"){
             return dynamic_cast<ConstantValue*>(this)->value;
         }
-        return owner.ptr->value.host<float>()[0];
+        return owner.ptr->value(0);
     }
 //    Node mul_const_operators(Node node1, Node node2){
 //        if(node1->op->name == "Ones"){

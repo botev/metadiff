@@ -307,7 +307,7 @@ namespace metadiff {
         std::shared_ptr<Operator> op;
         NodeVec children;
         size_t grad_level;
-        af::array value;
+        Eigen::MatrixXf value;
         SharedPtr shared;
 
         ExecutionData execution;
@@ -377,10 +377,10 @@ namespace metadiff {
         Graph optimize(NodeVec& targets, Updates& updates,NodeVec& inputs,
                        NodeVec& new_targets, Updates& new_updates, NodeVec& new_inputs);
 
-        Node shared_var(af::array value, std::string name = "SharedVar");
+        Node shared_var(Eigen::MatrixXf value, std::string name = "SharedVar");
         Node derived_node(std::shared_ptr<Operator> op, size_t grad_level = GRAD_LEVEL_BAR);
         Node update_node(Node shared, Node update, size_t grad_level = GRAD_LEVEL_BAR);
-        Node constant_node(af::array value);
+        Node constant_node(Eigen::MatrixXf value);
 
         Node tensor(ad_value_type v_type,
                     std::array<SymInt, 4> shape,

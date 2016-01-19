@@ -395,25 +395,15 @@ namespace metadiff{
         return copy;
     };
 
-    Node GraphInternal::shared_var(af::array value, std::string name){
-        ad_value_type dtype;
-        if(value.type() == af::dtype::b8){
-            dtype = BOOLEAN;
-        } else if(value.type() == af::dtype::f32
-                  or value.type() == af::dtype::f64){
-            dtype = FLOAT;
-        } else {
-            dtype = INTEGER;
-        }
-        af::dim4 dims = value.dims();
+    Node GraphInternal::shared_var(Eigen::MatrixXf value, std::string name){
         std::shared_ptr<NodeInternal> result = std::make_shared<NodeInternal>(
                 shared_from_this().get(),
                 default_device,
                 nodes.size(),
                 name,
                 ad_node_type::SHARED_INPUT,
-                dtype,
-                Shape {dims[0], dims[1], dims[2], dims[3]},
+                FLOAT,
+                Shape {value.rows(), value.cols(), 1, 1},
                 std::make_shared<Input>(shared_from_this().get()),
                 0
         );
@@ -481,25 +471,15 @@ namespace metadiff{
         }
     };
 
-    Node GraphInternal::constant_node(af::array value){
-        ad_value_type dtype;
-        if(value.type() == af::dtype::b8){
-            dtype = BOOLEAN;
-        } else if(value.type() == af::dtype::f32
-                  or value.type() == af::dtype::f64){
-            dtype = FLOAT;
-        } else {
-            dtype = INTEGER;
-        }
-        af::dim4 dims = value.dims();
+    Node GraphInternal::constant_node(Eigen::MatrixXf value){
         std::shared_ptr<NodeInternal> result = std::make_shared<NodeInternal>(
                 shared_from_this().get(),
                 default_device,
                 nodes.size(),
                 "Constant Node",
                 ad_node_type::CONSTANT,
-                dtype,
-                Shape {dims[0], dims[1], dims[2], dims[3]},
+                FLOAT,
+                Shape {value.rows(), value.cols(), 1, 1},
                 std::make_shared<Input>(shared_from_this().get()),
                 0
         );

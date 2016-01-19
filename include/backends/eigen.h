@@ -2,42 +2,46 @@
 // Created by alex on 18/12/15.
 //
 
-#ifndef AUTODIFF_BACKENDS_ARRAYFIRE_H
-#define AUTODIFF_BACKENDS_ARRAYFIRE_H
+#ifndef AUTODIFF_BACKENDS_EIGEN_H
+#define AUTODIFF_BACKENDS_EIGEN_H
 
 #include <fstream>
-namespace metadiff{
 
-    class ArrayfireBackend: public FunctionBackend<af::array>{
+namespace metadiff{
+    class EigenBackend: public FunctionBackend<Eigen::ArrayXXf>{
     public:
         std::string include_path;
-        std::string lib_path;
-        ArrayfireBackend(std::string include_path,
-                         std::string lib_path):
-                include_path(include_path),
-                lib_path(lib_path)
-        {};
-
-        ArrayfireBackend(){
-            // Create backend and compile function
-            const char *AF_PATH = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-            include_path = std::string(AF_PATH) + "/include";
-            lib_path = std::string(AF_PATH) + "/lib";
+        std::vector<std::pair<int, int>> sizes;
+        bool mkl;
+        EigenBackend(std::string include_path):
+                include_path(include_path) {
+            mkl = false;
         };
 
-        ArrayfireBackend(std::string AF_PATH){
+        EigenBackend(){
             // Create backend and compile function
-            include_path = AF_PATH + "/include";
-            lib_path = AF_PATH + "/lib";
+            include_path = getenv("EIGEN_PATH") ? getenv("EIGEN_PATH") : "/opt/eigen";
+            mkl = false;
         };
 
         void compile_file(std::string file_name, std::string dll_name){
-            std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
-            command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
-            command += " -I" + include_path;
-            command += " -L" + lib_path;
-//            command += " -I./";
-            command += " -o " + dll_name + " " + file_name;
+            std::string command = "";
+            if(mkl){
+                command += "MKL_NUM_THREADS=4 OMP_NUM_THREADS=4 ";
+            }
+            command += "g++ ";
+            // Compiler flags
+            command += "-O3 -shared -fPIC -std=c++11 ";
+            // Include flags
+            command += "-I" + include_path + " -I/opt/intel/mkl/include ";
+            // Library flags
+            command += "-L/opt/intel/mkl/lib/intel64 ";
+            // Warning flags
+            command += "-Wl,--no-as-needed -Wall -Werror=return-type -Wno-unused-variable -Wno-narrowing ";
+            // MKL flags
+            command += "-m64 -fopenmp -lmkl_rt -lpthread -lm ";
+            // Target and source
+            command += "-o " + dll_name + " " + file_name;
             std::cout << "Command: " << command << std::endl;
             std::cout << "Compilation response: " << system(command.c_str()) << std::endl;
             return;
@@ -55,33 +59,31 @@ namespace metadiff{
             // Includes
             f <<    "#include \"vector\"\n"
                     "#include \"memory\"\n"
+                    "#include \"iostream\"\n"
                     "#include <exception>\n"
-                    "#include <arrayfire.h>\n";
+                    "#define EIGEN_USE_MKL_ALL\n"
+                    "#include \"Eigen/Core\"\n";
             f << "\n";
             // Write the interface definitions
             this->write_interface(f);
 
-            f << "void print_mem_info(std::string name){\n"
-                    "    size_t alloc_bytes,alloc_buffers,lock_bytes,lock_buffers;\n"
-                    "    af::deviceMemInfo(&alloc_bytes,&alloc_buffers,&lock_bytes,&lock_buffers);\n"
-                    "    std::cout << \"Memory info\" << name << std::endl;\n"
-                    "    std::cout << \"Allocated: \" << alloc_bytes / 1024 << \" KB\" << std::endl;\n"
-                    "    std::cout << \"Buffers allocated: \" << alloc_buffers << std::endl;\n"
-                    "    std::cout << \"In use: \" << lock_bytes / 1024 << \" KB\" << std::endl;\n"
-                    "    std::cout << \"Buffers in use: \" << lock_buffers << std::endl;\n"
-                    "    return;\n"
-                    "};\n\n";
+//            f << "void print_mem_info(std::string name){\n"
+//                    "    size_t alloc_bytes,alloc_buffers,lock_bytes,lock_buffers;\n"
+//                    "    af::deviceMemInfo(&alloc_bytes,&alloc_buffers,&lock_bytes,&lock_buffers);\n"
+//                    "    std::cout << \"Memory info\" << name << std::endl;\n"
+//                    "    std::cout << \"Allocated: \" << alloc_bytes / 1024 << \" KB\" << std::endl;\n"
+//                    "    std::cout << \"Buffers allocated: \" << alloc_buffers << std::endl;\n"
+//                    "    std::cout << \"In use: \" << lock_bytes / 1024 << \" KB\" << std::endl;\n"
+//                    "    std::cout << \"Buffers in use: \" << lock_buffers << std::endl;\n"
+//                    "    return;\n"
+//                    "};\n\n";
 
-            f << "inline af::array softplus(af::array input, int threshold) {\n"
-                    "            af::array result = af::log1p(af::exp(input));\n"
-                    "            af::replace(result, input < threshold, input);\n"
-                    "            return result;\n"
+            f << "inline Eigen::ArrayXXf softplus(Eigen::ArrayXXf input, int threshold) {\n"
+                    "            return (input > threshold).select(input, (input.exp()+1).array().log());\n"
                     "        }\n";
 
             f << "\n";
-            f << "extern \"C\" std::vector<af::array> eval_func(std::vector<af::array>& inputs, std::vector<SharedPtr>& shared_vars){\n";
-            f << "\t// Set up automatic broadcasting\n";
-            f << "\taf::gforSet(true);\n";
+            f << "extern \"C\" std::vector<Eigen::ArrayXXf> eval_func(std::vector<Eigen::ArrayXXf>& inputs, std::vector<SharedPtr>& shared_vars){\n";
             // Get ancestors mask
             graph->add_temporary_updates(updates);
             auto ancestor_mask = graph->get_ancestors_mask(targets);
@@ -133,16 +135,13 @@ namespace metadiff{
                             f << "\tfloat ";
                         }
                         else{
-                            f << "\taf::array ";
+                            f << "\tEigen::ArrayXXf ";
                         }
                         f << "node_" << i << " = " << expression << ";\n";
                         expression_table[i] = "node_" + std::to_string(i);
                     }
                 }
             }
-
-            // Disable the automatic broadcasting
-            f << "\taf::gforSet(false);";
 
             // Update all of the shared_variables
             f << "\n\t// Update all shared variables\n";
@@ -157,6 +156,12 @@ namespace metadiff{
             graph->clear_temporary_updates();
             // Write all of the output nodes as the result
             f << "\n\t// Write all of the output nodes in correct order\n";
+            for(int i=0;i<targets.size();i++){
+                f << "\tEigen::ArrayXXf node_" << targets[i].ptr->id << "(1,1);\n";
+                f << "\tnode_" << targets[i].ptr->id << " << " << expression_table[targets[i].ptr->id] << ";\n";
+                expression_table[targets[i].ptr->id] = "node_" + std::to_string(targets[i].ptr->id);
+//                f << "\tstd::cout << \"D \" << node_" << targets[i].ptr->id << ".rows() << \", \" << node_" << targets[i].ptr->id << ".cols() << std::endl;\n";
+            }
             f << "\treturn {";
             for(int i=0;i<targets.size();i++){
                 if(i < targets.size() - 1){
@@ -332,6 +337,16 @@ namespace metadiff{
 //            }
 //        }
 
+//        static std::string get_expression_as_array(Node node, std::vector<std::string>& expression_table){
+//            if(node.is_scalar()){
+//                return expression_table[node.ptr->id];
+//            } else if(node.ptr->op->name == "Broadcast" and node.ptr->op->get_parents()[0].is_scalar()) {
+//                return expression_table[node.ptr->op->get_parents()[0].ptr->id];
+//            } else{
+//                return "(" + expression_table[node.ptr->id] + ").array()";
+//            }
+//        }
+
         static std::string calculate_node(Graph graph, size_t id,
                                           std::vector<std::string>& expression_table){
             auto node = graph->nodes[id];
@@ -343,10 +358,27 @@ namespace metadiff{
                 throw 22;
             }
             if(node->type == CONSTANT and
-                    (op_name == "Zeros" or op_name == "Ones" or op_name == "Value")){
+               (op_name == "Zeros" or op_name == "Ones" or op_name == "Value")){
                 return std::to_string(node->op->get_scalar_value());
             }
             if (op_name == "Broadcast") {
+                // TODO properly implement this
+                // Atm made to work for the example
+                if(parents[0].is_scalar()){
+                    return expression_table[parents[0].ptr->id];
+                } else {
+                    Shape to_shape = dynamic_cast<Broadcast*>(node->op.get())->to_shape;
+                    size_t factors[2] {1, 1};
+                    if(parents[0].ptr->shape[0] != to_shape[0]){
+                        factors[0] = 1000;
+                    } else {
+                        factors[1] = 1000;
+                    }
+                    return expression_table[parents[0].ptr->id] + ".replicate(" +
+                           std::to_string(factors[0]) + ", " +
+                           std::to_string(factors[1]) + ")";
+                }
+
                 bool not_supported = false;
                 for (int i = 0; i < children.size(); i++) {
                     auto name = children[i].ptr->op->name;
@@ -374,7 +406,7 @@ namespace metadiff{
                 }
             }
             if (op_name == "Add") {
-                std::string expression = expression_table[parents[0].ptr->id];
+                std::string expression = "(" + expression_table[parents[0].ptr->id];
                 for (int i = 1; i < parents.size(); i++) {
                     if(parents[i].ptr->op->name == "Neg"){
                         expression += " - " + expression_table[parents[i].ptr->op->get_parents()[0].ptr->id];
@@ -382,16 +414,16 @@ namespace metadiff{
                         expression += " + " + expression_table[parents[i].ptr->id];
                     }
                 }
-                return "(" + expression + ")";
+                return expression + ")";
             }
             if (op_name == "Neg") {
-                return "(-" + expression_table[parents[0].ptr->id] + ")";
+                return "-" + expression_table[parents[0].ptr->id];
             }
             if (op_name == "Mul") {
                 std::string expression = expression_table[parents[0].ptr->id];
                 for (int i = 1; i < parents.size(); i++) {
                     if(parents[i].ptr->op->name == "Div"){
-                        expression += " / " + expression_table[parents[i].ptr->op->get_parents()[0].ptr->id];
+                        expression += " / " + expression_table[parents[i].ptr->id];
                     } else {
                         expression += " * " + expression_table[parents[i].ptr->id];
                     }
@@ -399,22 +431,24 @@ namespace metadiff{
                 return expression;
             }
             if (op_name == "Div") {
-                return "(1.0/" + expression_table[parents[0].ptr->id] + ")";
+                return "1.0 / " + expression_table[parents[0].ptr->id];
             }
             if (op_name == "Sum") {
                 auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
                 if (Node(node).is_scalar()) {
-                    return "af::sum(af::flat(" + expression_table[parents[0].ptr->id] + "))";
+                    return "("  + expression_table[parents[0].ptr->id] + ").sum()";
                 } else {
                     std::string expression = expression_table[parents[0].ptr->id];
-                    for (size_t i = 0; i < axes.size(); i++) {
-                        expression = "af::sum(" + expression + ", " + std::to_string(i) + ")";
+                    if(axes[0] == 0){
+                        expression += ".colwise().sum()";
+                    } else {
+                        expression += ".rowwise().sum()";
                     }
                     return expression;
                 }
             }
             if (op_name == "Square") {
-                return expression_table[parents[0].ptr->id] + " * " + expression_table[parents[0].ptr->id];
+                return expression_table[parents[0].ptr->id] + ".square()";
             }
             if (op_name == "Const") {
                 return expression_table[parents[0].ptr->id];
@@ -451,10 +485,10 @@ namespace metadiff{
                 return expression_table[parents[0].ptr->id] + " || " + expression_table[parents[1].ptr->id];
             }
             if (op_name == "ZeroElem") {
-                return "af::iszero(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".isZero()";
             }
             if (op_name == "NoneZeroElem") {
-                return "!af::iszero(" + expression_table[parents[0].ptr->id] + ")";
+                return "!" + expression_table[parents[0].ptr->id] + ".isZero()";
             }
             if (op_name == "IsNaN") {
                 return "af::isNaN(" + expression_table[parents[0].ptr->id] + ")";
@@ -463,72 +497,56 @@ namespace metadiff{
                 return "af::isInf(" + expression_table[parents[0].ptr->id] + ")";
             }
             if(op_name == "Select") {
-                return "af::select(" + expression_table[args[0].ptr->id] + ", " +
+                return "(" + expression_table[args[0].ptr->id] + ").select(" +
                        expression_table[parents[0].ptr->id] + ", " +
                        expression_table[parents[1].ptr->id] + ")";
             }
             if (op_name == "Exp") {
-                return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".exp()";
             }
             if (op_name == "Log") {
-                return "af::log(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".log()";
             }
             if (op_name == "Softplus") {
                 size_t threshold = dynamic_cast<Softplus*>(node->op.get())->threshold;
                 return "softplus(" + expression_table[parents[0].ptr->id] + ", " + std::to_string(threshold) + ")";
             }
             if (op_name == "Abs") {
-                return "af::abs(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".abs()";
             }
             if (op_name == "Sigmoid") {
-                return "1.0 / (1.0 + af::exp(-" + expression_table[parents[0].ptr->id] + "))";
+                return "1.0 / (1.0 + (-" + expression_table[parents[0].ptr->id] + ").array().exp()).array()";
             }
             if (op_name == "Sin") {
-                return "af::sin(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".sin()";
             }
             if (op_name == "Cos") {
-                return "af::cos(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".cos()";
             }
             if (op_name == "Tan") {
-                return "af::tan(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".tan()";
             }
             if (op_name == "Sinh") {
-                return "af::sinh(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".sinh()";
             }
             if (op_name == "Cosh") {
-                return "af::cosh(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".cosh()";
             }
             if (op_name == "Tanh") {
-                return "af::tanh(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".unaryExpr(std::ptr_fun(tanhf))";
             }
             if (op_name == "Pow") {
                 return "af::pow(" + expression_table[parents[0].ptr->id] + ")";
             }
             if (op_name == "Transpose") {
-                return "af::transpose(" + expression_table[parents[0].ptr->id] + ")";
+                return expression_table[parents[0].ptr->id] + ".transpose()";
             }
             if (op_name == "MatrixMul") {
-                if(parents.size() > 2){
-                    throw "Currently only matmul of 2 parents is supported";
+                std::string expression = "((" + expression_table[parents[0].ptr->id] + ").matrix()";
+                for (int i = 1; i < parents.size(); i++) {
+                    expression += " * (" + expression_table[parents[i].ptr->id] + ").matrix()";
                 }
-                std::string p0;
-                std::string flag0 = "AF_MAT_NONE";
-                std::string p1;
-                std::string flag1 = "AF_MAT_NONE";
-                std::string expr;
-                if(parents[0].ptr->op->name == "Transpose"){
-                    p0 = expression_table[parents[0].ptr->op->get_parents()[0].ptr->id];
-                    flag0 = "AF_MAT_TRANS";
-                } else {
-                    p0 =  expression_table[parents[0].ptr->id];
-                }
-                if(parents[1].ptr->op->name == "Transpose"){
-                    p1 = expression_table[parents[1].ptr->op->get_parents()[0].ptr->id];
-                    flag1 = "AF_MAT_TRANS";
-                } else {
-                    p1 =  expression_table[parents[1].ptr->id];
-                }
-                return "af::matmul(" + p0 + ", " + p1 + ", " + flag0 + ", " + flag1 + ")";
+                return expression + ").array()";
             }
             if (op_name == "MatrixInv") {
                 return "af::inverse(" + expression_table[parents[0].ptr->id] + ")";
@@ -611,4 +629,4 @@ namespace metadiff{
     };
 }
 
-#endif //AUTODIFF_BACKENDS_ARRAYFIRE_H
+#endif //AUTODIFF_BACKENDS_EIGEN_H
