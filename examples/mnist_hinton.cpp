@@ -288,12 +288,12 @@ int main(int argc, char **argv)
     // Number of epochs for burnout, to be discarded
     int burnout = 50;
     // Number of epochs
-    int epochs = 100 + burnout;
+    int epochs = 100;
     float *hv;
-    clock_t start;
+    clock_t start = clock();
     std::vector<af::array> result;
     std::vector<af::array> data_inv;
-    for(int i=0;i<epochs;i++){
+    for(int i=0;i<epochs + burnout;i++){
         if(i == burnout){
              start = clock();
         }
@@ -302,7 +302,7 @@ int main(int argc, char **argv)
         data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
 //        auto result = train_org.eval(data_inv);
         result = train_optim.eval(data_inv);
-        if(i & period == 0) {
+        if(i >= burnout and (i - burnout) % period == 0) {
             hv = result[0].host<float>();
         }
 //        if(i >= burnout) {
@@ -316,11 +316,10 @@ int main(int argc, char **argv)
 //            time += run_time;
 //        }
     }
-    hv = result[0].host<float>();
     time = (clock() - start);
     md_backend.close();
     std::cout << "Final Value: " << hv[0] << std::endl;
-    std::cout << "Mean run time: " << 1000*(double (time))/(CLOCKS_PER_SEC*(epochs - burnout)) << "ms" << std::endl;
+    std::cout << "Mean run time: " << 1000*((double) (time))/((double) (CLOCKS_PER_SEC*(epochs))) << "ms" << std::endl;
 //    std::cout << "Max run time: " << 1000*(double (max_time))/CLOCKS_PER_SEC << "ms" << std::endl;
 //    std::cout << "Min run time: " << 1000*(double (min_time))/CLOCKS_PER_SEC << "ms" << std::endl;
     return 0;
