@@ -482,9 +482,12 @@ namespace metadiff{
             if (op_name == "Exp") {
                 return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
             }
-            if (op_name == "Softplus") {
-                size_t threshold = dynamic_cast<Softplus*>(node->op.get())->threshold;
-                return "softplus(" + expression_table[parents[0].ptr->id] + ", " + std::to_string(threshold) + ")";
+//            if (op_name == "Softplus") {
+//                size_t threshold = dynamic_cast<Softplus*>(node->op.get())->threshold;
+//                return "softplus(" + expression_table[parents[0].ptr->id] + ", " + std::to_string(threshold) + ")";
+//            }
+            if(op_name == "Log1p") {
+                return "af::log1p(" + expression_table[parents[0].ptr->id] + ")";
             }
             if (op_name == "Abs") {
                 return "af::abs(" + expression_table[parents[0].ptr->id] + ")";

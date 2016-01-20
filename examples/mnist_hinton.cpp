@@ -168,9 +168,9 @@ void ReadTrainMNIST(std::string folder, float* data, int* labels){
         std::cout << number_of_images << std::endl;
         for(int i=0;i<number_of_images;++i)
         {
-                    unsigned char temp=0;
-                    file.read((char*)&temp,sizeof(temp));
-                    labels[i]= (int)temp;
+            unsigned char temp=0;
+            file.read((char*)&temp,sizeof(temp));
+            labels[i]= (int)temp;
         }
     }
     file.close();
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
     int batch_size = 1000;
     // Default period
     int period = 1;
-    if(argc > 3){
+    if(argc > 4){
         std::cerr << "Expecting two optional arguments - backend and batch size" << std::endl;
         exit(1);
     }
@@ -215,6 +215,12 @@ int main(int argc, char **argv)
         std::istringstream ss(argv[2]);
         if(!(ss >> batch_size)) {
             std::cerr << "Invalid number " << argv[2] << '\n';
+        }
+    }
+    if(argc > 3){
+        std::istringstream ss(argv[3]);
+        if(!(ss >> period)) {
+            std::cerr << "Invalid number " << argv[3] << '\n';
         }
     }
     af::setBackend(backend);
@@ -295,27 +301,17 @@ int main(int argc, char **argv)
     std::vector<af::array> data_inv;
     for(int i=0;i<epochs + burnout;i++){
         if(i == burnout){
-             start = clock();
+//            std::cout << i << std::endl;
+            hv = result[0].host<float>();
+            start = clock();
         }
         int ind = i % (num_images / batch_size);
-        // Input data
         data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
-//        std::cout << data_inv[0].type() << std::endl;
-//        auto result = train_org.eval(data_inv);
         result = train_optim.eval(data_inv);
-        if(i >= burnout and (i - burnout) % period == 0) {
+        if(i >= burnout and (i + 1 - burnout) % period == 0) {
+//            std::cout << i << std::endl;
             hv = result[0].host<float>();
         }
-//        if(i >= burnout) {
-//            auto run_time = (end - start);
-//            if(run_time < min_time){
-//                min_time = run_time;
-//            }
-//            if(run_time > max_time){
-//                max_time = run_time;
-//            }
-//            time += run_time;
-//        }
     }
     time = (clock() - start);
     md_backend.close();

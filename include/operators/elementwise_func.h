@@ -136,25 +136,21 @@ namespace metadiff {
     };
 
     Node Node::sigmoid() {
-        return apply<Sigmoid>(this);
+        return ptr->graph->constant_value(1.0) / (ptr->graph->constant_value(1.0) + neg().exp());
     }
 
     Node sigmoid(Node node){
-        return node.sigmoid();
+        return node.ptr->graph->constant_value(1.0) / (node.ptr->graph->constant_value(1.0) + node.neg().exp());
     }
 
-    class Softplus : public UnaryOperator{
+    class Log1p : public UnaryOperator{
     public:
-        size_t threshold;
-        Softplus(GraphInPtr graph,
-                 Node parent,
-                 size_t threshold = 50):
-                UnaryOperator("Softplus", graph, parent),
-                threshold(threshold)
-        {};
+        Log1p(GraphInPtr graph,
+                 Node parent):
+                UnaryOperator("Log1p", graph, parent) {};
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
-            return std::make_shared<Softplus>(graph, ancestors[0]);
+            return std::make_shared<Log1p>(graph, ancestors[0]);
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
@@ -163,12 +159,20 @@ namespace metadiff {
         }
     };
 
+    Node Node::log1p(){
+        return apply<Log1p>(this);
+    }
+
+    Node log1p(Node node){
+        return apply<Log1p>(node);
+    }
+
     Node Node::softplus(size_t threshold) {
-        return ptr->graph->derived_node(std::make_shared<Softplus>(ptr->graph, this, threshold));
+        return (this > ptr->graph->constant_value(threshold)).select(this, exp().log1p());
     }
 
     Node softplus(Node node, size_t threshold = 50){
-        return node.softplus(threshold);
+        return select(node > node.ptr->graph->constant_value(threshold), node, node.exp().log1p());
     }
 
     class Sin: public UnaryOperator {

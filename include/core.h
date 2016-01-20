@@ -200,6 +200,7 @@ namespace metadiff {
 
         Node exp();
         Node log();
+        Node log1p();
         Node softplus(size_t threshold = 50);
         Node abs();
         Node sigmoid();
@@ -370,7 +371,7 @@ namespace metadiff {
 
         std::vector<bool> get_descendants_mask(std::vector<Node>& marked);
         std::vector<bool> get_ancestors_mask(std::vector<Node>& marked);
-        size_t find_same_node(std::shared_ptr<Operator> op);
+        Node find_same_node(std::shared_ptr<Operator> op);
         void add_temporary_updates(const Updates& updates);
         void clear_temporary_updates();
         std::vector<Node> gradient(Node objective, std::vector<Node> params);

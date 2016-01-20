@@ -301,8 +301,38 @@ namespace metadiff{
         return ancestors_mask;
     };
 
-    size_t GraphInternal::find_same_node(std::shared_ptr<Operator> op){
-        return 0;
+    Node GraphInternal::find_same_node(std::shared_ptr<Operator> op){
+        // For the moment only one such for the experiment
+        if(op->name == "Exp"){
+            Node parent = op->get_parents()[0];
+            for(int i=0;i<parent.ptr->children.size(); i++){
+                Node child = parent.ptr->children[i];
+                if(child.ptr->op->name == "Exp"){
+                    return child;
+                }
+            }
+            for(int i=0;i<parent.ptr->children.size(); i++){
+                Node child = parent.ptr->children[i];
+                if(child.ptr->op->name == "Neg"){
+                    for(int j=0;j<child.ptr->children.size();j++){
+                        Node neg_child = child.ptr->children[j];
+                        if(neg_child.ptr->op->name == "Exp"){
+                            return neg_child.div();
+                        }
+                    }
+                }
+            }
+            if(parent.ptr->op->name == "Neg"){
+                Node gparent = parent.ptr->op->get_parents()[0];
+                for(int i=0;i<gparent.ptr->children.size(); i++){
+                    Node child = gparent.ptr->children[i];
+                    if(child.ptr->op->name == "Exp"){
+                        return child.div();
+                    }
+                }
+            }
+        }
+        return Node();
     };
 
     void GraphInternal::add_temporary_updates(const Updates& updates){
@@ -376,6 +406,9 @@ namespace metadiff{
             if(node.ptr->op->name == "Transpose"){
                 node.ptr->execution.inlined = true;
             }
+            if(node.ptr->op->name == "Neg"){
+                node.ptr->execution.inlined = true;
+            }
             if(node.ptr->children.size() <= 1){
                 node.ptr->execution.inlined = true;
             }
@@ -425,8 +458,8 @@ namespace metadiff{
     };
 
     Node GraphInternal::derived_node(std::shared_ptr<Operator> op, size_t grad_level){
-        size_t same_node = find_same_node(op);
-        if(same_node == 0) {
+        Node same_node = find_same_node(op);
+        if(same_node.empty()) {
             grad_level = gradient_mode > op->get_gradient_level() ? gradient_mode : op->get_gradient_level();
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this().get(),
@@ -447,7 +480,7 @@ namespace metadiff{
             }
             return result;
         } else {
-            return nodes[same_node];
+            return same_node;
         }
     }
 
@@ -455,8 +488,8 @@ namespace metadiff{
                                     Node update,
                                     size_t grad_level) {
         auto op = std::make_shared<Update>(shared_from_this().get(), shared, update);
-        size_t same_node = find_same_node(op);
-        if(same_node == 0) {
+        Node same_node = find_same_node(op);
+        if(same_node.empty()) {
             grad_level = grad_level == GRAD_LEVEL_BAR ? op->get_gradient_level() : grad_level;
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this().get(),
@@ -477,7 +510,7 @@ namespace metadiff{
             }
             return result;
         } else {
-            return nodes[same_node];
+            return same_node;
         }
     };
 
