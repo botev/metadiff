@@ -239,8 +239,8 @@ int main(int argc, char **argv)
     // Parameters
     std::vector<md::Node> params;
     for(int i=1;i<9;i++){
-        params.push_back(graph->shared_var(af::randn(d[i-1], d[i]) / 100.0, "W_" + std::to_string(i)));
-        params.push_back(graph->shared_var(af::constant(0.0, 1, d[i]), "b_" + std::to_string(i)));
+        params.push_back(graph->shared_var(af::randn(d[i-1], d[i], f32) / 100.0, "W_" + std::to_string(i)));
+        params.push_back(graph->shared_var(af::constant(float(0.0), 1, d[i], f32), "b_" + std::to_string(i)));
     }
     // Input Layer
     auto h = md::tanh(md::dot(inputs[0], params[0]) + params[1]);
@@ -300,6 +300,7 @@ int main(int argc, char **argv)
         int ind = i % (num_images / batch_size);
         // Input data
         data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
+//        std::cout << data_inv[0].type() << std::endl;
 //        auto result = train_org.eval(data_inv);
         result = train_optim.eval(data_inv);
         if(i >= burnout and (i - burnout) % period == 0) {

@@ -344,7 +344,7 @@ namespace metadiff{
             }
             if(node->type == CONSTANT and
                     (op_name == "Zeros" or op_name == "Ones" or op_name == "Value")){
-                return std::to_string(node->op->get_scalar_value());
+                return "float(" +  std::to_string(node->op->get_scalar_value()) + ")";
             }
             if (op_name == "Broadcast") {
                 bool not_supported = false;
@@ -490,7 +490,7 @@ namespace metadiff{
                 return "af::abs(" + expression_table[parents[0].ptr->id] + ")";
             }
             if (op_name == "Sigmoid") {
-                return "1.0 / (1.0 + af::exp(-" + expression_table[parents[0].ptr->id] + "))";
+                return "float(1.0) / (float(1.0) + af::exp(-" + expression_table[parents[0].ptr->id] + "))";
             }
             if (op_name == "Sin") {
                 return "af::sin(" + expression_table[parents[0].ptr->id] + ")";
@@ -580,7 +580,7 @@ namespace metadiff{
                 std::string p = expression_table[parents[0].ptr->id];
                 std::string sfx = expression_table[args[0].ptr->id];
                 std::string sfmx = expression_table[args[1].ptr->id];
-                return p + " * (" + sfmx + " - " + sfx + ") + " + sfx;
+                return p + " * " + sfmx + " + (float(1.0) - " + p + ") * " + sfx;
             }
             if (op_name == "MaxAndArgMax") {
                 return "WTF";
