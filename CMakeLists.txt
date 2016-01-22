@@ -19,5 +19,5 @@ link_libraries(OpenCL)
 link_libraries(curl)
 
 add_subdirectory(tests)
-add_executable(mnist_hinton.o examples/mnist_hinton.cpp)
+add_executable(mnist_hinton.o examples/mnist_hinton.cpp examples/mnist.h)
 #add_executable(test.o examples/tt.cpp)
