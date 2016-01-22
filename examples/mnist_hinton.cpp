@@ -149,7 +149,7 @@ int main(int argc, char **argv)
         int ind = i % (dat::MNIST_NUM_IMAGES / batch_size);
         data_inv = {af::array(batch_size, dat::MNIST_NUM_ROWS*dat::MNIST_NUM_COLS, data_ptr + ind*batch_size, afHost)};
         result = train_optim.eval(data_inv);
-        std::cout << "I" << i << std::endl;
+//        std::cout << "I" << i << std::endl;
         if(i >= burnout and (i + 1 - burnout) % period == 0) {
 //            std::cout << "fetch" << std::endl;
             hv = result[0].host<float>();
