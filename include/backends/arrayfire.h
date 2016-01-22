@@ -408,7 +408,7 @@ namespace metadiff{
                 } else {
                     std::string expression = expression_table[parents[0].ptr->id];
                     for (size_t i = 0; i < axes.size(); i++) {
-                        expression = "af::sum(" + expression + ", " + std::to_string(i) + ")";
+                        expression = "af::sum(" + expression + ", " + std::to_string(axes[i]) + ")";
                     }
                     return expression;
                 }

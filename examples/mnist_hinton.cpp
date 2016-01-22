@@ -97,21 +97,21 @@ int main(int argc, char **argv)
                 factor * 250, factor * 500, factor * 1000, 784};
     // Input data
     auto test = graph->constant_value(20);
-    md::NodeVec inputs = {graph->matrix(md::FLOAT, {n, d[0]}, "Input")};
+    md::NodeVec inputs = {graph->matrix(md::FLOAT, {d[0], n}, "Input")};
     // Parameters
     std::vector<md::Node> params;
     for(int i=1;i<9;i++){
-        params.push_back(graph->shared_var(af::randn(d[i-1], d[i], f32) / 100.0, "W_" + std::to_string(i)));
-        params.push_back(graph->shared_var(af::constant(float(0.0), 1, d[i], f32), "b_" + std::to_string(i)));
+        params.push_back(graph->shared_var(af::randn(d[i], d[i-1], f32) / 100.0, "W_" + std::to_string(i)));
+        params.push_back(graph->shared_var(af::constant(float(0.0), d[i], 1, f32), "b_" + std::to_string(i)));
     }
     // Input Layer
-    auto h = md::tanh(md::dot(inputs[0], params[0]) + params[1]);
+    auto h = md::tanh(md::dot(params[0], inputs[0]) + params[1]);
     // All layers except one
     for(int i=1;i<7;i++){
-        h = md::tanh(md::dot(h, params[2*i]) + params[2*i+1]);
+        h = md::tanh(md::dot(params[2*i], h) + params[2*i+1]);
     }
     // Calculate only logits here
-    h = md::dot(h, params[14]) + params[15];
+    h = md::dot(params[14], h) + params[15];
     // Loss
     auto error = md::binary_cross_entropy_logit(inputs[0], h);
     // Mean loss
@@ -146,29 +146,32 @@ int main(int argc, char **argv)
     // Run function
     long long time = 0;
 
-    float hv;
     clock_t start = clock();
     std::vector<af::array> result;
     std::vector<af::array> data_inv;
+    float vals[(epochs - burnout) / period + 1];
     for(int i=0;i<epochs + burnout;i++){
         if(i == burnout){
-            hv = *result[0].host<float>();
+            vals[0] = *result[0].host<float>();
 //            std::cout << "Fetch:" << hv << std::endl;
             start = clock();
         }
         int ind = i % (dat::MNIST_NUM_IMAGES / batch_size);
         // Transfer data to device
-        data_inv = {af::array(batch_size, dat::MNIST_NUM_ROWS*dat::MNIST_NUM_COLS, data_ptr + ind*batch_size, afHost)};
+        data_inv = {af::array(dat::MNIST_NUM_ROWS*dat::MNIST_NUM_COLS, batch_size,
+                              data_ptr + ind*batch_size*dat::MNIST_NUM_COLS*dat::MNIST_NUM_ROWS, afHost)};
         result = train_optim.eval(data_inv);
 //        std::cout << "I" << i << std::endl;
         if(i >= burnout and (i + 1 - burnout) % period == 0) {
-            hv = *result[0].host<float>();
-//            std::cout << "Fetch:" << hv << std::endl;
+            vals[(i - burnout) / period + 1] = *result[0].host<float>();
         }
     }
     time = (clock() - start);
     md_backend.close();
-    std::cout << "Final Value: " << hv << std::endl;
+    for(int i=0;i<(epochs - burnout) / period;i++){
+        std::cout << vals[i] << ", ";
+    }
+    std::cout << std::endl << "Final Value: " << vals[(epochs - burnout) / period] << std::endl;
     std::cout << "Mean run time: " << std::setprecision(5) <<
             (1000*((double) (time)))/((double) (CLOCKS_PER_SEC*(epochs))) << "ms" << std::endl;
     return 0;

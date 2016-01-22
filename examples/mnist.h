@@ -146,7 +146,7 @@ namespace datasets {
                     {
                         unsigned char temp=0;
                         file.read((char*)&temp,sizeof(temp));
-                        data[(r*MNIST_NUM_COLS + c)*MNIST_NUM_IMAGES + i]= ((float)temp) / float(255.0);
+                        data[(r*MNIST_NUM_COLS + c) + i*MNIST_NUM_COLS*MNIST_NUM_ROWS]= ((float)temp) / float(255.0);
                     }
                 }
             }
