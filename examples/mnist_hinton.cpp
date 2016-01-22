@@ -149,7 +149,7 @@ int main(int argc, char **argv)
     clock_t start = clock();
     std::vector<af::array> result;
     std::vector<af::array> data_inv;
-    float vals[(epochs - burnout) / period + 1];
+    float vals[epochs / period];
     for(int i=0;i<epochs + burnout;i++){
         if(i == burnout){
             vals[0] = *result[0].host<float>();
@@ -163,15 +163,16 @@ int main(int argc, char **argv)
         result = train_optim.eval(data_inv);
 //        std::cout << "I" << i << std::endl;
         if(i >= burnout and (i + 1 - burnout) % period == 0) {
-            vals[(i - burnout) / period + 1] = *result[0].host<float>();
+            vals[(i - burnout) / period] = *result[0].host<float>();
+//            std::cout << (i - burnout) / period << " " << vals[(i - burnout) / period] << std::endl;
         }
     }
     time = (clock() - start);
     md_backend.close();
-    for(int i=0;i<(epochs - burnout) / period;i++){
+    for(int i=0;i<epochs / period;i++){
         std::cout << vals[i] << ", ";
     }
-    std::cout << std::endl << "Final Value: " << vals[(epochs - burnout) / period] << std::endl;
+    std::cout << std::endl << "Final Value: " << vals[epochs / period - 1] << std::endl;
     std::cout << "Mean run time: " << std::setprecision(5) <<
             (1000*((double) (time)))/((double) (CLOCKS_PER_SEC*(epochs))) << "ms" << std::endl;
     return 0;
