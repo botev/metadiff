@@ -28,6 +28,10 @@ int main(int argc, char **argv)
     int factor = 1;
     // Default period
     int period = 1;
+    // Default burnout
+    int burnout = 100;
+    // Default number of epochs
+    int epochs = 200;
     if(argc > 1){
         std::string cpu = "cpu";
         std::string opencl = "opencl";
@@ -62,7 +66,20 @@ int main(int argc, char **argv)
             std::cerr << "Invalid number " << argv[4] << '\n';
         }
     }
-    std::cout << "Params: " << backend << ", " << batch_size << ", " << factor << ", " << period << std::endl;
+    if(argc > 5){
+        std::istringstream ss(argv[5]);
+        if(!(ss >> burnout)) {
+            std::cerr << "Invalid number " << argv[5] << '\n';
+        }
+    }
+    if(argc > 6){
+        std::istringstream ss(argv[6]);
+        if(!(ss >> epochs)) {
+            std::cerr << "Invalid number " << argv[6] << '\n';
+        }
+    }
+    std::cout << "Params: " << backend << " " << batch_size << " " << factor
+    << " " << period << " " << burnout << " " << epochs << std::endl;
 
     // Set backend
     af::setBackend(backend);
@@ -129,10 +146,6 @@ int main(int argc, char **argv)
     // Run function
     long long time = 0;
 
-    // Number of epochs for burnout, to be discarded
-    int burnout = 100;
-    // Number of epochs
-    int epochs = 200;
     float hv;
     clock_t start = clock();
     std::vector<af::array> result;
