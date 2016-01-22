@@ -66,9 +66,6 @@ int main(int argc, char **argv)
 
     // Set backend
     af::setBackend(backend);
-    // Transfer data to Arrayfire
-    af::array data(dat::MNIST_NUM_IMAGES, dat::MNIST_NUM_ROWS*dat::MNIST_NUM_COLS, data_ptr, afHost);
-    af::array l_in(dat::MNIST_NUM_IMAGES, labels_ptr, afHost);
 
     // Create graph
     auto graph = md::create_graph();
@@ -136,28 +133,29 @@ int main(int argc, char **argv)
     int burnout = 100;
     // Number of epochs
     int epochs = 200;
-    float *hv;
+    float hv;
     clock_t start = clock();
     std::vector<af::array> result;
     std::vector<af::array> data_inv;
     for(int i=0;i<epochs + burnout;i++){
         if(i == burnout){
-//            std::cout << "fetch" << std::endl;
-            hv = result[0].host<float>();
+            hv = *result[0].host<float>();
+//            std::cout << "Fetch:" << hv << std::endl;
             start = clock();
         }
         int ind = i % (dat::MNIST_NUM_IMAGES / batch_size);
+        // Transfer data to device
         data_inv = {af::array(batch_size, dat::MNIST_NUM_ROWS*dat::MNIST_NUM_COLS, data_ptr + ind*batch_size, afHost)};
         result = train_optim.eval(data_inv);
 //        std::cout << "I" << i << std::endl;
         if(i >= burnout and (i + 1 - burnout) % period == 0) {
-//            std::cout << "fetch" << std::endl;
-            hv = result[0].host<float>();
+            hv = *result[0].host<float>();
+//            std::cout << "Fetch:" << hv << std::endl;
         }
     }
     time = (clock() - start);
     md_backend.close();
-    std::cout << "Final Value: " << hv[0] << std::endl;
+    std::cout << "Final Value: " << hv << std::endl;
     std::cout << "Mean run time: " << std::setprecision(5) <<
             (1000*((double) (time)))/((double) (CLOCKS_PER_SEC*(epochs))) << "ms" << std::endl;
     return 0;
