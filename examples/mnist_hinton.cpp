@@ -147,7 +147,7 @@ int main(int argc, char **argv)
             start = clock();
         }
         int ind = i % (dat::MNIST_NUM_IMAGES / batch_size);
-        data_inv = {data.rows(ind*batch_size, (ind+1)*batch_size-1)};
+        data_inv = {af::array(batch_size, dat::MNIST_NUM_ROWS*dat::MNIST_NUM_COLS, data_ptr + ind*batch_size, afHost)};
         result = train_optim.eval(data_inv);
         std::cout << "I" << i << std::endl;
         if(i >= burnout and (i + 1 - burnout) % period == 0) {
