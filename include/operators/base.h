@@ -286,6 +286,28 @@ namespace metadiff {
         }
     };
 
+    class Alias : public UnaryOperator{
+    public:
+        Alias(GraphInPtr graph, Node parent):
+        UnaryOperator("Alias", graph, parent) {};
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+            return std::make_shared<Alias>(graph, ancestors[0]);
+        }
+
+        Node get_parent_grad(Node my_grad, size_t index){
+            return my_grad;
+        }
+    };
+
+    Node Node::alias() {
+        return apply<Alias>(this);
+    }
+
+    Node alias(Node node){
+        return apply<Alias>(node);
+    }
+
     class Broadcast : public UnaryOperator {
     public:
         Shape to_shape;

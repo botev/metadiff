@@ -174,6 +174,7 @@ namespace metadiff {
 
 //        template <typename T>
 //        Node apply();
+        Node alias();
         Node broadcast(Shape shape);
         Node broadcast_to(Node other);
         Node neg();

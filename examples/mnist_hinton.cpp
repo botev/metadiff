@@ -10,8 +10,8 @@ namespace md = metadiff;
 namespace sym = metadiff::symbolic;
 namespace dat = datasets;
 
-int main(int argc, char **argv)
-{
+
+std::pair<double, double> run_md(int batch_size, int factor, int burnout, int epochs){
     // Download and load MNIST
     std::string name = "mnist_hinton";
     mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
@@ -20,70 +20,8 @@ int main(int argc, char **argv)
     int* labels_ptr = new int[dat::MNIST_NUM_IMAGES]{};
     dat::ReadTrainMNIST(name, data_ptr, labels_ptr);
 
-    // Default to CPU
-    af_backend backend = AF_BACKEND_CPU;
-    // Default batch size of 1000
-    int batch_size = 1000;
-    // Default factor
-    int factor = 1;
-    // Default period
+
     int period = 1;
-    // Default burnout
-    int burnout = 100;
-    // Default number of epochs
-    int epochs = 200;
-    if(argc > 1){
-        std::string cpu = "cpu";
-        std::string opencl = "opencl";
-        std::string cuda = "cuda";
-        if(cpu.compare(argv[1]) == 0){
-            backend = AF_BACKEND_CPU;
-        } else if(opencl.compare(argv[1]) == 0) {
-            backend = AF_BACKEND_OPENCL;
-        } else if(cuda.compare(argv[1]) == 0) {
-            backend = AF_BACKEND_CUDA;
-        } else {
-            std::cout << (argv[1] == "opencl") << std::endl;
-            std::cerr << "The first argument should be one of 'cpu', 'opencl' and 'cuda' - " << argv[1] << std::endl;
-            exit(1);
-        }
-    }
-    if(argc > 2){
-        std::istringstream ss(argv[2]);
-        if(!(ss >> batch_size)) {
-            std::cerr << "Invalid number " << argv[2] << '\n';
-        }
-    }
-    if(argc > 3){
-        std::istringstream ss(argv[3]);
-        if(!(ss >> factor)) {
-            std::cerr << "Invalid number " << argv[3] << '\n';
-        }
-    }
-    if(argc > 4){
-        std::istringstream ss(argv[4]);
-        if(!(ss >> period)) {
-            std::cerr << "Invalid number " << argv[4] << '\n';
-        }
-    }
-    if(argc > 5){
-        std::istringstream ss(argv[5]);
-        if(!(ss >> burnout)) {
-            std::cerr << "Invalid number " << argv[5] << '\n';
-        }
-    }
-    if(argc > 6){
-        std::istringstream ss(argv[6]);
-        if(!(ss >> epochs)) {
-            std::cerr << "Invalid number " << argv[6] << '\n';
-        }
-    }
-    std::cout << "Params: " << backend << " " << batch_size << " " << factor
-    << " " << period << " " << burnout << " " << epochs << std::endl;
-
-    // Set backend
-    af::setBackend(backend);
-
     // Create graph
     auto graph = md::create_graph();
     graph->name = name;
@@ -141,19 +79,19 @@ int main(int argc, char **argv)
     // Create backend and compile function
     md::ArrayfireBackend md_backend = md::ArrayfireBackend();
     auto train_org = md_backend.compile_function(name, graph, inputs, loss, updates);
-    auto train_optim = md_backend.compile_function(name + "_optim", optimized, new_inputs, new_loss, new_updates);
-
-    // Run function
-    long long time = 0;
-
     clock_t start = clock();
+    double compile_time = 0;
+    auto train_optim = md_backend.compile_function(name + "_optim", optimized, new_inputs, new_loss, new_updates);
+    compile_time = ((double)(1000 * (clock() - start))) / ((double)(CLOCKS_PER_SEC));
+    // Run function
+
     std::vector<af::array> result;
     std::vector<af::array> data_inv;
     float vals[epochs / period];
+    double mean_time = 0;
     for(int i=0;i<epochs + burnout;i++){
         if(i == burnout){
             vals[0] = *result[0].host<float>();
-//            std::cout << "Fetch:" << hv << std::endl;
             start = clock();
         }
         int ind = i % (dat::MNIST_NUM_IMAGES / batch_size);
@@ -161,19 +99,96 @@ int main(int argc, char **argv)
         data_inv = {af::array(dat::MNIST_NUM_ROWS*dat::MNIST_NUM_COLS, batch_size,
                               data_ptr + ind*batch_size*dat::MNIST_NUM_COLS*dat::MNIST_NUM_ROWS, afHost)};
         result = train_optim.eval(data_inv);
-//        std::cout << "I" << i << std::endl;
         if(i >= burnout and (i + 1 - burnout) % period == 0) {
             vals[(i - burnout) / period] = *result[0].host<float>();
-//            std::cout << (i - burnout) / period << " " << vals[(i - burnout) / period] << std::endl;
         }
     }
-    time = (clock() - start);
+    mean_time = ((double)(1000 * (clock() - start))) / ((double)(CLOCKS_PER_SEC * epochs));
     md_backend.close();
-    for(int i=0;i<epochs / period;i++){
-        std::cout << vals[i] << ", ";
+//    for(int i=0;i<epochs / period;i++){
+//        std::cout << vals[i] << ", ";
+//    }
+//    std::cout << std::endl << "Final Value: " << vals[epochs / period - 1] << std::endl;
+//    std::cout << "Mean run time: " << std::setprecision(5) <<
+//    (1000*((double) (time)))/((double) (*(epochs))) << "ms" << std::endl;
+    return std::pair<double, double>(mean_time, compile_time);
+};
+
+
+int main(int argc, char **argv)
+{
+    int batch_size_grid[3] = {1000, 5000, 10000};
+    int factor_grid[3] = {1, 5, 10};
+    // Default to CPU
+    af_backend backend = AF_BACKEND_CPU;
+    // Default repeats
+    int repeats = 100;
+    // Default burnout
+    int burnout = 100;
+    // Default number of epochs
+    int epochs = 500;
+    if(argc > 1){
+        std::string cpu = "cpu";
+        std::string opencl = "opencl";
+        std::string cuda = "cuda";
+        if(cpu.compare(argv[1]) == 0){
+            backend = AF_BACKEND_CPU;
+        } else if(opencl.compare(argv[1]) == 0) {
+            backend = AF_BACKEND_OPENCL;
+        } else if(cuda.compare(argv[1]) == 0) {
+            backend = AF_BACKEND_CUDA;
+        } else {
+            std::cout << (argv[1] == "opencl") << std::endl;
+            std::cerr << "The first argument should be one of 'cpu', 'opencl' and 'cuda' - " << argv[1] << std::endl;
+            exit(1);
+        }
     }
-    std::cout << std::endl << "Final Value: " << vals[epochs / period - 1] << std::endl;
-    std::cout << "Mean run time: " << std::setprecision(5) <<
-            (1000*((double) (time)))/((double) (CLOCKS_PER_SEC*(epochs))) << "ms" << std::endl;
-    return 0;
+    if(argc > 2){
+        std::istringstream ss(argv[2]);
+        if(!(ss >> repeats)) {
+            std::cerr << "Invalid number " << argv[2] << '\n';
+        }
+    }
+    if(argc > 3){
+        std::istringstream ss(argv[3]);
+        if(!(ss >> burnout)) {
+            std::cerr << "Invalid number " << argv[3] << '\n';
+        }
+    }
+    if(argc > 4){
+        std::istringstream ss(argv[4]);
+        if(!(ss >> epochs)) {
+            std::cerr << "Invalid number " << argv[4] << '\n';
+        }
+    }
+
+    // Set backend
+    af::setBackend(backend);
+    af::array run_times = af::constant(0.0, 3, 3, repeats);
+    af::array compile_times = af::constant(0.0, 3, 3, repeats);
+    for(int r=0;r < repeats; r++){
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+                std::cout << "Running for batch size " << batch_size_grid[i]
+                << " and factor " << factor_grid[j] << std::endl;
+                std::pair<double, double> result = run_md(batch_size_grid[i], factor_grid[j], burnout, epochs);
+                run_times(i, j, r) = result.first;
+                compile_times(i, j, r) = result.second;
+                std::cout << "Run: " << result.first << ", " << result.second << std::endl;
+            }
+        }
+    }
+    auto run_mean = af::mean(run_times);
+    auto run_std = af::stdev(run_times);
+    auto compile_mean = af::mean(run_times);
+    auto compile_std = af::stdev(run_times);
+    std::cout << "Run means:" << std::endl;
+    af_print(run_mean);
+    std::cout << "Run stds:" << std::endl;
+    af_print(compile_std);
+    std::cout << "Compile means:" << std::endl;
+    af_print(compile_mean);
+    std::cout << "Compile stds:" << std::endl;
+    af_print(compile_std);
+
 }

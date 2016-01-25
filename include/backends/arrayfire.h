@@ -346,6 +346,9 @@ namespace metadiff{
                     (op_name == "Zeros" or op_name == "Ones" or op_name == "Value")){
                 return "float(" +  std::to_string(node->op->get_scalar_value()) + ")";
             }
+            if(op_name == "Alias"){
+                return expression_table[parents[0].ptr->id];
+            }
             if (op_name == "Broadcast") {
                 bool not_supported = false;
                 for (int i = 0; i < children.size(); i++) {

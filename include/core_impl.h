@@ -308,7 +308,7 @@ namespace metadiff{
             for(int i=0;i<parent.ptr->children.size(); i++){
                 Node child = parent.ptr->children[i];
                 if(child.ptr->op->name == "Exp"){
-                    return child;
+                    return child.alias();
                 }
             }
             for(int i=0;i<parent.ptr->children.size(); i++){
