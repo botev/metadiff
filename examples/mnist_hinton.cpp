@@ -177,6 +177,7 @@ int main(int argc, char **argv)
                 run_times(i, j, r) = result.first;
                 compile_times(i, j, r) = result.second;
                 std::cout << "Run: " << result.first << ", " << result.second << std::endl;
+                af::deviceGC();
                 usleep(5);
             }
         }
