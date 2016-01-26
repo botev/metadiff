@@ -4,6 +4,7 @@
 #include "metadiff.h"
 #include "mnist.h"
 #include "iomanip"
+#include <unistd.h>
 
 
 namespace md = metadiff;
@@ -166,15 +167,17 @@ int main(int argc, char **argv)
     af::setBackend(backend);
     af::array run_times = af::constant(0.0, 3, 3, repeats);
     af::array compile_times = af::constant(0.0, 3, 3, repeats);
-    for(int r=0;r < repeats; r++){
-        for(int i=0;i<3;i++){
-            for(int j=0;j<3;j++){
+
+    for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+            for(int r=0;r < repeats; r++){
                 std::cout << "Running for batch size " << batch_size_grid[i]
                 << " and factor " << factor_grid[j] << std::endl;
                 std::pair<double, double> result = run_md(batch_size_grid[i], factor_grid[j], burnout, epochs);
                 run_times(i, j, r) = result.first;
                 compile_times(i, j, r) = result.second;
                 std::cout << "Run: " << result.first << ", " << result.second << std::endl;
+                usleep(5);
             }
         }
     }

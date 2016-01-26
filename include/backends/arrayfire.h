@@ -38,6 +38,7 @@ namespace metadiff{
             command += " -L" + lib_path;
 //            command += " -I./";
             command += " -o " + dll_name + " " + file_name;
+            command += " >> " + file_name + ".txt 2>&1";
             std::cout << "Command: " << command << std::endl;
             std::cout << "Compilation response: " << system(command.c_str()) << std::endl;
             return;
