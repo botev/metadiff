@@ -99,7 +99,6 @@ namespace metadiff{
             compile_file(source_name, dll_name);
             EvaluationFunction function = link_dll(dll_name);
             clock_t end = clock();
-            std::cout << "Compilation time: " << 1000 * (double(end - start)) / CLOCKS_PER_SEC << "ms" << std::endl;
             function.shared_variables = graph->shared_vars;
             return function;
         }

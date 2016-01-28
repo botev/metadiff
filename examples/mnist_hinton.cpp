@@ -26,8 +26,8 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     // Create graph
     auto graph = md::create_graph();
     graph->name = name;
-
-    graph->broadcast = md::ad_implicit_broadcast::WARN;
+    // If you want to be informed about broadcast change this
+    graph->broadcast = md::ad_implicit_broadcast::QUIET;
     // Batch size
     auto n = graph->get_new_symbolic_integer(); // a
     // Real batch size
@@ -66,15 +66,15 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     }
     name += dat::kPathSeparator + name;
     // Print to file
-    md::dagre::dagre_to_file(name + ".html", graph, loss, updates);
+//    md::dagre::dagre_to_file(name + ".html", graph, loss, updates);
     // Optimize
     md::NodeVec new_inputs;
     md::NodeVec new_loss;
     md::Updates new_updates;
     md::Graph optimized =  graph->optimize(loss, updates, inputs,
                                            new_loss, new_updates, new_inputs);
-    std::cout << "Original:" << graph->nodes.size() << std::endl;
-    std::cout << "Optimized:" << optimized->nodes.size() << std::endl;
+//    std::cout << "Original:" << graph->nodes.size() << std::endl;
+//    std::cout << "Optimized:" << optimized->nodes.size() << std::endl;
     md::dagre::dagre_to_file(name + "_optim.html", optimized, new_loss, new_updates);
 
     // Create backend and compile function
@@ -106,12 +106,6 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     }
     mean_time = ((double)(1000 * (clock() - start))) / ((double)(CLOCKS_PER_SEC * epochs));
     md_backend.close();
-//    for(int i=0;i<epochs / period;i++){
-//        std::cout << vals[i] << ", ";
-//    }
-//    std::cout << std::endl << "Final Value: " << vals[epochs / period - 1] << std::endl;
-//    std::cout << "Mean run time: " << std::setprecision(5) <<
-//    (1000*((double) (time)))/((double) (*(epochs))) << "ms" << std::endl;
     return std::pair<double, double>(mean_time, compile_time);
 };
 

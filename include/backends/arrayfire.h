@@ -39,8 +39,13 @@ namespace metadiff{
 //            command += " -I./";
             command += " -o " + dll_name + " " + file_name;
             command += " >> " + file_name + ".txt 2>&1";
-            std::cout << "Command: " << command << std::endl;
-            std::cout << "Compilation response: " << system(command.c_str()) << std::endl;
+//            std::cout << "Command: " << command << std::endl;
+//            std::cout << "Compilation response: " << system(command.c_str()) << std::endl;
+            int response = system(command.c_str());
+            if(response != 0){
+                std::cerr << "Received compilation response: " << response << std::endl;
+                exit(response);
+            }
             return;
         }
 
