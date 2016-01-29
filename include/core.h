@@ -42,25 +42,29 @@ namespace metadiff {
 
     class Node {
     public:
-        NodeInternal *ptr;
+        std::weak_ptr<NodeInternal> ptr;
 
-        Node():
-                ptr(NULL){};
+        Node(){};
+
+        std::shared_ptr<NodeInternal> unwrap() const{
+            if(ptr.expired()){
+                std::cerr << "Trying to access a Node whose pointer has expired" << std::endl;
+                exit(1);
+            }
+            return ptr.lock();
+        }
 
         Node(const std::shared_ptr<NodeInternal> shared_ptr):
-                ptr(shared_ptr.get()) {};
-
-        Node(NodeInternal* node):
-            ptr(node) {};
+                ptr(shared_ptr) {};
 
         Node(const Node& node):
                 ptr(node.ptr) {};
 
-        Node(const Node* const node):
+        Node(const Node* node):
             ptr(node->ptr) {};
 
         bool empty(){
-            return ptr == NULL;
+            return ptr.expired();
         }
         void copy_to(GraphInPtr graph, std::vector<Node> ancestors);
         void update(Node update);
@@ -275,17 +279,29 @@ namespace metadiff {
                 name(name),
                 graph(graph){};
 
+        // Copies an operator to a new graph
         virtual std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) = 0;
+        // Returns the value type of the result
         virtual ad_value_type get_value_type() = 0;
+        // Returns the shape
         virtual Shape get_shape() = 0;
+        // Returns the node type
         virtual ad_node_type get_node_type() = 0;
+        // Returns the gradient level of this node
         virtual size_t get_gradient_level() = 0;
+        // Returns all of the nodes parents
         virtual NodeVec get_parents() = 0;
+        // Returns the arguments of this operator
         virtual NodeVec get_arguments() = 0;
+        // Returns the gradient with respect to the parent at the specified index
         virtual Node get_parent_grad(Node my_grad, size_t index) = 0;
+        // Sends the gradient message to the parent, where it is accumulated
         void send_grad_message(size_t target, Node msg, std::vector<Node>& messages);
+        // Generates and sends gradients
         virtual void generate_gradients(std::vector<Node>& messages);
+        // Returns a scalar value if constant
         double get_scalar_value();
+//        virtual bool operator==(const Operator* op) = 0;
 
         NodeVec get_ancestors(){
             auto parents = this->get_parents();
@@ -461,8 +477,8 @@ namespace metadiff {
                       NodeVec inputs):
                 name(name) {
             for(int i=0;i < inputs.size(); i++){
-                input_ids.push_back(inputs[i].ptr->id);
-                input_shapes.push_back(inputs[i].ptr->shape);
+                input_ids.push_back(inputs[i].unwrap()->id);
+                input_shapes.push_back(inputs[i].unwrap()->shape);
             }
         };
 
@@ -691,18 +707,18 @@ namespace metadiff {
         Node update;
 
         void verify_inputs(){
-            if(shared.ptr->type != SHARED_INPUT){
+            if(shared.unwrap()->type != SHARED_INPUT){
                 throw InvalidArguments(name, {shared, update},
                                        "First argument should be a shared variable not an expression.");
             }
-            auto shared_shape = shared.ptr->shape;
-            auto update_shape = update.ptr->shape;
+            auto shared_shape = shared.unwrap()->shape;
+            auto update_shape = update.unwrap()->shape;
             for(int i=0;i<4;i++){
                 if(shared_shape[i] != update_shape[i]){
                     throw IncompatibleShapes(name, {shared, update});
                 }
             }
-            if(shared.ptr->v_type != update.ptr->v_type){
+            if(shared.unwrap()->v_type != update.unwrap()->v_type){
                 throw InvalidArguments(name, {shared, update},
                                        "Shared variable and update should have same value type");
             }
@@ -722,7 +738,7 @@ namespace metadiff {
         }
 
         ad_value_type get_value_type(){
-            return shared.ptr->v_type;
+            return shared.unwrap()->v_type;
         }
 
         Shape get_shape(){
@@ -734,7 +750,7 @@ namespace metadiff {
         };
 
         size_t get_gradient_level(){
-            return update.ptr->grad_level;
+            return update.unwrap()->grad_level;
         }
 
         NodeVec get_parents(){

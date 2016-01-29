@@ -21,11 +21,11 @@ namespace metadiff{
                 throw InvalidArguments(name, {parent}, "Parent is not a vector or a sqyare matrix.");
             }
             if(parent.is_vector()){
-                shape = {parent.ptr->shape[0], parent.ptr->shape[0], 1, 1};
-            } else if(parent.ptr->shape[0] != parent.ptr->shape[1]){
+                shape = {parent.unwrap()->shape[0], parent.unwrap()->shape[0], 1, 1};
+            } else if(parent.unwrap()->shape[0] != parent.unwrap()->shape[1]){
                 throw InvalidArguments(name, {parent}, "Parent is not a vector or a sqyare matrix.");
             } else {
-                shape = {parent.ptr->shape[0], 1, 1, 1};
+                shape = {parent.unwrap()->shape[0], 1, 1, 1};
             }
         };
 
@@ -56,11 +56,11 @@ namespace metadiff{
         Reshape(GraphInPtr graph, Node parent, Shape shape):
                 UnaryOperator("Reshape", graph, parent),
                 shape(shape){
-            SymInt product_parent = number_of_elements(parent.ptr->shape);
+            SymInt product_parent = number_of_elements(parent.unwrap()->shape);
             SymInt product_shape = number_of_elements(this->shape);
             if(product_parent != product_shape){
                 std::string shape_str;
-                throw InvalidArguments(name, {parent.ptr->id}, {parent.ptr->shape, this->shape},
+                throw InvalidArguments(name, {parent.unwrap()->id}, {parent.unwrap()->shape, this->shape},
                                        "Operator 'Reshape' must not change the total number of elemetns");
             }
         };
@@ -74,11 +74,12 @@ namespace metadiff{
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            return my_grad.reshape(parent.ptr->shape);
+            return my_grad.reshape(parent.unwrap()->shape);
         }
     };
 
     Node Node::reshape(Shape shape){
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->derived_node(std::make_shared<Reshape>(ptr->graph, this, shape));
     }
 
@@ -87,6 +88,7 @@ namespace metadiff{
     }
 
     Node Node::flatten(size_t ndim) {
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         if(ndim == 0 or ndim > 4){
             throw InvalidArguments(ptr->name, ptr->op->get_parents(), "ndim = " + std::to_string(ndim)+" is outside [1,4]");
         }
@@ -126,8 +128,8 @@ namespace metadiff{
         }
 
         Shape get_shape(){
-            return {parent.ptr->shape[order[0]], parent.ptr->shape[order[1]],
-                    parent.ptr->shape[order[2]], parent.ptr->shape[order[3]]};
+            return {parent.unwrap()->shape[order[0]], parent.unwrap()->shape[order[1]],
+                    parent.unwrap()->shape[order[2]], parent.unwrap()->shape[order[3]]};
         }
 
         static std::array<size_t ,4> reverse_order(std::array<size_t ,4>& order){
@@ -146,6 +148,7 @@ namespace metadiff{
     };
 
     Node Node::reorder(std::array<size_t, 4> order){
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->derived_node(std::make_shared<Reorder>(ptr->graph, this, order));
     }
 

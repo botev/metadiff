@@ -27,9 +27,9 @@ namespace metadiff {
 
     // Helper function to verify shapes of elementwise operators
     Shape verify_elementwise_shapes(std::string name, NodeVec node_ptrs){
-        Shape max_shape  = node_ptrs[0].ptr->shape;
+        Shape max_shape  = node_ptrs[0].unwrap()->shape;
         for(int i=1; i<node_ptrs.size();i++){
-            Shape node_shape = node_ptrs[i].ptr->shape;
+            Shape node_shape = node_ptrs[i].unwrap()->shape;
             bool max = false;
             for(int j=0;j<4;j++){
                 if(node_shape[j] != 1 and max_shape[j] == 1){
@@ -73,7 +73,7 @@ namespace metadiff {
         ad_value_type get_value_type(){
             auto top_type = BOOLEAN;
             for(int i=0;i<parents.size();i++){
-                auto v_type = parents[i].ptr->v_type;
+                auto v_type = parents[i].unwrap()->v_type;
                 if(v_type == FLOAT){
                     return FLOAT;
                 }
@@ -87,12 +87,12 @@ namespace metadiff {
         ad_node_type get_node_type(){
             bool constant_derived = false;
             for(int i=0;i<parents.size();i++){
-                if(parents[i].ptr->type == INPUT
-                   or parents[i].ptr->type == INPUT_DERIVED
-                   or parents[i].ptr->type == SHARED_INPUT){
+                if(parents[i].unwrap()->type == INPUT
+                   or parents[i].unwrap()->type == INPUT_DERIVED
+                   or parents[i].unwrap()->type == SHARED_INPUT){
                     return INPUT_DERIVED;
                 }
-                if(parents[i].ptr->type == CONSTANT_DERIVED or parents[i].ptr->type == SYMBOLIC_INTEGER){
+                if(parents[i].unwrap()->type == CONSTANT_DERIVED or parents[i].unwrap()->type == SYMBOLIC_INTEGER){
                     constant_derived = true;
                 }
             }
@@ -110,8 +110,8 @@ namespace metadiff {
         size_t get_gradient_level(){
             size_t max_grad_level = 0;
             for(int i=0;i<parents.size();i++){
-                if(parents[i].ptr->grad_level > max_grad_level){
-                    max_grad_level = parents[i].ptr->grad_level;
+                if(parents[i].unwrap()->grad_level > max_grad_level){
+                    max_grad_level = parents[i].unwrap()->grad_level;
                 }
             }
             return max_grad_level;
@@ -142,9 +142,9 @@ namespace metadiff {
         };
 
         ad_value_type get_value_type(){
-            if(parent1.ptr->v_type == FLOAT or parent2.ptr->v_type == FLOAT){
+            if(parent1.unwrap()->v_type == FLOAT or parent2.unwrap()->v_type == FLOAT){
                 return FLOAT;
-            } else if(parent1.ptr->v_type == INTEGER or parent2.ptr->v_type == INTEGER) {
+            } else if(parent1.unwrap()->v_type == INTEGER or parent2.unwrap()->v_type == INTEGER) {
                 return INTEGER;
             } else {
                 return BOOLEAN;
@@ -152,18 +152,18 @@ namespace metadiff {
         };
 
         ad_node_type get_node_type(){
-            if(parent1.ptr->type == INPUT
-               or parent1.ptr->type == SHARED_INPUT
-               or parent1.ptr->type == INPUT_DERIVED
-               or parent2.ptr->type == INPUT
-               or parent2.ptr->type == SHARED_INPUT
-               or parent2.ptr->type == INPUT_DERIVED){
+            if(parent1.unwrap()->type == INPUT
+               or parent1.unwrap()->type == SHARED_INPUT
+               or parent1.unwrap()->type == INPUT_DERIVED
+               or parent2.unwrap()->type == INPUT
+               or parent2.unwrap()->type == SHARED_INPUT
+               or parent2.unwrap()->type == INPUT_DERIVED){
                 return INPUT_DERIVED;
             }
-            if(parent1.ptr->type == CONSTANT_DERIVED
-               or parent1.ptr->type == SYMBOLIC_INTEGER
-               or parent2.ptr->type == CONSTANT_DERIVED
-               or parent2.ptr->type == SYMBOLIC_INTEGER){
+            if(parent1.unwrap()->type == CONSTANT_DERIVED
+               or parent1.unwrap()->type == SYMBOLIC_INTEGER
+               or parent2.unwrap()->type == CONSTANT_DERIVED
+               or parent2.unwrap()->type == SYMBOLIC_INTEGER){
                 return CONSTANT_DERIVED;
             } else {
                 return CONSTANT;
@@ -175,7 +175,7 @@ namespace metadiff {
         }
 
         size_t get_gradient_level(){
-            return parent1.ptr->grad_level > parent2.ptr->grad_level ? parent1.ptr->grad_level : parent2.ptr->grad_level;
+            return parent1.unwrap()->grad_level > parent2.unwrap()->grad_level ? parent1.unwrap()->grad_level : parent2.unwrap()->grad_level;
         };
 
         NodeVec get_arguments() {
@@ -185,9 +185,10 @@ namespace metadiff {
         void throw_grad_type_error(){
             throw UnknownError({parent1, parent2},
                                "Gradient message present, but parents are " +
-                               to_string(parent1.ptr->type) + ", " +
-                               to_string(parent2.ptr->type));
+                               to_string(parent1.unwrap()->type) + ", " +
+                               to_string(parent2.unwrap()->type));
         }
+
     };
 
     class UnaryOperator : public Operator{
@@ -205,15 +206,15 @@ namespace metadiff {
         };
 
         ad_value_type get_value_type(){
-            return parent.ptr->v_type;
+            return parent.unwrap()->v_type;
         };
 
         ad_node_type get_node_type(){
-            if(parent.ptr->type == INPUT
-               or parent.ptr->type == SHARED_INPUT
-               or parent.ptr->type == INPUT_DERIVED){
+            if(parent.unwrap()->type == INPUT
+               or parent.unwrap()->type == SHARED_INPUT
+               or parent.unwrap()->type == INPUT_DERIVED){
                 return INPUT_DERIVED;
-            } else if (parent.ptr->type == CONSTANT_DERIVED or parent.ptr->type == SYMBOLIC_INTEGER){
+            } else if (parent.unwrap()->type == CONSTANT_DERIVED or parent.unwrap()->type == SYMBOLIC_INTEGER){
                 return CONSTANT_DERIVED;
             } else {
                 return CONSTANT;
@@ -221,11 +222,11 @@ namespace metadiff {
         };
 
         Shape get_shape(){
-            return parent.ptr->shape;
+            return parent.unwrap()->shape;
         }
 
         size_t get_gradient_level(){
-            return parent.ptr->grad_level;
+            return parent.unwrap()->grad_level;
         };
 
         NodeVec get_arguments() {
@@ -242,7 +243,7 @@ namespace metadiff {
             this->parents.clear();
             shape = verify_elementwise_shapes(name, parents);
             for(int i=0;i<parents.size();i++){
-                if(parents[i].ptr->shape == shape or parents[i].is_scalar()){
+                if(parents[i].unwrap()->shape == shape or parents[i].is_scalar()){
                     this->parents.push_back(parents[i]);
                 } else if(graph->broadcast == ad_implicit_broadcast::RAISE){
                     throw ImplicitBroadcast(name, parents);
@@ -267,7 +268,7 @@ namespace metadiff {
             NodeVec parents = get_parents();
             shape = verify_elementwise_shapes(name, {parents});
             for(int i=0;i<2;i++){
-                if(parents[i].ptr->shape == shape or parents[i].is_scalar()){
+                if(parents[i].unwrap()->shape == shape or parents[i].is_scalar()){
                     continue;
                 } else if(graph->broadcast == ad_implicit_broadcast::RAISE){
                     throw ImplicitBroadcast(name, parents);
@@ -317,8 +318,8 @@ namespace metadiff {
                 UnaryOperator("Broadcast", graph, parent),
                 to_shape(to_shape){
             for(int i=0;i<4;i++){
-                if(parent.ptr->shape[i] != 1 and parent.ptr->shape[i] != to_shape[i]){
-                    throw IncompatibleShapes(name, {parent.ptr->id}, {parent.ptr->shape, to_shape});
+                if(parent.unwrap()->shape[i] != 1 and parent.unwrap()->shape[i] != to_shape[i]){
+                    throw IncompatibleShapes(name, {parent.unwrap()->id}, {parent.unwrap()->shape, to_shape});
                 }
             }
         }
@@ -333,7 +334,7 @@ namespace metadiff {
 
         std::vector<size_t> get_broadcast_axes(){
             std::vector<size_t> axes;
-            auto p1_shape = this->parent.ptr->shape;
+            auto p1_shape = this->parent.unwrap()->shape;
             for(size_t i=0;i<4;i++){
                 if(p1_shape[i] != to_shape[i]){
                     axes.push_back(i);
@@ -348,6 +349,7 @@ namespace metadiff {
     };
 
     Node Node::broadcast(Shape shape) {
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->derived_node(std::make_shared<Broadcast>(ptr->graph, this, shape));
     }
 
@@ -382,7 +384,7 @@ namespace metadiff {
         }
 
         Shape get_shape(){
-            Shape p_shape = parent.ptr->shape;
+            Shape p_shape = parent.unwrap()->shape;
             for(int i=0;i<axes.size();i++){
                 p_shape[axes[i]] = 1;
             }
@@ -390,12 +392,13 @@ namespace metadiff {
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            return my_grad.broadcast(parent.ptr->shape);
+            return my_grad.broadcast(parent.unwrap()->shape);
         }
 
     };
 
     Node Node::sum(std::vector<size_t> axes) {
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->derived_node(std::make_shared<Sum>(ptr->graph, this, axes));
     }
 
@@ -421,7 +424,7 @@ namespace metadiff {
     Node add(NodeVec nodes){
         std::vector<size_t> neg_indexes;
         for(size_t i=0;i<nodes.size();i++){
-            if(nodes[i].ptr->op->name == "Neg"){
+            if(nodes[i].unwrap()->op->name == "Neg"){
                 neg_indexes.push_back(i);
             }
         }
@@ -504,14 +507,14 @@ namespace metadiff {
         Node get_parent_grad(Node my_grad, size_t index){
             if(parents.size() == 2){
                 // Special case when only two parents
-                if(my_grad.ptr->op->name == "Ones"){
+                if(my_grad.unwrap()->op->name == "Ones"){
                     return parents[1-index];
-                } else if(my_grad.ptr->op->name == "Zeros"){
+                } else if(my_grad.unwrap()->op->name == "Zeros"){
                     return my_grad;
                 }
-                if(parents[1 - index].ptr->op->name == "Ones"){
+                if(parents[1 - index].unwrap()->op->name == "Ones"){
                     return my_grad;
-                } else if (parents[1-index].ptr->op->name == "Zeros"){
+                } else if (parents[1-index].unwrap()->op->name == "Zeros"){
                     return parents[1-index];
                 }
                 return apply<Mul>(my_grad, parents[1 - index]);
@@ -526,7 +529,7 @@ namespace metadiff {
         // Reorder so that Div operators are always at the end
         std::vector<size_t> div_indexes;
         for(size_t i=0;i<nodes.size();i++){
-            if(nodes[i].ptr->op->name == "Div"){
+            if(nodes[i].unwrap()->op->name == "Div"){
                 div_indexes.push_back(i);
             }
         }
@@ -594,7 +597,7 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node two = graph->constant_value(2.0);
-            two.ptr->grad_level = my_grad.ptr->grad_level;
+            two.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             return mul({my_grad, two, parent});
         }
     };

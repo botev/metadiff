@@ -8,6 +8,7 @@
 namespace metadiff{
 
     void Node::copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         std::shared_ptr<NodeInternal> node = std::make_shared<NodeInternal>(graph, ptr->device);
         node->id = graph->nodes.size();
         graph->nodes.push_back(node);
@@ -22,7 +23,7 @@ namespace metadiff{
         node->shared = ptr->shared;
         node->execution = ptr->execution;
         for(size_t i=0;i<ancestors.size();i++){
-            ancestors[i].ptr->children.push_back(node);
+            ancestors[i].unwrap()->children.push_back(node);
         }
     }
 
@@ -30,20 +31,22 @@ namespace metadiff{
 //        if(ptr->id == ptr->graph->nodes.size()-1){
 //            NodeVec parents = ptr->op->get_parents();
 //            for(int i=0;i<parents.size();i++){
-//                if(ptr->grad_level < parents[i].ptr->grad_level){
-//                    ptr->grad_level = parents[i].ptr->grad_level;
+//                if(ptr->grad_level < parents[i].unwrap()->grad_level){
+//                    ptr->grad_level = parents[i].unwrap()->grad_level;
 //                }
 //            }
 //        }
 //    }
 
     void Node::update(Node update){
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         ptr->graph->update_node(Node(ptr), update);
     }
 
     bool Node::is_constant() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=0;i<ptr->graph->temporary_constants.size(); i++){
-            if(ptr->graph->temporary_constants[i].ptr == ptr){
+            if(ptr->graph->temporary_constants[i].unwrap() == ptr){
                 return true;
             }
         }
@@ -56,6 +59,7 @@ namespace metadiff{
     }
 
     bool Node::is_scalar() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=0; i < 4; i++){
             if(ptr->shape[i] != 1){
                 return false;
@@ -65,6 +69,7 @@ namespace metadiff{
     }
 
     bool Node::is_vector() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=1; i < 4; i++){
             if(ptr->shape[i] != 1){
                 return false;
@@ -74,6 +79,7 @@ namespace metadiff{
     }
 
     bool Node::is_vector_strict() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=0; i < 1; i++){
             if(ptr->shape[i] == 1){
                 return false;
@@ -88,6 +94,7 @@ namespace metadiff{
     }
 
     bool Node::is_matrix() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=2; i < 4; i++){
             if(ptr->shape[i] != 1){
                 return false;
@@ -97,6 +104,7 @@ namespace metadiff{
     }
 
     bool Node::is_matrix_strict() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=0; i < 2; i++){
             if(ptr->shape[i] == 1){
                 return false;
@@ -111,6 +119,7 @@ namespace metadiff{
     }
 
     bool Node::is_tensor3() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=3; i < 4; i++){
             if(ptr->shape[i] != 1){
                 return false;
@@ -120,6 +129,7 @@ namespace metadiff{
     }
 
     bool Node::is_tensor3_strict() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=0; i < 3; i++){
             if(ptr->shape[i] == 1){
                 return false;
@@ -134,6 +144,7 @@ namespace metadiff{
     }
 
     bool Node::is_tensor4_strict() const{
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         for(int i=0; i < 4; i++){
             if(ptr->shape[i] == 1){
                 return false;
@@ -144,42 +155,42 @@ namespace metadiff{
 
     template <typename T>
     Node apply(Node node) {
-        return node.ptr->graph->derived_node(std::make_shared<T>(node.ptr->graph, node));
+        return node.unwrap()->graph->derived_node(std::make_shared<T>(node.unwrap()->graph, node));
     }
 
 
     template <typename T>
     Node apply(Node parent1, Node parent2){
-        GraphInPtr graph = parent1.ptr->graph;
+        GraphInPtr graph = parent1.unwrap()->graph;
         return graph->derived_node(std::make_shared<T>(graph, parent1, parent2));
     }
 
     template <typename T>
     Node apply(NodeVec parents){
-        GraphInPtr graph = parents[0].ptr->graph;
+        GraphInPtr graph = parents[0].unwrap()->graph;
         return graph->derived_node(std::make_shared<T>(graph, parents));
     }
 
     void Operator::generate_gradients(std::vector<Node> &messages){
         // Check for any incoming messages
-        if(messages[owner.ptr->id].empty()){
+        if(messages[owner.unwrap()->id].empty()){
             return;
         }
 
         // Get the gradient with respect to this node
-        Node my_grad = messages[owner.ptr->id];
+        Node my_grad = messages[owner.unwrap()->id];
         // Update the message name
-        if(my_grad.ptr->name == "Derived Node" or my_grad.ptr->name == ""){
-            my_grad.ptr->name = "Grad of " + std::to_string(owner.ptr->id) + "|";
+        if(my_grad.unwrap()->name == "Derived Node" or my_grad.unwrap()->name == ""){
+            my_grad.unwrap()->name = "Grad of " + std::to_string(owner.unwrap()->id) + "|";
         } else {
-            my_grad.ptr->name += "Grad of " + std::to_string(owner.ptr->id) + "|";
+            my_grad.unwrap()->name += "Grad of " + std::to_string(owner.unwrap()->id) + "|";
         }
 
         // Check for any surprises, where all parents are constants
         // If that is the case this node should have been constant as well
         // and no message should have been sent to it
         NodeVec parents = get_parents();
-        bool constant = not (owner.ptr->op->name == "Input");
+        bool constant = not (owner.unwrap()->op->name == "Input");
         for(int i=0;i<parents.size();i++){
             if(not parents[i].is_constant()){
                 constant = false;
@@ -194,14 +205,14 @@ namespace metadiff{
         for(size_t i=0;i<parents.size();i++) {
             if(not parents[i].is_constant()) {
                 Node parent_grad = get_parent_grad(my_grad, i);
-                if(parent_grad.ptr->name == "Derived Node" or parent_grad.ptr->name == ""){
-                    parent_grad.ptr->name = "Grad msg " + std::to_string(owner.ptr->id) + "->"
-                                            + std::to_string(parents[i].ptr->id) + "|";
+                if(parent_grad.unwrap()->name == "Derived Node" or parent_grad.unwrap()->name == ""){
+                    parent_grad.unwrap()->name = "Grad msg " + std::to_string(owner.unwrap()->id) + "->"
+                                            + std::to_string(parents[i].unwrap()->id) + "|";
                 } else {
-                    parent_grad.ptr->name += "Grad msg " + std::to_string(owner.ptr->id) + "->"
-                                             + std::to_string(parents[i].ptr->id) + "|";
+                    parent_grad.unwrap()->name += "Grad msg " + std::to_string(owner.unwrap()->id) + "->"
+                                             + std::to_string(parents[i].unwrap()->id) + "|";
                 }
-                send_grad_message(parents[i].ptr->id, parent_grad, messages);
+                send_grad_message(parents[i].unwrap()->id, parent_grad, messages);
             }
         }
     };
@@ -225,7 +236,7 @@ namespace metadiff{
                 NodeVec ancestors = nodes[i]->op->get_ancestors();
                 NodeVec new_ancestors;
                 for(int j=0;j<ancestors.size();j++){
-                    new_ancestors.push_back(mapping[ancestors[j].ptr->id]);
+                    new_ancestors.push_back(mapping[ancestors[j].unwrap()->id]);
                 }
                 Node(nodes[i]).copy_to(new_graph, new_ancestors);
                 mapping[nodes[i]->id] = new_graph->nodes.back();
@@ -238,7 +249,7 @@ namespace metadiff{
 //        for(size_t i=0;i<new_graph->nodes.size();i++){
 //            if(new_graph->nodes[i]->grad_level > 0) {
 //                Node node = new_graph->nodes[i];
-//                for(std::sregex_iterator s = std::sregex_iterator(node.ptr->name.begin(), node.ptr->name.end(), ids);
+//                for(std::sregex_iterator s = std::sregex_iterator(node.unwrap()->name.begin(), node.unwrap()->name.end(), ids);
 //                    s != std::sregex_iterator();
 //                    ++s )
 //                {
@@ -248,8 +259,8 @@ namespace metadiff{
 //                }
 //                int diff = 0;
 //                for(size_t s=0;s<positions.size();s++){
-//                    std::string new_id = " " + std::to_string(mapping[node.ptr->id].ptr->id);
-//                    node.ptr->name.replace(positions[i]+diff, lengths[i], new_id);
+//                    std::string new_id = " " + std::to_string(mapping[node.unwrap()->id].unwrap()->id);
+//                    node.unwrap()->name.replace(positions[i]+diff, lengths[i], new_id);
 //                    diff += new_id.length()  - lengths[i];
 //                }
 //                positions.clear();
@@ -264,7 +275,7 @@ namespace metadiff{
         auto n = nodes.size();
         std::vector<bool> descendants_mask(n, false);
         for(int i=0;i<marked.size();i++){
-            descendants_mask[marked[i].ptr->id] = true;
+            descendants_mask[marked[i].unwrap()->id] = true;
         }
 
         // Mark all direct children
@@ -272,7 +283,7 @@ namespace metadiff{
             if(descendants_mask[i]){
                 auto children = nodes[i]->children;
                 for(int j=0;j<children.size();j++){
-                    descendants_mask[children[j].ptr->id] = true;
+                    descendants_mask[children[j].unwrap()->id] = true;
                 }
             }
         }
@@ -284,17 +295,17 @@ namespace metadiff{
         auto n = nodes.size();
         std::vector<bool> ancestors_mask(n, false);
         for(int i=0;i<marked.size();i++){
-            ancestors_mask[marked[i].ptr->id] = true;
+            ancestors_mask[marked[i].unwrap()->id] = true;
         }
         for(size_t i=0;i<temporary_updates.size();i++){
-            ancestors_mask[temporary_updates[i].ptr->op->get_parents()[0].ptr->id] = true;
+            ancestors_mask[temporary_updates[i].unwrap()->op->get_parents()[0].unwrap()->id] = true;
         }
         // Mark all direct ancestors
         for(size_t i=n-1;i < n; i--){
             if(ancestors_mask[i]){
                 NodeVec ancestors = nodes[i]->op->get_ancestors();
                 for(int j=0;j<ancestors.size();j++){
-                    ancestors_mask[ancestors[j].ptr->id] = true;
+                    ancestors_mask[ancestors[j].unwrap()->id] = true;
                 }
             }
         }
@@ -305,28 +316,28 @@ namespace metadiff{
         // For the moment only one such for the experiment
         if(op->name == "Exp"){
             Node parent = op->get_parents()[0];
-            for(int i=0;i<parent.ptr->children.size(); i++){
-                Node child = parent.ptr->children[i];
-                if(child.ptr->op->name == "Exp"){
+            for(int i=0;i<parent.unwrap()->children.size(); i++){
+                Node child = parent.unwrap()->children[i];
+                if(child.unwrap()->op->name == "Exp"){
                     return child.alias();
                 }
             }
-            for(int i=0;i<parent.ptr->children.size(); i++){
-                Node child = parent.ptr->children[i];
-                if(child.ptr->op->name == "Neg"){
-                    for(int j=0;j<child.ptr->children.size();j++){
-                        Node neg_child = child.ptr->children[j];
-                        if(neg_child.ptr->op->name == "Exp"){
+            for(int i=0;i<parent.unwrap()->children.size(); i++){
+                Node child = parent.unwrap()->children[i];
+                if(child.unwrap()->op->name == "Neg"){
+                    for(int j=0;j<child.unwrap()->children.size();j++){
+                        Node neg_child = child.unwrap()->children[j];
+                        if(neg_child.unwrap()->op->name == "Exp"){
                             return neg_child.div();
                         }
                     }
                 }
             }
-            if(parent.ptr->op->name == "Neg"){
-                Node gparent = parent.ptr->op->get_parents()[0];
-                for(int i=0;i<gparent.ptr->children.size(); i++){
-                    Node child = gparent.ptr->children[i];
-                    if(child.ptr->op->name == "Exp"){
+            if(parent.unwrap()->op->name == "Neg"){
+                Node gparent = parent.unwrap()->op->get_parents()[0];
+                for(int i=0;i<gparent.unwrap()->children.size(); i++){
+                    Node child = gparent.unwrap()->children[i];
+                    if(child.unwrap()->op->name == "Exp"){
                         return child.div();
                     }
                 }
@@ -366,21 +377,21 @@ namespace metadiff{
                 temporary_constants.push_back(nodes[i]);
             }
         }
-        gradient_mode = objective.ptr->grad_level + 1;
+        gradient_mode = objective.unwrap()->grad_level + 1;
         // Send the first message as 1 to the objective
         Node unity_grad = constant_value(1.0);
-        grad_messages[objective.ptr->id] = unity_grad;
+        grad_messages[objective.unwrap()->id] = unity_grad;
         // Send all gradient messages
         for (size_t i = flow_tree.size(); i > 0; i--) {
-            if (not grad_messages[flow_tree[i-1].ptr->id].empty()) {
-                flow_tree[i-1].ptr->op->generate_gradients(grad_messages);
+            if (not grad_messages[flow_tree[i-1].unwrap()->id].empty()) {
+                flow_tree[i-1].unwrap()->op->generate_gradients(grad_messages);
             }
         }
         gradient_mode = 0;
         // Extract the gradients for each parameter
         std::vector<Node> grads;
         for (int i = 0; i < params.size(); i++) {
-            grads.push_back(grad_messages[params[i].ptr->id]);
+            grads.push_back(grad_messages[params[i].unwrap()->id]);
         }
         // Restore types of other inputs
         temporary_constants.clear();
@@ -398,32 +409,32 @@ namespace metadiff{
         for(size_t i=0;i<copy->nodes.size();i++){
             Node node = copy->nodes[i];
             if(node.is_scalar() and node.is_constant()){
-                node.ptr->execution.inlined = true;
+                node.unwrap()->execution.inlined = true;
             }
-            if(node.ptr->op->name == "Broadcast"){
-                node.ptr->execution.inlined = true;
+            if(node.unwrap()->op->name == "Broadcast"){
+                node.unwrap()->execution.inlined = true;
             }
-            if(node.ptr->op->name == "Transpose"){
-                node.ptr->execution.inlined = true;
+            if(node.unwrap()->op->name == "Transpose"){
+                node.unwrap()->execution.inlined = true;
             }
-            if(node.ptr->op->name == "Neg"){
-                node.ptr->execution.inlined = true;
+            if(node.unwrap()->op->name == "Neg"){
+                node.unwrap()->execution.inlined = true;
             }
-            if(node.ptr->children.size() <= 1){
-                node.ptr->execution.inlined = true;
+            if(node.unwrap()->children.size() <= 1){
+                node.unwrap()->execution.inlined = true;
             }
         }
         // Set the new_targets and new_updates
         for(int i=0;i<targets.size();i++){
-            new_targets.push_back(mapping[targets[i].ptr->id]);
+            new_targets.push_back(mapping[targets[i].unwrap()->id]);
         }
         for(int i=0;i<updates.size();i++){
-            Node node1 = mapping[updates[i].first.ptr->id];
-            Node node2 = mapping[updates[i].second.ptr->id];
+            Node node1 = mapping[updates[i].first.unwrap()->id];
+            Node node2 = mapping[updates[i].second.unwrap()->id];
             new_updates.push_back(std::pair<Node, Node>(node1, node2));
         }
         for(int i=0;i<inputs.size();i++){
-            new_inputs.push_back(mapping[inputs[i].ptr->id]);
+            new_inputs.push_back(mapping[inputs[i].unwrap()->id]);
         }
         return copy;
     };
@@ -453,7 +464,7 @@ namespace metadiff{
         result->shared = std::make_shared<SharedVariable>(shared_vars.size(), value);
         shared_vars.push_back(result->shared);
         nodes.push_back(result);
-        result->op->owner = result.get();
+        result->op->owner = result;
         return result;
     };
 
@@ -473,10 +484,10 @@ namespace metadiff{
                     grad_level
             );
             nodes.push_back(result);
-            op->owner.ptr = result.get();
+            op->owner = result;
             NodeVec ancestors = op->get_ancestors();
             for (int i = 0; i < ancestors.size(); i++) {
-                ancestors[i].ptr->children.push_back(result);
+                ancestors[i].unwrap()->children.push_back(result);
             }
             return result;
         } else {
@@ -503,10 +514,10 @@ namespace metadiff{
                     grad_level
             );
             nodes.push_back(result);
-            op->owner.ptr = result.get();
+            op->owner = result;
             NodeVec ancestors = op->get_ancestors();
             for (int i = 0; i < ancestors.size(); i++) {
-                ancestors[i].ptr->children.push_back(result);
+                ancestors[i].unwrap()->children.push_back(result);
             }
             return result;
         } else {
@@ -538,8 +549,8 @@ namespace metadiff{
         );
         result->value = value;
         nodes.push_back(result);
-        result->op->owner = result.get();
-        return result.get();
+        result->op->owner = result;
+        return result;
     };
 
     Node GraphInternal::tensor(ad_value_type v_type,
@@ -557,8 +568,8 @@ namespace metadiff{
                 0
         );
         nodes.push_back(result);
-        result->op->owner = result.get();
-        return result.get();
+        result->op->owner = result;
+        return result;
     }
 
     Node GraphInternal::tensor(ad_value_type v_type,
@@ -586,7 +597,7 @@ namespace metadiff{
     }
 
     Node GraphInternal::tensor_as(Node node, std::string name) {
-        return tensor(node.ptr->v_type, node.ptr->shape, name);
+        return tensor(node.unwrap()->v_type, node.unwrap()->shape, name);
     }
 
     Node GraphInternal::tensor3(ad_value_type v_type,
@@ -620,12 +631,12 @@ namespace metadiff{
 
     Node GraphInternal::tensor3_as(Node node, std::string name) {
         if(not node.is_tensor3()){
-            throw "Node with id '" + std::to_string(node.ptr->id) + "' is not a tensor3.";
+            throw "Node with id '" + std::to_string(node.unwrap()->id) + "' is not a tensor3.";
         }
-        return tensor3(nodes[node.ptr->id]->v_type,
-                       nodes[node.ptr->id]->shape[0],
-                       nodes[node.ptr->id]->shape[1],
-                       nodes[node.ptr->id]->shape[2],
+        return tensor3(nodes[node.unwrap()->id]->v_type,
+                       nodes[node.unwrap()->id]->shape[0],
+                       nodes[node.unwrap()->id]->shape[1],
+                       nodes[node.unwrap()->id]->shape[2],
                        name);
     }
 
@@ -658,11 +669,11 @@ namespace metadiff{
 
     Node GraphInternal::matrix_as(Node node, std::string name) {
         if(not node.is_matrix()){
-            throw "Node with id '" + std::to_string(node.ptr->id) + "' is not a matrix.";
+            throw "Node with id '" + std::to_string(node.unwrap()->id) + "' is not a matrix.";
         }
-        return matrix(nodes[node.ptr->id]->v_type,
-                      nodes[node.ptr->id]->shape[0],
-                      nodes[node.ptr->id]->shape[1],
+        return matrix(nodes[node.unwrap()->id]->v_type,
+                      nodes[node.unwrap()->id]->shape[0],
+                      nodes[node.unwrap()->id]->shape[1],
                       name);
     }
 
@@ -690,10 +701,10 @@ namespace metadiff{
     Node GraphInternal::vector_as(Node node,
                                   std::string name) {
         if(not node.is_vector()){
-            throw "Node with id '" + std::to_string(node.ptr->id) + "' is not a vector.";
+            throw "Node with id '" + std::to_string(node.unwrap()->id) + "' is not a vector.";
         }
-        return vector(nodes[node.ptr->id]->v_type,
-                      nodes[node.ptr->id]->shape[0],
+        return vector(nodes[node.unwrap()->id]->v_type,
+                      nodes[node.unwrap()->id]->shape[0],
                       name);
     }
 

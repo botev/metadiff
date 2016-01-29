@@ -74,10 +74,12 @@ namespace metadiff {
     };
 
     Node Node::pow(Node power) {
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->derived_node(std::make_shared<Pow>(ptr->graph, this, power));
     }
 
     Node Node::pow(double d_power) {
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         Node power = ptr->graph->constant_value(d_power);
         return ptr->graph->derived_node(std::make_shared<Pow>(ptr->graph, this, power));
     }
@@ -87,8 +89,8 @@ namespace metadiff {
     }
 
     Node pow(double value, Node power){
-        Node node = power.ptr->graph->constant_value(value);
-        return power.ptr->graph->derived_node(std::make_shared<Pow>(power.ptr->graph, node, power));
+        Node node = power.unwrap()->graph->constant_value(value);
+        return power.unwrap()->graph->derived_node(std::make_shared<Pow>(power.unwrap()->graph, node, power));
     }
 
     class Abs: public UnaryOperator {
@@ -103,7 +105,7 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node zero = graph->constant_value(0.0);
-            zero.ptr->grad_level = my_grad.ptr->grad_level;
+            zero.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             Node ge = parent.ge(zero);
             return mul(my_grad, ge);
         }
@@ -129,18 +131,19 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
-            one.ptr->grad_level = my_grad.ptr->grad_level;
+            one.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             Node neg = owner.neg();
             return mul({my_grad, owner, add(one, owner.neg())});
         }
     };
 
     Node Node::sigmoid() {
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->constant_value(1.0) / (ptr->graph->constant_value(1.0) + neg().exp());
     }
 
     Node sigmoid(Node node){
-        return node.ptr->graph->constant_value(1.0) / (node.ptr->graph->constant_value(1.0) + node.neg().exp());
+        return node.unwrap()->graph->constant_value(1.0) / (node.unwrap()->graph->constant_value(1.0) + node.neg().exp());
     }
 
     class Log1p : public UnaryOperator{
@@ -168,11 +171,12 @@ namespace metadiff {
     }
 
     Node Node::softplus(size_t threshold) {
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return (this > ptr->graph->constant_value(threshold)).select(this, exp().log1p());
     }
 
     Node softplus(Node node, size_t threshold = 50){
-        return select(node > node.ptr->graph->constant_value(threshold), node, node.exp().log1p());
+        return select(node > node.unwrap()->graph->constant_value(threshold), node, node.exp().log1p());
     }
 
     class Sin: public UnaryOperator {
@@ -331,7 +335,7 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
-            one.ptr->grad_level = my_grad.ptr->grad_level;
+            one.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             Node square = owner.square();
             return mul(my_grad, add(one, square.neg()));
         }
@@ -357,7 +361,7 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
-            one.ptr->grad_level = my_grad.ptr->grad_level;
+            one.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             Node square = owner.square();
             return mul(my_grad, add(one, square.neg()));
         }

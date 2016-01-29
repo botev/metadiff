@@ -19,7 +19,7 @@ namespace metadiff{
         }
 
         Shape get_shape(){
-            auto parent_shape = parent.ptr->shape;
+            auto parent_shape = parent.unwrap()->shape;
             Shape shape {1, 1, 1, 1};
             int last_non_zero = 0;
             for(int i=3;i>=0;i--){
@@ -60,11 +60,11 @@ namespace metadiff{
                 if(not parents[i].is_matrix()){
                     throw InvalidArguments(name, parents, "Parent " + std::to_string(i) + " is not a matrix.");
                 }
-                if(parents[i-1].ptr->shape[1] != parents[i].ptr->shape[0]){
+                if(parents[i-1].unwrap()->shape[1] != parents[i].unwrap()->shape[0]){
                     throw IncompatibleShapes(name, parents);
                 }
             }
-            shape = Shape{parents[0].ptr->shape[0], parents.back().ptr->shape[1], 1, 1};
+            shape = Shape{parents[0].unwrap()->shape[0], parents.back().unwrap()->shape[1], 1, 1};
         }
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors){
@@ -126,7 +126,7 @@ namespace metadiff{
         MatrixInverse(GraphInPtr graph, Node parent) :
                 UnaryOperator("MatrixInv", graph, parent)
         {
-            Shape parent_shape = parent.ptr->shape;
+            Shape parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
                 throw UnknownError({parent}, "Operator 'MatrixInverse' takes only squared matrices");
             }
@@ -155,11 +155,11 @@ namespace metadiff{
         Determinant(GraphInPtr graph, Node parent) :
                 UnaryOperator("Det", graph, parent)
         {
-            auto parent_shape = parent.ptr->shape;
+            auto parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
                 throw UnknownError({parent}, "Operator 'Determinant' takes only squared matrices");
             }
-            if(parent.ptr->v_type == BOOLEAN){
+            if(parent.unwrap()->v_type == BOOLEAN){
                 throw UnknownError({parent}, "Operator 'Determinant' is not applicable for node of type BOOLEAN");
             }
         }
@@ -191,11 +191,11 @@ namespace metadiff{
         LogDeterminant(GraphInPtr graph, Node parent) :
                 UnaryOperator("LogDet", graph, parent)
         {
-            auto parent_shape = parent.ptr->shape;
+            auto parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
                 throw UnknownError({parent}, "Operator 'Determinant' takes only squared matrices");
             }
-            if(parent.ptr->v_type == BOOLEAN){
+            if(parent.unwrap()->v_type == BOOLEAN){
                 throw UnknownError({parent}, "Operator 'Determinant' is not applicable for node of type BOOLEAN");
             }
         }
@@ -227,7 +227,7 @@ namespace metadiff{
         Trace(GraphInPtr graph, Node parent) :
                 UnaryOperator("Trace", graph, parent)
         {
-            auto parent_shape = parent.ptr->shape;
+            auto parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
                 throw UnknownError({parent}, "Operator 'Trace' takes only squared matrices");
             }
@@ -242,16 +242,16 @@ namespace metadiff{
         }
 
         ad_value_type get_value_type(){
-            if(parent.ptr->v_type == BOOLEAN){
+            if(parent.unwrap()->v_type == BOOLEAN){
                 return INTEGER;
             } else {
-                return parent.ptr->v_type;
+                return parent.unwrap()->v_type;
             }
         };
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node eye = graph->eye(parent.ptr->shape[0]);
-            eye.ptr->grad_level = my_grad.ptr->grad_level;
+            Node eye = graph->eye(parent.unwrap()->shape[0]);
+            eye.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             return mul(my_grad, eye);
         }
     };

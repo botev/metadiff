@@ -98,7 +98,7 @@ namespace metadiff{
                         if(j == inputs.size()){
                             throw MissingRequiredInput(targets, i);
                         }
-                        if(inputs[j].ptr->id == i){
+                        if(inputs[j].unwrap()->id == i){
                             break;
                         }
                     }
@@ -109,14 +109,14 @@ namespace metadiff{
 
             // Expressions for all inputs
             for(int i=0;i<inputs.size();i++){
-                expression_table[inputs[i].ptr->id] = "inputs[" + std::to_string(i) + "]";
-                ancestor_mask[inputs[i].ptr->id] = false;
+                expression_table[inputs[i].unwrap()->id] = "inputs[" + std::to_string(i) + "]";
+                ancestor_mask[inputs[i].unwrap()->id] = false;
             }
             // Expressions for all shared variables
             for(int i=0;i<graph->nodes.size();i++){
                 Node node = graph->nodes[i];
-                if(node.ptr->type == SHARED_INPUT) {
-                    expression_table[i] = "shared_vars[" + std::to_string(node.ptr->shared->id) + "]->value";
+                if(node.unwrap()->type == SHARED_INPUT) {
+                    expression_table[i] = "shared_vars[" + std::to_string(node.unwrap()->shared->id) + "]->value";
                     ancestor_mask[i] = false;
                 }
             }
@@ -154,8 +154,8 @@ namespace metadiff{
             f << "\n\t// Update all shared variables\n";
             for(int i=0;i<graph->nodes.size();i++){
                 if(graph->nodes[i]->type == UPDATE){
-//                    auto shared_id = graph->nodes[i]->op->get_arguments()[0].ptr->shared->id;
-//                    auto update_id = graph->nodes[i]->op->get_parents()[0].ptr->id;
+//                    auto shared_id = graph->nodes[i]->op->get_arguments()[0].unwrap()->shared->id;
+//                    auto update_id = graph->nodes[i]->op->get_parents()[0].unwrap()->id;
 //                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update_id] << ";\n";
                     print_update_node(f, graph->nodes[i], expression_table);
                 }
@@ -166,9 +166,9 @@ namespace metadiff{
             f << "\treturn {";
             for(int i=0;i<targets.size();i++){
                 if(i < targets.size() - 1){
-                    f << expression_table[targets[i].ptr->id] << ", ";
+                    f << expression_table[targets[i].unwrap()->id] << ", ";
                 } else {
-                    f << expression_table[targets[i].ptr->id] << "};\n";
+                    f << expression_table[targets[i].unwrap()->id] << "};\n";
                 }
             }
             f << "}\n";
@@ -176,38 +176,38 @@ namespace metadiff{
         }
 
         void print_update_node(std::ofstream& f, Node node, std::vector<std::string>& expression_table){
-//            f << "\tstd::cout << \"Updating node \" << " << node.ptr->id << " << std::endl;\n";
-            size_t shared_id = node.ptr->op->get_arguments()[0].ptr->shared->id;
-            Node update =  node.ptr->op->get_parents()[0];
+//            f << "\tstd::cout << \"Updating node \" << " << node.unwrap()->id << " << std::endl;\n";
+            size_t shared_id = node.unwrap()->op->get_arguments()[0].unwrap()->shared->id;
+            Node update =  node.unwrap()->op->get_parents()[0];
 
-            if(node.ptr->op->get_parents()[0].ptr->execution.inlined){
-                if(update.ptr->op->name == "Mul"){
-                    NodeVec parents = update.ptr->op->get_parents();
+            if(node.unwrap()->op->get_parents()[0].unwrap()->execution.inlined){
+                if(update.unwrap()->op->name == "Mul"){
+                    NodeVec parents = update.unwrap()->op->get_parents();
                     int index = -1;
                     bool all_div = true;
                     for(int j=0;j<parents.size();j++){
-                        if(parents[j].ptr->type == SHARED_INPUT){
-                            if(parents[j].ptr->shared->id == shared_id){
+                        if(parents[j].unwrap()->type == SHARED_INPUT){
+                            if(parents[j].unwrap()->shared->id == shared_id){
                                 index = j;
                             } else {
                                 all_div = false;
                             }
-                        } else if(parents[j].ptr->op->name != "Div"){
+                        } else if(parents[j].unwrap()->op->name != "Div"){
                             all_div = false;
                         }
                     }
                     if(index == -1){
-                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] << ";\n";
                     } else if (all_div){
                         f << "\tshared_vars[" << shared_id << "]->value /= ";
                         bool first = true;
                         for (int j = 0; j < parents.size(); j++) {
                             if (j != index){
                                 if(first){
-                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                     first = false;
                                 } else {
-                                    f << " * " << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    f << " * " << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                 }
                             }
                         }
@@ -218,44 +218,44 @@ namespace metadiff{
                         for (int j = 0; j < parents.size(); j++) {
                             if (j != index){
                                 if(first){
-                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                     first = false;
-                                } else if(parents[j].ptr->op->name == "Div"){
-                                    f << " / " + expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                } else if(parents[j].unwrap()->op->name == "Div"){
+                                    f << " / " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                 } else {
-                                    f << " * " + expression_table[parents[j].ptr->id];
+                                    f << " * " + expression_table[parents[j].unwrap()->id];
                                 }
                             }
                         }
                         f << ";\n";
                     }
-                } else if(update.ptr->op->name == "Add"){
-                    NodeVec parents = update.ptr->op->get_parents();
+                } else if(update.unwrap()->op->name == "Add"){
+                    NodeVec parents = update.unwrap()->op->get_parents();
                     int index = -1;
                     bool all_neg = true;
                     for(int j=0;j<parents.size();j++){
-                        if(parents[j].ptr->type == SHARED_INPUT){
-                            if(parents[j].ptr->shared->id == shared_id){
+                        if(parents[j].unwrap()->type == SHARED_INPUT){
+                            if(parents[j].unwrap()->shared->id == shared_id){
                                 index = j;
                             } else {
                                 all_neg = false;
                             }
-                        } else if(parents[j].ptr->op->name != "Neg"){
+                        } else if(parents[j].unwrap()->op->name != "Neg"){
                             all_neg = false;
                         }
                     }
                     if(index == -1){
-                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] << ";\n";
                     } else if (all_neg){
                         f << "\tshared_vars[" << shared_id << "]->value -= ";
                         bool first = true;
                         for (int j = 0; j < parents.size(); j++) {
                             if (j != index){
                                 if(first){
-                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                     first = false;
                                 } else {
-                                    f << " + " << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    f << " + " << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                 }
                             }
                         }
@@ -266,22 +266,22 @@ namespace metadiff{
                         for (int j = 0; j < parents.size(); j++) {
                             if (j != index){
                                 if(first){
-                                    f << expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                     first = false;
-                                } else if(parents[j].ptr->op->name == "Neg"){
-                                    f << " - " + expression_table[parents[j].ptr->op->get_parents()[0].ptr->id];
+                                } else if(parents[j].unwrap()->op->name == "Neg"){
+                                    f << " - " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
                                 } else {
-                                    f << " + " + expression_table[parents[j].ptr->id];
+                                    f << " + " + expression_table[parents[j].unwrap()->id];
                                 }
                             }
                         }
                         f << ";\n";
                     }
                 } else {
-                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] << ";\n";
                 }
             } else {
-                f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.ptr->id] << ";\n";
+                f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] << ";\n";
             }
         }
 
@@ -292,10 +292,10 @@ namespace metadiff{
 //                f << "\tint " << variable << " = ";
 //                bool done = false;
 //                for(int j=0;j<inputs.size();j++){
-//                    auto shape = graph->nodes[inputs[j].ptr->id]->shape;
+//                    auto shape = graph->nodes[inputs[j].unwrap()->id]->shape;
 //                    for(int s=0;s<4;s++){
 //                        if(shape[s] == variable){
-//                            f << "node_" << inputs[j].ptr->id << ".dims(" << s << ")";
+//                            f << "node_" << inputs[j].unwrap()->id << ".dims(" << s << ")";
 //                            done = true;
 //                            break;
 //                        }
@@ -353,12 +353,12 @@ namespace metadiff{
                 return "float(" +  std::to_string(node->op->get_scalar_value()) + ")";
             }
             if(op_name == "Alias"){
-                return expression_table[parents[0].ptr->id];
+                return expression_table[parents[0].unwrap()->id];
             }
             if (op_name == "Broadcast") {
                 bool not_supported = false;
                 for (int i = 0; i < children.size(); i++) {
-                    auto name = children[i].ptr->op->name;
+                    auto name = children[i].unwrap()->op->name;
                     if (name != "Add" and name != "Mul"
                         and name != "Neg" and name != "Div") {
                         not_supported = true;
@@ -366,9 +366,9 @@ namespace metadiff{
                     }
                 }
                 if (not_supported) {
-                    std::string expression = "af::tile(" + expression_table[parents[0].ptr->id] + ", ";
+                    std::string expression = "af::tile(" + expression_table[parents[0].unwrap()->id] + ", ";
                     for (int i = 0; i < 4; i++){
-                        if (node->shape[i] != parents[0].ptr->shape[i]) {
+                        if (node->shape[i] != parents[0].unwrap()->shape[i]) {
                             expression += node->shape[i].to_string_with_star();
                         } else {
                             expression += "1";
@@ -379,43 +379,43 @@ namespace metadiff{
                     }
                     return expression + ")";
                 } else {
-                    return expression_table[parents[0].ptr->id];
+                    return expression_table[parents[0].unwrap()->id];
                 }
             }
             if (op_name == "Add") {
-                std::string expression = expression_table[parents[0].ptr->id];
+                std::string expression = expression_table[parents[0].unwrap()->id];
                 for (int i = 1; i < parents.size(); i++) {
-                    if(parents[i].ptr->op->name == "Neg"){
-                        expression += " - " + expression_table[parents[i].ptr->op->get_parents()[0].ptr->id];
+                    if(parents[i].unwrap()->op->name == "Neg"){
+                        expression += " - " + expression_table[parents[i].unwrap()->op->get_parents()[0].unwrap()->id];
                     } else {
-                        expression += " + " + expression_table[parents[i].ptr->id];
+                        expression += " + " + expression_table[parents[i].unwrap()->id];
                     }
                 }
                 return "(" + expression + ")";
             }
             if (op_name == "Neg") {
-                return "(-" + expression_table[parents[0].ptr->id] + ")";
+                return "(-" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Mul") {
-                std::string expression = expression_table[parents[0].ptr->id];
+                std::string expression = expression_table[parents[0].unwrap()->id];
                 for (int i = 1; i < parents.size(); i++) {
-                    if(parents[i].ptr->op->name == "Div"){
-                        expression += " / " + expression_table[parents[i].ptr->op->get_parents()[0].ptr->id];
+                    if(parents[i].unwrap()->op->name == "Div"){
+                        expression += " / " + expression_table[parents[i].unwrap()->op->get_parents()[0].unwrap()->id];
                     } else {
-                        expression += " * " + expression_table[parents[i].ptr->id];
+                        expression += " * " + expression_table[parents[i].unwrap()->id];
                     }
                 }
                 return expression;
             }
             if (op_name == "Div") {
-                return "(1.0/" + expression_table[parents[0].ptr->id] + ")";
+                return "(1.0/" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Sum") {
                 auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
                 if (Node(node).is_scalar()) {
-                    return "af::sum(af::flat(" + expression_table[parents[0].ptr->id] + "))";
+                    return "af::sum(af::flat(" + expression_table[parents[0].unwrap()->id] + "))";
                 } else {
-                    std::string expression = expression_table[parents[0].ptr->id];
+                    std::string expression = expression_table[parents[0].unwrap()->id];
                     for (size_t i = 0; i < axes.size(); i++) {
                         expression = "af::sum(" + expression + ", " + std::to_string(axes[i]) + ")";
                     }
@@ -423,28 +423,28 @@ namespace metadiff{
                 }
             }
             if (op_name == "Square") {
-                return expression_table[parents[0].ptr->id] + " * " + expression_table[parents[0].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " * " + expression_table[parents[0].unwrap()->id];
             }
             if (op_name == "Const") {
-                return expression_table[parents[0].ptr->id];
+                return expression_table[parents[0].unwrap()->id];
             }
             if (op_name == "Gt") {
-                return expression_table[parents[0].ptr->id] + " > " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " > " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "Ge") {
-                return expression_table[parents[0].ptr->id] + " >= " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " >= " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "Lt") {
-                return expression_table[parents[0].ptr->id] + " < " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " < " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "Lte") {
-                return expression_table[parents[0].ptr->id] + " <= " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " <= " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "Eq") {
-                return expression_table[parents[0].ptr->id] + " == " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " == " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "Neq") {
-                return expression_table[parents[0].ptr->id] + " != " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " != " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "ApproxEq") {
                 // TODO
@@ -454,79 +454,79 @@ namespace metadiff{
                 return "WTF";
             }
             if (op_name == "And") {
-                return expression_table[parents[0].ptr->id] + " && " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " && " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "Or") {
-                return expression_table[parents[0].ptr->id] + " || " + expression_table[parents[1].ptr->id];
+                return expression_table[parents[0].unwrap()->id] + " || " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "ZeroElem") {
-                return "af::iszero(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::iszero(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "NoneZeroElem") {
-                return "!af::iszero(" + expression_table[parents[0].ptr->id] + ")";
+                return "!af::iszero(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "IsNaN") {
-                return "af::isNaN(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::isNaN(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "IsInf") {
-                return "af::isInf(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::isInf(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if(op_name == "Select") {
-                return "af::select(" + expression_table[args[0].ptr->id] + ", " +
-                       expression_table[parents[0].ptr->id] + ", " +
-                       expression_table[parents[1].ptr->id] + ")";
+                return "af::select(" + expression_table[args[0].unwrap()->id] + ", " +
+                       expression_table[parents[0].unwrap()->id] + ", " +
+                       expression_table[parents[1].unwrap()->id] + ")";
             }
             if (op_name == "Exp") {
-                return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Log") {
-                return "af::log(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::log(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Exp") {
-                return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Log") {
-                return "af::log(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::log(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Exp") {
-                return "af::exp(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
             }
 //            if (op_name == "Softplus") {
 //                size_t threshold = dynamic_cast<Softplus*>(node->op.get())->threshold;
-//                return "softplus(" + expression_table[parents[0].ptr->id] + ", " + std::to_string(threshold) + ")";
+//                return "softplus(" + expression_table[parents[0].unwrap()->id] + ", " + std::to_string(threshold) + ")";
 //            }
             if(op_name == "Log1p") {
-                return "af::log1p(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::log1p(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Abs") {
-                return "af::abs(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::abs(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Sigmoid") {
-                return "float(1.0) / (float(1.0) + af::exp(-" + expression_table[parents[0].ptr->id] + "))";
+                return "float(1.0) / (float(1.0) + af::exp(-" + expression_table[parents[0].unwrap()->id] + "))";
             }
             if (op_name == "Sin") {
-                return "af::sin(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::sin(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Cos") {
-                return "af::cos(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::cos(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Tan") {
-                return "af::tan(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::tan(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Sinh") {
-                return "af::sinh(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::sinh(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Cosh") {
-                return "af::cosh(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::cosh(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Tanh") {
-                return "af::tanh(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::tanh(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Pow") {
-                return "af::pow(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::pow(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Transpose") {
-                return "af::transpose(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::transpose(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "MatrixMul") {
                 if(parents.size() > 2){
@@ -537,38 +537,38 @@ namespace metadiff{
                 std::string p1;
                 std::string flag1 = "AF_MAT_NONE";
                 std::string expr;
-                if(parents[0].ptr->op->name == "Transpose"){
-                    p0 = expression_table[parents[0].ptr->op->get_parents()[0].ptr->id];
+                if(parents[0].unwrap()->op->name == "Transpose"){
+                    p0 = expression_table[parents[0].unwrap()->op->get_parents()[0].unwrap()->id];
                     flag0 = "AF_MAT_TRANS";
                 } else {
-                    p0 =  expression_table[parents[0].ptr->id];
+                    p0 =  expression_table[parents[0].unwrap()->id];
                 }
-                if(parents[1].ptr->op->name == "Transpose"){
-                    p1 = expression_table[parents[1].ptr->op->get_parents()[0].ptr->id];
+                if(parents[1].unwrap()->op->name == "Transpose"){
+                    p1 = expression_table[parents[1].unwrap()->op->get_parents()[0].unwrap()->id];
                     flag1 = "AF_MAT_TRANS";
                 } else {
-                    p1 =  expression_table[parents[1].ptr->id];
+                    p1 =  expression_table[parents[1].unwrap()->id];
                 }
                 return "af::matmul(" + p0 + ", " + p1 + ", " + flag0 + ", " + flag1 + ")";
             }
             if (op_name == "MatrixInv") {
-                return "af::inverse(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::inverse(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Det") {
-                return "af::det(" + expression_table[parents[0].ptr->id] + ")";
+                return "af::det(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Logdet") {
-                return "af::log(af::det(" + expression_table[parents[0].ptr->id] + "))";
+                return "af::log(af::det(" + expression_table[parents[0].unwrap()->id] + "))";
             }
             if (op_name == "Trace") {
-                return "af::sum(af::diag(" + expression_table[parents[0].ptr->id] + "))";
+                return "af::sum(af::diag(" + expression_table[parents[0].unwrap()->id] + "))";
             }
             if (op_name == "Diag") {
-                return "af::diag(" + expression_table[parents[0].ptr->id] + ", 0, " +
+                return "af::diag(" + expression_table[parents[0].unwrap()->id] + ", 0, " +
                        std::to_string(node->shape[1] == 1) + ")";
             }
             if (op_name == "Reshape") {
-                std::string expression = "af::moddims(" + expression_table[parents[0].ptr->id] + ", ";
+                std::string expression = "af::moddims(" + expression_table[parents[0].unwrap()->id] + ", ";
                 for (int i = 0; i < 4; i++) {
                     expression += node->shape[i].to_string_with_star();
                     if (i < 3) {
@@ -578,7 +578,7 @@ namespace metadiff{
                 return expression + ")";
             }
             if (op_name == "Reorder") {
-                std::string expression = "af::reorder(" + expression_table[parents[0].ptr->id] + ", ";
+                std::string expression = "af::reorder(" + expression_table[parents[0].unwrap()->id] + ", ";
                 auto order = dynamic_cast<Reorder *>(node->op.get())->order;
                 for (int i = 0; i < 4; i++) {
                     expression += order[i];
@@ -589,9 +589,9 @@ namespace metadiff{
                 return expression + ")";
             }
             if (op_name == "BinCrossEntropyLogit") {
-                std::string p = expression_table[parents[0].ptr->id];
-                std::string sfx = expression_table[args[0].ptr->id];
-                std::string sfmx = expression_table[args[1].ptr->id];
+                std::string p = expression_table[parents[0].unwrap()->id];
+                std::string sfx = expression_table[args[0].unwrap()->id];
+                std::string sfmx = expression_table[args[1].unwrap()->id];
                 return p + " * " + sfmx + " + (float(1.0) - " + p + ") * " + sfx;
             }
             if (op_name == "MaxAndArgMax") {

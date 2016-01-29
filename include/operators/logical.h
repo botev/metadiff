@@ -21,7 +21,7 @@ namespace metadiff {
         };
 
         ad_node_type get_node_type(){
-            if(parent1.ptr->type == CONSTANT and parent2.ptr->type == CONSTANT){
+            if(parent1.unwrap()->type == CONSTANT and parent2.unwrap()->type == CONSTANT){
                 return CONSTANT;
             } else {
                 return CONSTANT_DERIVED;
@@ -46,7 +46,7 @@ namespace metadiff {
         };
 
         ad_node_type get_node_type(){
-            if(parent.ptr->type == CONSTANT){
+            if(parent.unwrap()->type == CONSTANT){
                 return CONSTANT;
             } else {
                 return CONSTANT_DERIVED;
@@ -225,12 +225,12 @@ namespace metadiff {
     };
 
     Node Node::approx_eq(Node node, double tol){
-        GraphInPtr graph = ptr->graph;
+        GraphInPtr graph = unwrap()->graph;
         return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, this, node, tol));
     }
 
     Node approx_eq(Node node1, Node node2, double tol = 0.00001){
-        GraphInPtr graph = node1.ptr->graph;
+        GraphInPtr graph = node1.unwrap()->graph;
         return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, node1, node2, tol));
     }
 
@@ -251,12 +251,12 @@ namespace metadiff {
     };
 
     Node Node::approx_neq(Node node, double tol){
-        GraphInPtr graph = ptr->graph;
+        GraphInPtr graph = unwrap()->graph;
         return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, this, node, tol));
     }
 
     Node approx_neq(Node node1, Node node2, double tol=0.00001){
-        GraphInPtr graph = node1.ptr->graph;
+        GraphInPtr graph = node1.unwrap()->graph;
         return graph->derived_node(std::make_shared<ApproximatelyNotEquals>(graph, node1, node2, tol));
     }
 
@@ -267,7 +267,7 @@ namespace metadiff {
             Node parent2) :
                 LogicalBinary("And", graph, parent1, parent2)
         {
-            if(parent1.ptr->v_type != BOOLEAN or parent2.ptr->v_type != BOOLEAN){
+            if(parent1.unwrap()->v_type != BOOLEAN or parent2.unwrap()->v_type != BOOLEAN){
                 throw UnknownError({parent1, parent2}, "Operator 'And' accepts only BOOLEAN inputs");
             }
         };
@@ -296,7 +296,7 @@ namespace metadiff {
            Node parent2) :
                 LogicalBinary("Or", graph, parent1, parent2)
         {
-            if(parent1.ptr->v_type != BOOLEAN or parent2.ptr->v_type != BOOLEAN){
+            if(parent1.unwrap()->v_type != BOOLEAN or parent2.unwrap()->v_type != BOOLEAN){
                 throw UnknownError({parent1, parent2}, "Operator 'Or' accepts only BOOLEAN inputs");
             }
         };
@@ -409,11 +409,11 @@ namespace metadiff {
                 condition(condition)
         {
             shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent});
-            if(condition.ptr->v_type != BOOLEAN){
+            if(condition.unwrap()->v_type != BOOLEAN){
                 throw InvalidArguments(name, {condition, trueParent, falseParent},
                                        "The condition must have a value type BOOLEAN");
             }
-            if(trueParent.ptr->v_type != falseParent.ptr->v_type){
+            if(trueParent.unwrap()->v_type != falseParent.unwrap()->v_type){
                 throw InvalidArguments(name, {condition, trueParent, falseParent},
                                        "The true and false statement must be of the same value type");
             }
@@ -434,7 +434,7 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node zero = graph->constant_value(0.0);
-            zero.ptr->grad_level = my_grad.ptr->grad_level;
+            zero.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             if(index == 0){
                 return condition.select(my_grad, zero);
             } else {
@@ -444,7 +444,7 @@ namespace metadiff {
     };
 
     Node Node::select(Node result_true, Node result_false){
-        return ptr->graph->derived_node(std::make_shared<Select>(ptr->graph, this, result_true, result_false));
+        return unwrap()->graph->derived_node(std::make_shared<Select>(unwrap()->graph, this, result_true, result_false));
     }
 
     Node select(Node condition, Node result_true, Node result_false){

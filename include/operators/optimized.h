@@ -58,6 +58,7 @@ namespace metadiff {
     }
 
     Node Node::relu(){
+        std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->constant_value(0.5) * (this + abs());
     }
 
