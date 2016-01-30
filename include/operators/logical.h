@@ -16,11 +16,11 @@ namespace metadiff {
                 ElementwiseBinary(name, graph, parent1, parent2)
         {};
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             return BOOLEAN;
         };
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             if(parent1.unwrap()->type == CONSTANT and parent2.unwrap()->type == CONSTANT){
                 return CONSTANT;
             } else {
@@ -41,11 +41,11 @@ namespace metadiff {
                 UnaryOperator(name, graph, parent)
         {};
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             return BOOLEAN;
         };
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             if(parent.unwrap()->type == CONSTANT){
                 return CONSTANT;
             } else {
@@ -65,7 +65,7 @@ namespace metadiff {
                     Node parent2) :
                 LogicalBinary("Gt", graph, parent1, parent2) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<GreaterThan>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -91,7 +91,7 @@ namespace metadiff {
                 LogicalBinary("Ge", graph, parent1, parent2)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<GreaterThanOrEqual>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -116,7 +116,7 @@ namespace metadiff {
                 LogicalBinary("Lt", graph, parent1, parent2)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<LessThan>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -141,7 +141,7 @@ namespace metadiff {
                 LogicalBinary("Le", graph, parent1, parent2)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<LessThanOrEqual>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -166,7 +166,7 @@ namespace metadiff {
                 LogicalBinary("Eq", graph, parent1, parent2)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Equals>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -191,7 +191,7 @@ namespace metadiff {
                 LogicalBinary("Ne", graph, parent1, parent2)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<NotEquals>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -219,7 +219,7 @@ namespace metadiff {
                 tol(tol)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<ApproximatelyEquals>(graph, ancestors[0], ancestors[1], tol);
         }
     };
@@ -245,7 +245,7 @@ namespace metadiff {
                 tol(tol)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<ApproximatelyNotEquals>(graph, ancestors[0], ancestors[1], tol);
         }
     };
@@ -272,7 +272,7 @@ namespace metadiff {
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<And>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -301,7 +301,7 @@ namespace metadiff {
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Or>(graph, ancestors[0], ancestors[1]);
         }
     };
@@ -325,7 +325,7 @@ namespace metadiff {
                 LogicalUnary("ZeroElem", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<ZeroElements>(graph, ancestors[0]);
         }
     };
@@ -345,7 +345,7 @@ namespace metadiff {
                 LogicalUnary("NonZeroElem", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<NonZeroElements>(graph, ancestors[0]);
         }
     };
@@ -365,7 +365,7 @@ namespace metadiff {
                 LogicalUnary("IsNaN", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<IsNaN>(graph, ancestors[0]);
         }
     };
@@ -385,7 +385,7 @@ namespace metadiff {
                 LogicalUnary("IsInf", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<IsInf>(graph, ancestors[0]);
         }
     };
@@ -424,7 +424,7 @@ namespace metadiff {
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Select>(graph, ancestors[2], ancestors[0], ancestors[1]);
         }
 

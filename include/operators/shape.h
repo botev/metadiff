@@ -29,11 +29,11 @@ namespace metadiff{
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Diagonal>(graph, ancestors[0]);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return shape;
         }
 
@@ -43,6 +43,7 @@ namespace metadiff{
     };
 
     Node Node::diag() {
+        // TODO a.daig().diag() = a
         return apply<Diagonal>(this);
     }
 
@@ -61,20 +62,28 @@ namespace metadiff{
             if(product_parent != product_shape){
                 std::string shape_str;
                 throw InvalidArguments(name, {parent.unwrap()->id}, {parent.unwrap()->shape, this->shape},
-                                       "Operator 'Reshape' must not change the total number of elemetns");
+                                       "Operator 'Reshape' must not change the total number of elements");
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Reshape>(graph, ancestors[0], shape);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return shape;
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad.reshape(parent.unwrap()->shape);
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<Reshape> cast_op = std::static_pointer_cast<Reshape>(op);
+                return symbolic_equals(parent, cast_op->parent) and shape == cast_op->shape;
+            }
+            return false;
         }
     };
 
@@ -123,11 +132,11 @@ namespace metadiff{
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Reorder>(graph, ancestors[0], order);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return {parent.unwrap()->shape[order[0]], parent.unwrap()->shape[order[1]],
                     parent.unwrap()->shape[order[2]], parent.unwrap()->shape[order[3]]};
         }
@@ -144,6 +153,14 @@ namespace metadiff{
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad.reorder(reverse_order(order));
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<Reorder> cast_op = std::static_pointer_cast<Reorder>(op);
+                return symbolic_equals(parent, cast_op->parent) and order == cast_op->order;
+            }
+            return false;
         }
     };
 

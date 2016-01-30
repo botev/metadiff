@@ -14,11 +14,11 @@ namespace metadiff{
                 UnaryOperator("Transpose", graph, parent)
         {}
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Transpose>(graph, ancestors[0]);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             auto parent_shape = parent.unwrap()->shape;
             Shape shape {1, 1, 1, 1};
             int last_non_zero = 0;
@@ -37,9 +37,22 @@ namespace metadiff{
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad.transpose();
         }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(parent.unwrap()->op->name == name){
+                std::shared_ptr<Operator> base_op = parent.unwrap()->op->get_parents()[0].unwrap()->op;
+                return base_op->equals(op) or op->equals(base_op);
+            }
+            if(name == op->name){
+                std::shared_ptr<Transpose> cast_op = std::static_pointer_cast<Transpose>(op);
+                return symbolic_equals(parent, cast_op->parent);
+            }
+            return false;
+        }
     };
 
     Node Node::transpose() {
+        // TODO a.transpose().transpose() = a
         return apply<Transpose>(this);
     }
 
@@ -67,7 +80,7 @@ namespace metadiff{
             shape = Shape{parents[0].unwrap()->shape[0], parents.back().unwrap()->shape[1], 1, 1};
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const{
             return std::make_shared<MatrixMultiplication>(graph, ancestors);
         }
 
@@ -111,9 +124,26 @@ namespace metadiff{
                 return apply<MatrixMultiplication>(NodeVec{left_tr, my_grad, right_tr});
             }
         }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name) {
+                if (parents.size() != op->get_parents().size()) {
+                    return false;
+                }
+                for (int i = 0; i < parents.size(); i++) {
+                    if(not symbolic_equals(parents[i], op->get_parents()[i])){
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
     };
 
     Node dot(NodeVec nodes){
+        // TODO a dot a.inv() = eye
+        // TODO a.transpose() */dot b.transpose() = (a */dot b).transpose()
         return apply<MatrixMultiplication>(nodes);
     };
 
@@ -132,7 +162,7 @@ namespace metadiff{
             }
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<MatrixInverse>(graph, ancestors[0]);
         }
 
@@ -143,6 +173,7 @@ namespace metadiff{
     };
 
     Node Node::minv() {
+        // TODO a.minv().minv() = a
         return apply<MatrixInverse>(this);
     }
 
@@ -164,18 +195,18 @@ namespace metadiff{
             }
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Determinant>(graph, ancestors[0]);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return {1, 1, 1, 1};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node inv = parent.minv();
-            return mul(NodeVec{my_grad, owner, inv.transpose()});
+            return mul(NodeVec{my_grad, owner, parent.minv().transpose()});
         }
+
     };
 
     Node Node::det() {
@@ -200,18 +231,18 @@ namespace metadiff{
             }
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<LogDeterminant>(graph, ancestors[0]);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return {1, 1, 1, 1};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node inv = parent.minv();
-            return mul(NodeVec{my_grad, owner, inv});
+            return mul(NodeVec{my_grad, parent.minv().transpose()});
         }
+
     };
 
     Node Node::logdet() {
@@ -233,15 +264,15 @@ namespace metadiff{
             }
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Trace>(graph, ancestors[0]);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return {1, 1, 1, 1};
         }
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             if(parent.unwrap()->v_type == BOOLEAN){
                 return INTEGER;
             } else {

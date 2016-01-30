@@ -21,15 +21,15 @@ namespace metadiff{
                 UnaryOperator(name, graph, parent)
         {}
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             return results_v_types[0];
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return results_shapes[0];
         }
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             return results_types[0];
         };
     };
@@ -48,7 +48,7 @@ namespace metadiff{
                 parent(parent),
                 index(index)
         {
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.unwrap()->op.get());
+            std::shared_ptr<MultiNode> multi_op = std::dynamic_pointer_cast<MultiNode>(parent.unwrap()->op);
             if(not multi_op){
                 throw UnknownError({parent}, "The operator 'MultiNodeIndex' can be applied only to nodes, "
                         "whose operators are subclasses of 'MultiNode'");
@@ -58,39 +58,47 @@ namespace metadiff{
             }
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<MultiNodeIndex>(graph, ancestors[0], index);
         }
 
-        ad_value_type get_value_type(){
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.unwrap()->op.get());
+        ad_value_type get_value_type() const{
+            std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent.unwrap()->op);
             return multi_op->results_v_types[index];
         }
 
-        Shape get_shape(){
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.unwrap()->op.get());
+        Shape get_shape() const{
+            std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent.unwrap()->op);
             return multi_op->results_shapes[index];
         }
 
-        ad_node_type get_node_type(){
-            MultiNode* multi_op = dynamic_cast<MultiNode*>(parent.unwrap()->op.get());
+        ad_node_type get_node_type() const{
+            std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent.unwrap()->op);
             return multi_op->results_types[index];
         };
 
-        size_t get_gradient_level(){
+        size_t get_gradient_level() const{
             return parent.unwrap()->grad_level;
         }
 
-        NodeVec get_parents(){
+        NodeVec get_parents() const{
             return {parent};
         }
 
-        NodeVec get_arguments(){
+        NodeVec get_arguments() const{
             return NodeVec {};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<MultiNodeIndex> cast_op = std::static_pointer_cast<MultiNodeIndex>(op);
+                return symbolic_equals(parent, cast_op->parent) and index == cast_op->index;
+            }
+            return false;
         }
     };
 
@@ -138,7 +146,7 @@ namespace metadiff{
             this->results_v_types = {parent.unwrap()->v_type, INTEGER};
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<MaxAndArgMax>(graph, ancestors[0], axes);
         }
 
@@ -189,7 +197,7 @@ namespace metadiff{
             this->results_v_types = {parent.unwrap()->v_type, INTEGER};
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<SortAndArgSort>(graph, ancestors[0], axes);
         }
 

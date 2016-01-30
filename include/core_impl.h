@@ -27,17 +27,6 @@ namespace metadiff{
         }
     }
 
-//    void Node::update_grad_level(){
-//        if(ptr->id == ptr->graph->nodes.size()-1){
-//            NodeVec parents = ptr->op->get_parents();
-//            for(int i=0;i<parents.size();i++){
-//                if(ptr->grad_level < parents[i].unwrap()->grad_level){
-//                    ptr->grad_level = parents[i].unwrap()->grad_level;
-//                }
-//            }
-//        }
-//    }
-
     void Node::update(Node update){
         std::shared_ptr<NodeInternal> ptr = unwrap();
         ptr->graph->update_node(Node(ptr), update);
@@ -468,10 +457,9 @@ namespace metadiff{
         return result;
     };
 
-    Node GraphInternal::derived_node(std::shared_ptr<Operator> op, size_t grad_level){
+    Node GraphInternal::derived_node(std::shared_ptr<Operator> op){
         Node same_node = find_same_node(op);
         if(same_node.empty()) {
-            grad_level = gradient_mode > op->get_gradient_level() ? gradient_mode : op->get_gradient_level();
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this().get(),
                     default_device,
@@ -481,7 +469,7 @@ namespace metadiff{
                     op->get_value_type(),
                     op->get_shape(),
                     op,
-                    grad_level
+                    gradient_mode > op->get_gradient_level() ? gradient_mode : op->get_gradient_level()
             );
             nodes.push_back(result);
             op->owner = result;
@@ -496,12 +484,10 @@ namespace metadiff{
     }
 
     Node GraphInternal::update_node(Node shared,
-                                    Node update,
-                                    size_t grad_level) {
+                                    Node update) {
         auto op = std::make_shared<Update>(shared_from_this().get(), shared, update);
         Node same_node = find_same_node(op);
         if(same_node.empty()) {
-            grad_level = grad_level == GRAD_LEVEL_BAR ? op->get_gradient_level() : grad_level;
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this().get(),
                     default_device,
@@ -511,7 +497,7 @@ namespace metadiff{
                     op->get_value_type(),
                     op->get_shape(),
                     op,
-                    grad_level
+                    gradient_mode > op->get_gradient_level() ? gradient_mode : op->get_gradient_level()
             );
             nodes.push_back(result);
             op->owner = result;

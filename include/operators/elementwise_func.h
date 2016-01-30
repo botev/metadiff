@@ -12,7 +12,7 @@ namespace metadiff {
                 UnaryOperator("Exp", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Exp>(graph, ancestors[0]);
         }
 
@@ -35,7 +35,7 @@ namespace metadiff {
                 UnaryOperator("Log", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Log>(graph, ancestors[0]);
         }
 
@@ -58,7 +58,7 @@ namespace metadiff {
         Pow(GraphInPtr graph, Node parent1, Node parent2) :
                 ElementwiseBinary("Pow", graph, parent1, parent2) { };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Pow>(graph, ancestors[0], ancestors[1]);
         }
 
@@ -99,7 +99,7 @@ namespace metadiff {
                 UnaryOperator("Abs", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Abs>(graph, ancestors[0]);
         }
 
@@ -119,24 +119,6 @@ namespace metadiff {
         return node.abs();
     }
 
-    class Sigmoid: public UnaryOperator {
-    public:
-        Sigmoid(GraphInPtr graph, Node parent) :
-                UnaryOperator("Sigmoid", graph, parent)
-        {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
-            return std::make_shared<Sigmoid>(graph, ancestors[0]);
-        }
-
-        Node get_parent_grad(Node my_grad, size_t index){
-            Node one = graph->constant_value(1.0);
-            one.unwrap()->grad_level = my_grad.unwrap()->grad_level;
-            Node neg = owner.neg();
-            return mul({my_grad, owner, add(one, owner.neg())});
-        }
-    };
-
     Node Node::sigmoid() {
         std::shared_ptr<NodeInternal> ptr = unwrap();
         return ptr->graph->constant_value(1.0) / (ptr->graph->constant_value(1.0) + neg().exp());
@@ -152,7 +134,7 @@ namespace metadiff {
                  Node parent):
                 UnaryOperator("Log1p", graph, parent) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Log1p>(graph, ancestors[0]);
         }
 
@@ -185,7 +167,7 @@ namespace metadiff {
                 UnaryOperator("Sin", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Sin>(graph, ancestors[0]);
         }
 
@@ -209,7 +191,7 @@ namespace metadiff {
                 UnaryOperator("Cos", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Cos>(graph, ancestors[0]);
         }
 
@@ -233,7 +215,7 @@ namespace metadiff {
                 UnaryOperator("Tan", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Tan>(graph, ancestors[0]);
         }
 
@@ -257,7 +239,7 @@ namespace metadiff {
                 UnaryOperator("Cot", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Cot>(graph, ancestors[0]);
         }
 
@@ -281,7 +263,7 @@ namespace metadiff {
                 UnaryOperator("Sinh", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Sinh>(graph, ancestors[0]);
         }
 
@@ -305,7 +287,7 @@ namespace metadiff {
                 UnaryOperator("Cosh", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Cosh>(graph, ancestors[0]);
         }
 
@@ -329,7 +311,7 @@ namespace metadiff {
                 UnaryOperator("Tanh", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Tanh>(graph, ancestors[0]);
         }
 
@@ -355,7 +337,7 @@ namespace metadiff {
                 UnaryOperator("Coth", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Coth>(graph, ancestors[0]);
         }
 

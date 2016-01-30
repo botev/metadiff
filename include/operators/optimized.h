@@ -23,17 +23,17 @@ namespace metadiff {
                 softplus_x(softplus_x),
                 softplus_mx(softplus_mx) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<BinaryCrossEntropyLogit>(graph,
                                                              ancestors[0], ancestors[1],
                                                              ancestors[2], ancestors[3]);
         }
 
-        ad_value_type get_value_type() {
+        ad_value_type get_value_type() const{
             return FLOAT;
         };
 
-        NodeVec get_arguments(){
+        NodeVec get_arguments() const{
             return {softplus_x, softplus_mx};
         }
 

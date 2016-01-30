@@ -23,29 +23,148 @@
 
 namespace metadiff {
     const size_t N = 100;
-    const size_t GRAD_LEVEL_BAR = 100;
 
     typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
     typedef std::array<SymInt,4> Shape;
 
-    enum ad_node_type{SYMBOLIC_INTEGER, CONSTANT, INPUT, SHARED_INPUT, INPUT_DERIVED, CONSTANT_DERIVED, UPDATE};
-    enum ad_value_type{FLOAT, INTEGER, BOOLEAN};
-    enum ad_device_type {CPU, GPU};
-    enum ad_implicit_broadcast {RAISE, WARN, QUIET};
-    enum ad_float_type {f16, c16, f32, c32, f64, c64};
-    enum ad_integer_type {s8, u8, s16, u16, s32, u32, s64, u64};
+    enum ad_node_type{
+        /**
+         * The node is just a SymInt, which interacts with other nodes in an operator
+         */
+        SYMBOLIC_INTEGER,
+        /**
+         * The node is a constant
+         */
+        CONSTANT,
+        /**
+         * The node is derived from a constant, trough some operator manipulations
+         */
+        CONSTANT_DERIVED,
+        /**
+         * The node is an input
+         */
+        INPUT,
+        /**
+         * The node is a shared variable
+         */
+        SHARED_INPUT,
+        /**
+         * The node is derived from at least one input
+         */
+        INPUT_DERIVED,
+        /**
+         * The node is an update to shared variable
+         */
+        UPDATE
+    };
+
+    enum ad_value_type{
+        /**
+         * Represents floating point values, inrespectable of precision
+         */
+        FLOAT,
+        /**
+         * Represents integer values, inrespectable of precision
+         */
+        INTEGER,
+        /**
+         * Represents boolean values
+         */
+        BOOLEAN
+    };
+
+    enum ad_device_type {
+        /**
+         * The device is one or more CPUs
+         */
+        CPU,
+        /**
+         * The device is a single GPU
+         */
+        GPU
+    };
+
+    enum ad_implicit_broadcast {
+        /**
+         * If any node performs an implicit broadcast an exception is thrown
+         */
+        RAISE,
+        /**
+         * If any node performs an implicit broadcast a warning is printed to the standard output
+         */
+        WARN,
+        /**
+         * If any node performs an implicit broadcast there is no notification
+         */
+        QUIET
+    };
+
+    enum ad_float_type {
+        /**
+         * 16 bit floating point number
+         */
+        f16,
+        /**
+         * 32 bit floating point number
+         */
+        f32,
+        /**
+         * 64 bit floating point number
+         */
+        f64,
+    };
+    enum ad_integer_type {
+        /**
+         * Signed 8 bit integer
+         */
+        s8,
+        /**
+         * Unsigned 8 bit integer
+         */
+        u8,
+        /**
+        * Signed 16 bit integer
+        */
+        s16,
+        /**
+         * Unsigned 16 bit integer
+         */
+        u16,
+        /**
+        * Signed 32 bit integer
+        */
+        s32,
+        /**
+         * Unsigned 32 bit integer
+         */
+        u32,
+        /**
+        * Signed 64 bit integer
+        */
+        s64,
+        /**
+         * Unsigned 64 bit integer
+         */
+        u64
+    };
 
     class GraphInternal;
     typedef GraphInternal* GraphInPtr;
     typedef std::shared_ptr<GraphInternal> Graph;
     class NodeInternal;
 
+    /**
+     * The class is an API wrapper around node of the graph
+     */
     class Node {
     public:
         std::weak_ptr<NodeInternal> ptr;
 
         Node(){};
 
+        /**
+         * Unwraps the pointer to the internal node. Exits the program if the pointer has expired
+         */
         std::shared_ptr<NodeInternal> unwrap() const{
             if(ptr.expired()){
                 std::cerr << "Trying to access a Node whose pointer has expired" << std::endl;
@@ -61,13 +180,20 @@ namespace metadiff {
                 ptr(node.ptr) {};
 
         Node(const Node* node):
-            ptr(node->ptr) {};
+                ptr(node->ptr) {};
 
+        /**
+         * Checks if the Node is empty, could happen only if you manually construct this class
+         * or the Graph instance is out of scope.
+         */
         bool empty(){
             return ptr.expired();
         }
+
+        /**
+         * Copies the node to another graph, by using the ancestors provided
+         */
         void copy_to(GraphInPtr graph, std::vector<Node> ancestors);
-        void update(Node update);
 
         bool is_constant() const;
         bool is_scalar() const;
@@ -79,108 +205,11 @@ namespace metadiff {
         bool is_tensor3_strict() const;
         bool is_tensor4_strict() const;
 
-//        bool is_constant() const{
-//            if(ptr->type == CONSTANT or ptr->type == CONSTANT_DERIVED
-//               or ptr->type == SYMBOLIC_INTEGER or ptr->type == UPDATE){
-//                return true;
-//            } else {
-//                return false;
-//            }
-//        }
-//
-//        bool is_scalar() const{
-//            for(int i=0; i < 4; i++){
-//                if(ptr->shape[i] != 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-//
-//        bool is_vector() const{
-//            for(int i=1; i < 4; i++){
-//                if(ptr->shape[i] != 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-//
-//        bool is_vector_strict() const{
-//            for(int i=0; i < 1; i++){
-//                if(ptr->shape[i] == 1){
-//                    return false;
-//                }
-//            }
-//            for(int i=1; i < 4; i++){
-//                if(ptr->shape[i] != 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-//
-//        bool is_matrix() const{
-//            for(int i=2; i < 4; i++){
-//                if(ptr->shape[i] != 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-//
-//        bool is_matrix_strict() const{
-//            for(int i=0; i < 2; i++){
-//                if(ptr->shape[i] == 1){
-//                    return false;
-//                }
-//            }
-//            for(int i=2; i < 4; i++){
-//                if(ptr->shape[i] != 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-//
-//        bool is_tensor3() const{
-//            for(int i=3; i < 4; i++){
-//                if(ptr->shape[i] != 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-//
-//        bool is_tensor3_strict() const{
-//            for(int i=0; i < 3; i++){
-//                if(ptr->shape[i] == 1){
-//                    return false;
-//                }
-//            }
-//            for(int i=3; i < 4; i++){
-//                if(ptr->shape[i] != 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-//
-//        bool is_tensor4_strict() const{
-//            for(int i=0; i < 4; i++){
-//                if(ptr->shape[i] == 1){
-//                    return false;
-//                }
-//            }
-//            return true;
-//        }
-
-
-//        template <typename T>
-//        Node apply();
+        void update(Node update);
         Node alias();
         Node broadcast(Shape shape);
         Node broadcast_to(Node other);
+
         Node neg();
         Node div();
         Node sum(std::vector<size_t> axes = {0, 1, 2, 3});
@@ -236,9 +265,18 @@ namespace metadiff {
     typedef std::vector<Node> NodeVec;
     typedef std::vector<std::pair<Node, Node>> Updates;
 
+    /**
+     * A single computational device to faciliate mulit node computations
+     */
     class Device{
     public:
+        /**
+         * Type of the device
+         */
         ad_device_type type;
+        /**
+         * Id of the device
+         */
         size_t id;
         Device():
                 type(ad_device_type::CPU),
@@ -253,10 +291,24 @@ namespace metadiff {
                 id(device.id) {};
     };
 
+    /**
+     * The class provides data generated by the graph optimizer relevant to the
+     * backends which generate code
+     */
     class ExecutionData{
     public:
+        /**
+         * Whether the node should be inlined
+         */
         bool inlined;
+        /**
+         * The graph optimizer register allocation
+         */
         size_t register_id;
+        /**
+         * For synchronization and memory allocation this will contain the time step after
+         * which the node can be destroyed
+         */
         size_t lifespan;
         ExecutionData():
                 inlined(false),
@@ -269,41 +321,86 @@ namespace metadiff {
                 lifespan(data.lifespan) {};
     };
 
+    /**
+     * Abstract class for operators
+     */
     class Operator{
     public:
+        /**
+         * Pointer to the owning graph
+         */
         GraphInPtr graph;
+        /**
+         * Pointer to the owning node
+         */
         Node owner;
+        /**
+         * Unique name of the concrete operator classes
+         */
         const std::string name;
         Operator(std::string name,
                  GraphInPtr graph):
                 name(name),
                 graph(graph){};
 
-        // Copies an operator to a new graph
-        virtual std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) = 0;
-        // Returns the value type of the result
-        virtual ad_value_type get_value_type() = 0;
-        // Returns the shape
-        virtual Shape get_shape() = 0;
-        // Returns the node type
-        virtual ad_node_type get_node_type() = 0;
-        // Returns the gradient level of this node
-        virtual size_t get_gradient_level() = 0;
-        // Returns all of the nodes parents
-        virtual NodeVec get_parents() = 0;
-        // Returns the arguments of this operator
-        virtual NodeVec get_arguments() = 0;
-        // Returns the gradient with respect to the parent at the specified index
-        virtual Node get_parent_grad(Node my_grad, size_t index) = 0;
-        // Sends the gradient message to the parent, where it is accumulated
-        void send_grad_message(size_t target, Node msg, std::vector<Node>& messages);
-        // Generates and sends gradients
-        virtual void generate_gradients(std::vector<Node>& messages);
-        // Returns a scalar value if constant
-        double get_scalar_value();
-//        virtual bool operator==(const Operator* op) = 0;
+        /**
+         * Copies the operator to a new graph
+         */
+        virtual std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const = 0;
+        /**
+         * Gives the value type of the result node of the operator
+         */
+        virtual ad_value_type get_value_type() const = 0;
 
-        NodeVec get_ancestors(){
+        /**
+         * Gives the shape of the result node of the operator
+         */
+        virtual Shape get_shape() const = 0;
+        /**
+         * Gives the node type of the result node of the operator
+         */
+        virtual ad_node_type get_node_type() const = 0;
+        /**
+         * Gives the gradient level of the node result of the operator
+         */
+        virtual size_t get_gradient_level() const = 0;
+        /**
+         * Gives the parents of the node result of the operator
+         */
+        virtual NodeVec get_parents() const = 0;
+        /**
+         * Gives the arguments of the node result of the operator
+         */
+        virtual NodeVec get_arguments() const = 0;
+        /**
+         * A function which shoulde compute and return the gradient with respect
+         * to the parent and the specified index, given the gradient of the owner node
+         */
+        virtual Node get_parent_grad(Node my_grad, size_t index) = 0;
+        /**
+         * Sends a gradient message to the target by either inserting it in the messages
+         * if none exists, or accumulating them
+         */
+        void send_grad_message(size_t target, Node msg, std::vector<Node>& messages) const;
+        /**
+         * Generates all gradients, given the current setup of the graph
+         */
+        virtual void generate_gradients(std::vector<Node>& messages);
+        /**
+         * Returns a scalar value if the operator is constant
+         */
+        double get_scalar_value() const;
+        /**
+         * Compares only if this operator is equal to the other, not the other way around.
+         * Note that although equality is symmetric, because of mathematical idenitities
+         * and the fact that the code is with each operator separately the true equality
+         * operator is `op1.equals(op2) or op2.equals(op1)`
+         */
+        virtual bool equals(const std::shared_ptr<Operator> op) const = 0;
+        /**
+         * Returns the union of the parents and arguments of the node result of the operator
+         */
+        NodeVec get_ancestors() const {
             auto parents = this->get_parents();
             auto arguments = this->get_arguments();
             for(int i=0; i<arguments.size();i++){
@@ -313,6 +410,9 @@ namespace metadiff {
         }
     };
 
+    /**
+     * Internal class for a graph node
+     */
     class NodeInternal{
     public:
         GraphInPtr graph;
@@ -325,6 +425,7 @@ namespace metadiff {
         std::shared_ptr<Operator> op;
         NodeVec children;
         size_t grad_level;
+        SymInt sym_value;
         af::array value;
         SharedPtr shared;
 
@@ -354,7 +455,9 @@ namespace metadiff {
                 shape(shape) {}
     };
 
-
+    /**
+     * Internal class for a compute graph
+     */
     class GraphInternal : public std::enable_shared_from_this<GraphInternal> {
     public:
         std::vector<std::shared_ptr<NodeInternal>> nodes;
@@ -380,25 +483,62 @@ namespace metadiff {
             broadcast = ad_implicit_broadcast::RAISE;
             gradient_mode = 0;
         }
+
+        /**
+         * Copies all nodes for which the mask is true
+         */
         NodeVec copy(GraphInPtr new_graph, std::vector<bool> mask);
+        /**
+         * Returns an array masking all descendats of the marked nodes
+         */
+        std::vector<bool> get_descendants_mask(std::vector<Node>& marked);
+        /**
+         * Returns an array masking all ancestors of the marked nodes
+         */
+        std::vector<bool> get_ancestors_mask(std::vector<Node>& marked);
+        Node find_same_node(std::shared_ptr<Operator> op);
+        /**
+         * Adds temporary updates to the graph
+         */
+        void add_temporary_updates(const Updates& updates);
+        /**
+         * Removes all temporary updates of the graph
+         */
+        void clear_temporary_updates();
+        /**
+         * Returns the gradients of the objective with respect to the parameters provided
+         */
+        std::vector<Node> gradient(Node objective, std::vector<Node> params);
+        /**
+         * Optimizes a graph with respect to the given nodes (INTERNAL)
+         */
+        Graph optimize(NodeVec& targets, Updates& updates,NodeVec& inputs,
+                       NodeVec& new_targets, Updates& new_updates, NodeVec& new_inputs);
+
+        /**
+         * Creates a new shared variable
+         */
+        Node shared_var(af::array value, std::string name = "SharedVar");
+        /**
+         * Creates a new derived node (INTERNAL)
+         */
+        Node derived_node(std::shared_ptr<Operator> op);
+        /**
+         * Creates a new update node
+         */
+        Node update_node(Node shared, Node update);
+        /**
+         * Creates a new constant node
+         */
+        Node constant_node(af::array value);
+
+        /**
+         * Returns the next unused symbolic integer
+         */
         SymInt get_new_symbolic_integer() {
             this->sym_integer_count++;
             return SymInt::variable(this->sym_integer_count - 1);
         }
-
-        std::vector<bool> get_descendants_mask(std::vector<Node>& marked);
-        std::vector<bool> get_ancestors_mask(std::vector<Node>& marked);
-        Node find_same_node(std::shared_ptr<Operator> op);
-        void add_temporary_updates(const Updates& updates);
-        void clear_temporary_updates();
-        std::vector<Node> gradient(Node objective, std::vector<Node> params);
-        Graph optimize(NodeVec& targets, Updates& updates,NodeVec& inputs,
-                       NodeVec& new_targets, Updates& new_updates, NodeVec& new_inputs);
-
-        Node shared_var(af::array value, std::string name = "SharedVar");
-        Node derived_node(std::shared_ptr<Operator> op, size_t grad_level = GRAD_LEVEL_BAR);
-        Node update_node(Node shared, Node update, size_t grad_level = GRAD_LEVEL_BAR);
-        Node constant_node(af::array value);
 
         Node tensor(ad_value_type v_type,
                     std::array<SymInt, 4> shape,
@@ -663,44 +803,104 @@ namespace metadiff {
         }
     };
 
+    /**
+     * Skips any alias operators to get the base operator
+     */
+    std::shared_ptr<Operator> get_base_op(const std::shared_ptr<Operator> op){
+        std::shared_ptr<Operator> base_op = op;
+        while(op->name == "Alias"){
+            base_op = base_op->get_parents()[0].unwrap()->op;
+        }
+        return op;
+    }
+
+//    /**
+//     * Compares if the two operators are symboliclly equivalent.
+//     * Note this does not make any nodes on the graph and is not related to computation.
+//     */
+//    bool symbolic_equals(const std::shared_ptr<Operator> op1,
+//                         const std::shared_ptr<Operator> op2){
+//        return bas_op1->symbolic_equals(bas_op2) or bas_op2->symbolic_equals(bas_op1);
+//    }
+
+    /**
+     * Check if two nodes are symbolically equivalent.
+     */
+    bool symbolic_equals(const Node& node1, const Node& node2){
+        if(node1.unwrap()->id == node2.unwrap()->id){
+            return true;
+        }
+        if(node1.unwrap()->type != node2.unwrap()->type){
+            return false;
+        }
+        ad_node_type type = node1.unwrap()->type;
+        switch (type){
+            case SYMBOLIC_INTEGER:{
+                return node1.unwrap()->sym_value == node2.unwrap()->sym_value;
+            }
+            case INPUT: {
+                return false;
+            }
+            case SHARED_INPUT: {
+                return false;
+            }
+            default: {
+                const std::shared_ptr<Operator> base_op1 = get_base_op(node1.unwrap()->op);
+                const std::shared_ptr<Operator> base_op2 = get_base_op(node2.unwrap()->op);
+                return base_op1->equals(base_op2) or base_op2->equals(base_op1);
+            }
+        }
+        return false;
+    };
+
+    /**
+     * Operator for any inputs
+     */
     class Input : public Operator {
     public:
         Input(GraphInPtr graph):
                 Operator("Input", graph){}
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors)  const{
             return std::make_shared<Input>(graph);
         }
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type()  const{
             return ad_value_type::FLOAT;
         }
 
-        Shape get_shape(){
+        Shape get_shape()  const{
             return Shape{0, 0, 0, 0};
         }
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type()  const{
             return INPUT;
         };
 
-        size_t get_gradient_level(){
+        size_t get_gradient_level()  const{
             return 0;
         }
 
-        NodeVec get_parents(){
+        NodeVec get_parents()  const{
             return NodeVec {};
         }
 
-        NodeVec get_arguments(){
+        NodeVec get_arguments()  const{
             return NodeVec {};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
         }
+
+        bool equals(const std::shared_ptr<Operator> op)  const{
+            return false;
+        }
     };
 
+    /**
+     * Operator for updates
+     */
     class Update : public Operator {
     public:
         Node shared;
@@ -733,36 +933,40 @@ namespace metadiff {
             verify_inputs();
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Update>(graph, ancestors[0], ancestors[1]);
         }
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             return shared.unwrap()->v_type;
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return Shape{0, 0, 0, 0};
         }
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             return UPDATE;
         };
 
-        size_t get_gradient_level(){
+        size_t get_gradient_level() const{
             return update.unwrap()->grad_level;
         }
 
-        NodeVec get_parents(){
+        NodeVec get_parents() const{
             return {update};
         }
 
-        NodeVec get_arguments(){
+        NodeVec get_arguments() const{
             return {shared};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            return false;
         }
     };
 
@@ -809,11 +1013,11 @@ namespace metadiff {
     std::string to_string(ad_float_type const & type){
         switch(type){
             case ad_float_type::f16: return "f16";
-            case ad_float_type::c16: return "c16";
+//            case ad_float_type::c16: return "c16";
             case ad_float_type::f32: return "f32";
-            case ad_float_type::c32: return "c32";
+//            case ad_float_type::c32: return "c32";
             case ad_float_type::f64: return "f64";
-            case ad_float_type::c64: return "c64";
+//            case ad_float_type::c64: return "c64";
         }
         return "UNREACHABLE";
     }

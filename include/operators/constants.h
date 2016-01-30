@@ -13,11 +13,11 @@ namespace metadiff{
                 UnaryOperator("Const", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<MakeConstant>(graph, ancestors[0]);
         }
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             if(parent.unwrap()->type == CONSTANT){
                 return CONSTANT;
             } else {
@@ -46,15 +46,15 @@ namespace metadiff{
                          Shape shape):
                 Operator(name, graph), shape(shape) {};
 
-        NodeVec get_parents() {
+        NodeVec get_parents() const{
             return {};
         };
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             return FLOAT;
         };
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             for(int i=0;i<4;i++){
                 if(not shape[i].is_constant()){
                     return CONSTANT_DERIVED;
@@ -63,20 +63,28 @@ namespace metadiff{
             return CONSTANT;
         };
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return shape;
         }
 
-        size_t get_gradient_level(){
+        size_t get_gradient_level() const{
             return 0;
         };
 
-        NodeVec get_arguments() {
+        NodeVec get_arguments() const{
             return NodeVec {};
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<ConstantOperator> cast_op = std::static_pointer_cast<ConstantOperator>(op);
+                return shape == cast_op->shape;
+            }
+            return false;
         }
     };
 
@@ -88,9 +96,10 @@ namespace metadiff{
             shape = {size, size, 1, 1};
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Eye>(graph, shape[0]);
         }
+
     };
 
     Node GraphInternal::eye(SymInt size) {
@@ -102,9 +111,10 @@ namespace metadiff{
         Zeros(GraphInPtr graph, Shape shape):
                 ConstantOperator("Zeros", graph, shape){};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Zeros>(graph, shape);
         }
+
     };
 
     Node GraphInternal::zeros(Shape shape) {
@@ -116,9 +126,10 @@ namespace metadiff{
         Ones(GraphInPtr graph, Shape shape):
                 ConstantOperator("Ones", graph, shape) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Ones>(graph, shape);
         }
+
     };
 
     Node GraphInternal::ones(Shape shape) {
@@ -132,8 +143,22 @@ namespace metadiff{
                 ConstantOperator("Value", graph, shape),
                 value(value) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<ConstantValue>(graph, shape, value);
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(op);
+                return shape == cast_op->shape and value == cast_op->value;
+            } else if(op->name == "Ones"){
+                std::shared_ptr<Ones> cast_op = std::static_pointer_cast<Ones>(op);
+                return shape == cast_op->shape and value == 1.0;
+            } else if(op->name == "Zeros"){
+                std::shared_ptr<Zeros> cast_op = std::static_pointer_cast<Zeros>(op);
+                return shape == cast_op->shape and value == 0.0;
+            }
+            return false;
         }
     };
 
@@ -147,7 +172,7 @@ namespace metadiff{
         }
     }
 
-    double Operator::get_scalar_value() {
+    double Operator::get_scalar_value()  const{
         if(name == "Zeros") {
             return 0;
         }
@@ -155,33 +180,9 @@ namespace metadiff{
             return 1;
         }
         if(name == "Value"){
-            return dynamic_cast<ConstantValue*>(this)->value;
+            return dynamic_cast<const ConstantValue* const>(this)->value;
         }
         return owner.unwrap()->value.host<float>()[0];
     }
-//    Node mul_const_operators(Node node1, Node node2){
-//        if(node1->op->name == "Ones"){
-//            return node2;
-//        }
-//        if(node1->op->name == "Zeros"){
-//            return node1;
-//        }
-//        if(node2->op->name == "Ones"){
-//            return node1;
-//        }
-//        if(node2->op->name == "Zeros"){
-//            return node2;
-//        }
-//        if(node1->op->name == "Value" and node2->op->name == "Value"){
-//            double value1 = dynamic_cast<ConstantValue*>(node1->op.get())->value;
-//            double value2 = dynamic_cast<ConstantValue*>(node2->op.get())->value;
-//            return node1->graph->value(value1 * value2);
-//        }
-//        Node result = mul(node1, node2);
-//        if(node1->op->name == "Value"){
-//            result->value = node->value *
-//        }
-//        result->value =
-//    }
 }
 #endif //METADIFF_OPERATORS_CONSTANTS_H

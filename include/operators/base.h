@@ -66,11 +66,11 @@ namespace metadiff {
             }
         };
 
-        NodeVec get_parents() {
+        NodeVec get_parents() const{
             return parents;
         };
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             auto top_type = BOOLEAN;
             for(int i=0;i<parents.size();i++){
                 auto v_type = parents[i].unwrap()->v_type;
@@ -84,7 +84,7 @@ namespace metadiff {
             return top_type;
         };
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             bool constant_derived = false;
             for(int i=0;i<parents.size();i++){
                 if(parents[i].unwrap()->type == INPUT
@@ -103,11 +103,11 @@ namespace metadiff {
             }
         };
 
-        std::array<SymInt,4> get_shape(){
+        std::array<SymInt,4> get_shape() const{
             return shape;
         }
 
-        size_t get_gradient_level(){
+        size_t get_gradient_level() const{
             size_t max_grad_level = 0;
             for(int i=0;i<parents.size();i++){
                 if(parents[i].unwrap()->grad_level > max_grad_level){
@@ -117,7 +117,7 @@ namespace metadiff {
             return max_grad_level;
         };
 
-        NodeVec get_arguments() {
+        NodeVec get_arguments() const{
             return NodeVec {};
         }
     };
@@ -137,11 +137,11 @@ namespace metadiff {
                 parent2(parent2)
         {}
 
-        NodeVec get_parents() {
+        NodeVec get_parents() const{
             return {parent1, parent2};
         };
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             if(parent1.unwrap()->v_type == FLOAT or parent2.unwrap()->v_type == FLOAT){
                 return FLOAT;
             } else if(parent1.unwrap()->v_type == INTEGER or parent2.unwrap()->v_type == INTEGER) {
@@ -151,7 +151,7 @@ namespace metadiff {
             }
         };
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             if(parent1.unwrap()->type == INPUT
                or parent1.unwrap()->type == SHARED_INPUT
                or parent1.unwrap()->type == INPUT_DERIVED
@@ -170,23 +170,32 @@ namespace metadiff {
             }
         };
 
-        std::array<SymInt,4> get_shape(){
+        std::array<SymInt,4> get_shape() const{
             return shape;
         }
 
-        size_t get_gradient_level(){
+        size_t get_gradient_level() const{
             return parent1.unwrap()->grad_level > parent2.unwrap()->grad_level ? parent1.unwrap()->grad_level : parent2.unwrap()->grad_level;
         };
 
-        NodeVec get_arguments() {
+        NodeVec get_arguments() const{
             return NodeVec {};
         }
 
-        void throw_grad_type_error(){
+        void throw_grad_type_error() const{
             throw UnknownError({parent1, parent2},
                                "Gradient message present, but parents are " +
                                to_string(parent1.unwrap()->type) + ", " +
                                to_string(parent2.unwrap()->type));
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<BinaryOperator> cast_op = std::static_pointer_cast<BinaryOperator>(op);
+                return symbolic_equals(parent1, cast_op->parent1) and
+                       symbolic_equals(parent2, cast_op->parent2);
+            }
+            return false;
         }
 
     };
@@ -201,15 +210,15 @@ namespace metadiff {
                 parent(parent)
         {};
 
-        NodeVec get_parents() {
+        NodeVec get_parents() const{
             return {parent};
         };
 
-        ad_value_type get_value_type(){
+        ad_value_type get_value_type() const{
             return parent.unwrap()->v_type;
         };
 
-        ad_node_type get_node_type(){
+        ad_node_type get_node_type() const{
             if(parent.unwrap()->type == INPUT
                or parent.unwrap()->type == SHARED_INPUT
                or parent.unwrap()->type == INPUT_DERIVED){
@@ -221,16 +230,24 @@ namespace metadiff {
             }
         };
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return parent.unwrap()->shape;
         }
 
-        size_t get_gradient_level(){
+        size_t get_gradient_level() const{
             return parent.unwrap()->grad_level;
         };
 
-        NodeVec get_arguments() {
+        NodeVec get_arguments() const{
             return NodeVec {};
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<UnaryOperator> cast_op = std::static_pointer_cast<UnaryOperator>(op);
+                return symbolic_equals(parent, cast_op->parent);
+            }
+            return false;
         }
     };
 
@@ -290,19 +307,24 @@ namespace metadiff {
     class Alias : public UnaryOperator{
     public:
         Alias(GraphInPtr graph, Node parent):
-        UnaryOperator("Alias", graph, parent) {};
+                UnaryOperator("Alias", graph, parent) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Alias>(graph, ancestors[0]);
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
         }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            std::shared_ptr<Operator> my_op = get_base_op(parent.unwrap()->op);
+            return my_op->equals(op) or op->equals(my_op);
+        }
     };
 
     Node Node::alias() {
-        return apply<Alias>(this);
+        return apply<Alias>(unwrap());
     }
 
     Node alias(Node node){
@@ -324,15 +346,15 @@ namespace metadiff {
             }
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Broadcast>(graph, ancestors[0], to_shape);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             return to_shape;
         }
 
-        std::vector<size_t> get_broadcast_axes(){
+        std::vector<size_t> get_broadcast_axes() const{
             std::vector<size_t> axes;
             auto p1_shape = this->parent.unwrap()->shape;
             for(size_t i=0;i<4;i++){
@@ -346,6 +368,14 @@ namespace metadiff {
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad.sum(get_broadcast_axes());
         }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<Broadcast> cast_op = std::static_pointer_cast<Broadcast>(op);
+                return symbolic_equals(parent, cast_op->parent) and to_shape == cast_op->to_shape;
+            }
+            return false;
+        }
     };
 
     Node Node::broadcast(Shape shape) {
@@ -353,7 +383,7 @@ namespace metadiff {
         return ptr->graph->derived_node(std::make_shared<Broadcast>(ptr->graph, this, shape));
     }
 
-    
+
     class Sum : public UnaryOperator {
     public:
         std::vector<size_t> axes;
@@ -379,11 +409,11 @@ namespace metadiff {
             }
         }
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Sum>(graph, ancestors[0], axes);
         }
 
-        Shape get_shape(){
+        Shape get_shape() const{
             Shape p_shape = parent.unwrap()->shape;
             for(int i=0;i<axes.size();i++){
                 p_shape[axes[i]] = 1;
@@ -393,6 +423,14 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad.broadcast(parent.unwrap()->shape);
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<Sum> cast_op = std::static_pointer_cast<Sum>(op);
+                return symbolic_equals(parent, cast_op->parent) and axes == cast_op->axes;
+            }
+            return false;
         }
 
     };
@@ -412,16 +450,44 @@ namespace metadiff {
                 Add(graph, {parent1, parent2})
         {}
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Add>(graph, ancestors);
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
             return my_grad;
         }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name) {
+                bool check[parents.size()];
+                for(int i=0;i<parents.size();i++){
+                    check[i] = false;
+                }
+                if (parents.size() != op->get_parents().size()) {
+                    return false;
+                }
+                for (int i = 0; i < parents.size(); i++) {
+                    Node parent = op->get_parents()[i];
+                    int j = 0;
+                    for (; j < parents.size(); j++) {
+                        if (symbolic_equals(parent, parents[j]) and not check[j]) {
+                            check[j] = true;
+                            break;
+                        }
+                    }
+                    if (j == parents.size()) {
+                        return false;
+                    }
+                }
+            }
+            return false;
+        }
     };
 
     Node add(NodeVec nodes){
+        // TODO a + (-a) = 0
+        // TODO a * b + c * b = (a + c) * b ???
         std::vector<size_t> neg_indexes;
         for(size_t i=0;i<nodes.size();i++){
             if(nodes[i].unwrap()->op->name == "Neg"){
@@ -453,7 +519,7 @@ namespace metadiff {
     };
 
     void Operator::send_grad_message(size_t target, Node msg,
-                                     std::vector<Node>& messages){
+                                     std::vector<Node>& messages)  const{
         if (not messages[target].empty()) {
             // If not first message add them and then send the sum
             messages[target] = add(messages[target], msg);
@@ -469,7 +535,7 @@ namespace metadiff {
                 UnaryOperator("Neg", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Neg>(graph, ancestors[0]);
         }
 
@@ -479,7 +545,8 @@ namespace metadiff {
     };
 
     Node Node::neg(){
-        return apply<Neg>(this);
+        // TODO x.neg().neg() = x
+        return apply<Neg>(unwrap());
     }
 
     Node operator-(Node node){
@@ -500,7 +567,7 @@ namespace metadiff {
                 ElementwiseNary("Mul", graph, {p1, p2})
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Mul>(graph, ancestors);
         }
 
@@ -523,9 +590,38 @@ namespace metadiff {
                 return apply<Mul>(product, parents[index].div());
             }
         }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name) {
+                bool check[parents.size()];
+                for(int i=0;i<parents.size();i++){
+                    check[i] = false;
+                }
+                if (parents.size() != op->get_parents().size()) {
+                    return false;
+                }
+                for (int i = 0; i < parents.size(); i++) {
+                    Node parent = op->get_parents()[i];
+                    int j = 0;
+                    for (; j < parents.size(); j++) {
+                        if (symbolic_equals(parent, parents[j]) and not check[j]) {
+                            check[j] = true;
+                            break;
+                        }
+                    }
+                    if (j == parents.size()) {
+                        return false;
+                    }
+                }
+            }
+            return false;
+        }
     };
 
     Node mul(NodeVec nodes){
+        // TODO e^x * e^y = e^(x+y)
+        // TODO x * x = x.square()
+        // TODO x * (y / x) = y
         // Reorder so that Div operators are always at the end
         std::vector<size_t> div_indexes;
         for(size_t i=0;i<nodes.size();i++){
@@ -564,7 +660,7 @@ namespace metadiff {
                 UnaryOperator("Div", graph, parent)
         {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Div>(graph, ancestors[0]);
         }
 
@@ -574,7 +670,8 @@ namespace metadiff {
     };
 
     Node Node::div() {
-        return apply<Div>(this);
+        // TODO x.div().div() = x
+        return apply<Div>(unwrap());
     }
 
     Node div(Node node1, Node node2){
@@ -588,10 +685,9 @@ namespace metadiff {
     class Square : public UnaryOperator {
     public:
         Square(GraphInPtr graph, Node parent) :
-                UnaryOperator("Square", graph, parent)
-        {};
+                UnaryOperator("Square", graph, parent) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors){
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Square>(graph, ancestors[0]);
         }
 
@@ -603,7 +699,7 @@ namespace metadiff {
     };
 
     Node Node::square(){
-        return apply<Square>(this);
+        return apply<Square>(unwrap());
     }
 
     Node square(Node node){
