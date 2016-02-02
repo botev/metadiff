@@ -162,7 +162,7 @@ namespace metadiff{
 
             // Update all of the shared_variables
             f << "\n\t// Update all shared variables\n";
-            std::cout << "U" << graph->updates.size() << std::endl;
+            std::cout << "U" << graph->updates.size() << " " << updates.size() << std::endl;
             for(int i=0;i<graph->updates.size(); i++){
                 print_update_node(f, graph->updates[i], expression_table);
             }
@@ -195,8 +195,8 @@ namespace metadiff{
 //            f << "\tstd::cout << \"Updating node \" << " << node.unwrap()->id << " << std::endl;\n";
             size_t shared_id = graph_update.first.unwrap()->shared->id;
             Node update =  graph_update.second;
-            std::cout << update.unwrap()->id << update.unwrap()->op->name <<
-                    update.unwrap()->execution.inlined << " " << shared_id << std::endl;
+//            std::cout << update.unwrap()->id << update.unwrap()->op->name <<
+//                    update.unwrap()->execution.inlined << " " << shared_id << std::endl;
 
             if(update.unwrap()->execution.inlined){
                 if(update.unwrap()->op->name == "Mul"){
@@ -248,13 +248,13 @@ namespace metadiff{
                         f << ";\n";
                     }
                 } else if(update.unwrap()->op->name == "Add"){
-                    std::cout << "DA" << std::endl;
+//                    std::cout << "DA" << std::endl;
                     NodeVec parents = update.unwrap()->op->get_parents();
                     int index = -1;
                     bool all_neg = true;
                     for(int j=0;j<parents.size();j++){
                         if(parents[j].unwrap()->type == SHARED_INPUT){
-                            std::cout << parents[j].unwrap()->type << parents[j].unwrap()->shared->id << std::endl;
+//                            std::cout << parents[j].unwrap()->type << parents[j].unwrap()->shared->id << std::endl;
                             if(parents[j].unwrap()->shared->id == shared_id){
                                 index = j;
                             } else {
@@ -264,12 +264,12 @@ namespace metadiff{
                             all_neg = false;
                         }
                     }
-                    std::cout << index << std::endl;
+//                    std::cout << index << std::endl;
                     if(index == -1){
-                        std::cout << -1 << std::endl;
+//                        std::cout << -1 << std::endl;
                         f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] << ";\n";
                     } else if (all_neg){
-                        std::cout << "all neg" << std::endl;
+//                        std::cout << "all neg" << std::endl;
                         f << "\tshared_vars[" << shared_id << "]->value -= ";
                         bool first = true;
                         for (int j = 0; j < parents.size(); j++) {
@@ -284,7 +284,7 @@ namespace metadiff{
                         }
                         f << ";\n";
                     } else {
-                        std::cout << "HERE" << std::endl;
+//                        std::cout << "HERE" << std::endl;
                         f << "\tshared_vars[" << shared_id << "]->value += ";
                         bool first = true;
                         for (int j = 0; j < parents.size(); j++) {

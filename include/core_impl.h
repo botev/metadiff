@@ -421,6 +421,7 @@ namespace metadiff{
             marked[i + targets.size()] = this->updates[i].second;
         }
         NodeVec mapping = this->copy(copy.get(), get_ancestors_mask(marked));
+        copy->updates.clear();
         clear_temporary_updates();
         // Optimize
         for(size_t i=0;i<copy->nodes.size();i++){
