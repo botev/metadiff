@@ -53,6 +53,7 @@ namespace metadiff{
                              std::vector<Node> inputs,
                              std::vector<Node> targets,
                              Updates& updates) {
+//            std::cout << "Generate" << std::endl;
             std::ofstream f;
             f.open(file_name);
             std::string tabs = "";
@@ -89,8 +90,17 @@ namespace metadiff{
             f << "\t// Set up automatic broadcasting\n";
             f << "\taf::gforSet(true);\n";
             // Get ancestors mask
+//            std::cout << "0" <<std::endl;
             graph->add_temporary_updates(updates);
-            auto ancestor_mask = graph->get_ancestors_mask(targets);
+            NodeVec marked(graph->updates.size() + targets.size());
+            for(size_t i=0;i<targets.size();i++){
+                marked[i] = targets[i];
+            }
+            for(size_t i=0;i<graph->updates.size(); i++){
+                marked[targets.size() + i] = graph->updates[i].second;
+            }
+//            std::cout << "1" <<std::endl;
+            auto ancestor_mask = graph->get_ancestors_mask(marked);
             // Check that all inputs required are given
             for(int i=0;i<ancestor_mask.size();i++){
                 if(ancestor_mask[i] and graph->nodes[i]->type == INPUT){
@@ -104,7 +114,7 @@ namespace metadiff{
                     }
                 }
             }
-
+//            std::cout << "1" <<std::endl;
             std::vector<std::string> expression_table(graph->nodes.size(), "WTF");
 
             // Expressions for all inputs
@@ -120,7 +130,7 @@ namespace metadiff{
                     ancestor_mask[i] = false;
                 }
             }
-
+//            std::cout << "2" <<std::endl;
 //            // Calculate all of the symbolic integers
 //            calculate_symbolics(f, graph, inputs);
 //            // Validate input shapes
@@ -135,6 +145,7 @@ namespace metadiff{
                         expression_table[i] = expression;
                     } else {
 //                        f << "\tstd::cout << \"Evaluating: \" << " << i << " << std::endl;\n";
+//                        std::cout << "Node: " << i << std::endl;
                         if(graph->nodes[i]->type == CONSTANT and Node(graph->nodes[i]).is_scalar()){
                             f << "\tfloat ";
                         }
@@ -148,19 +159,23 @@ namespace metadiff{
             }
 
             // Disable the automatic broadcasting
-            f << "\taf::gforSet(false);";
 
             // Update all of the shared_variables
             f << "\n\t// Update all shared variables\n";
-            for(int i=0;i<graph->nodes.size();i++){
-                if(graph->nodes[i]->type == UPDATE){
-//                    auto shared_id = graph->nodes[i]->op->get_arguments()[0].unwrap()->shared->id;
-//                    auto update_id = graph->nodes[i]->op->get_parents()[0].unwrap()->id;
-//                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update_id] << ";\n";
-                    print_update_node(f, graph->nodes[i], expression_table);
-                }
+            std::cout << "U" << graph->updates.size() << std::endl;
+            for(int i=0;i<graph->updates.size(); i++){
+                print_update_node(f, graph->updates[i], expression_table);
             }
+//            for(int i=0;i<graph->nodes.size();i++){
+//                if(graph->nodes[i]->type == UPDATE){
+////                    auto shared_id = graph->nodes[i]->op->get_arguments()[0].unwrap()->shared->id;
+////                    auto update_id = graph->nodes[i]->op->get_parents()[0].unwrap()->id;
+////                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update_id] << ";\n";
+//                    print_update_node(f, graph->nodes[i], expression_table);
+//                }
+//            }
             graph->clear_temporary_updates();
+            f << "\taf::gforSet(false);";
             // Write all of the output nodes as the result
             f << "\n\t// Write all of the output nodes in correct order\n";
             f << "\treturn {";
@@ -175,12 +190,15 @@ namespace metadiff{
             f.close();
         }
 
-        void print_update_node(std::ofstream& f, Node node, std::vector<std::string>& expression_table){
+        void print_update_node(std::ofstream& f, std::pair<Node,Node> graph_update,
+                               std::vector<std::string>& expression_table){
 //            f << "\tstd::cout << \"Updating node \" << " << node.unwrap()->id << " << std::endl;\n";
-            size_t shared_id = node.unwrap()->op->get_arguments()[0].unwrap()->shared->id;
-            Node update =  node.unwrap()->op->get_parents()[0];
+            size_t shared_id = graph_update.first.unwrap()->shared->id;
+            Node update =  graph_update.second;
+            std::cout << update.unwrap()->id << update.unwrap()->op->name <<
+                    update.unwrap()->execution.inlined << " " << shared_id << std::endl;
 
-            if(node.unwrap()->op->get_parents()[0].unwrap()->execution.inlined){
+            if(update.unwrap()->execution.inlined){
                 if(update.unwrap()->op->name == "Mul"){
                     NodeVec parents = update.unwrap()->op->get_parents();
                     int index = -1;
@@ -230,11 +248,13 @@ namespace metadiff{
                         f << ";\n";
                     }
                 } else if(update.unwrap()->op->name == "Add"){
+                    std::cout << "DA" << std::endl;
                     NodeVec parents = update.unwrap()->op->get_parents();
                     int index = -1;
                     bool all_neg = true;
                     for(int j=0;j<parents.size();j++){
                         if(parents[j].unwrap()->type == SHARED_INPUT){
+                            std::cout << parents[j].unwrap()->type << parents[j].unwrap()->shared->id << std::endl;
                             if(parents[j].unwrap()->shared->id == shared_id){
                                 index = j;
                             } else {
@@ -244,9 +264,12 @@ namespace metadiff{
                             all_neg = false;
                         }
                     }
+                    std::cout << index << std::endl;
                     if(index == -1){
+                        std::cout << -1 << std::endl;
                         f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] << ";\n";
                     } else if (all_neg){
+                        std::cout << "all neg" << std::endl;
                         f << "\tshared_vars[" << shared_id << "]->value -= ";
                         bool first = true;
                         for (int j = 0; j < parents.size(); j++) {
@@ -261,6 +284,7 @@ namespace metadiff{
                         }
                         f << ";\n";
                     } else {
+                        std::cout << "HERE" << std::endl;
                         f << "\tshared_vars[" << shared_id << "]->value += ";
                         bool first = true;
                         for (int j = 0; j < parents.size(); j++) {
@@ -345,7 +369,7 @@ namespace metadiff{
             auto parents = node->op->get_parents();
             auto args = node->op->get_arguments();
             auto children = node->children;
-            if(node->type == UPDATE or node->type == INPUT) {
+            if(node->type == INPUT) {
                 throw 22;
             }
             if(node->type == CONSTANT and
@@ -491,10 +515,6 @@ namespace metadiff{
             if (op_name == "Exp") {
                 return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
             }
-//            if (op_name == "Softplus") {
-//                size_t threshold = dynamic_cast<Softplus*>(node->op.get())->threshold;
-//                return "softplus(" + expression_table[parents[0].unwrap()->id] + ", " + std::to_string(threshold) + ")";
-//            }
             if(op_name == "Log1p") {
                 return "af::log1p(" + expression_table[parents[0].unwrap()->id] + ")";
             }

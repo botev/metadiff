@@ -7,15 +7,6 @@
 
 namespace metadiff {
     namespace dagre {
-        bool exists_in(Node node, std::vector<Node>& nodes){
-            for(int i=0;i<nodes.size();i++){
-                if(nodes[i].unwrap() == node.unwrap()){
-                    return true;
-                }
-            }
-            return false;
-        }
-
         std::string node_name_html(Node node) {
             if(node.unwrap()->type == ad_node_type::SYMBOLIC_INTEGER){
                 return "SYMINT[" + std::to_string(node.unwrap()->id) + "]";
@@ -47,26 +38,34 @@ namespace metadiff {
                 return node.unwrap()->name +  "[" + std::to_string(node.unwrap()->id) + "]";
             } else if (node.unwrap()->type == ad_node_type::SHARED_INPUT) {
                 return node.unwrap()->name + "[" + std::to_string(node.unwrap()->id) + "]";
-            } else if (node.unwrap()->type == ad_node_type::UPDATE) {
-                return "Update[" + std::to_string(node.unwrap()->id) + "]";
+//            } else if (node.unwrap()->type == ad_node_type::UPDATE) {
+//                return "Update[" + std::to_string(node.unwrap()->id) + "]";
             } else {
                 return node.unwrap()->op->name + "[" + std::to_string(node.unwrap()->id) + "]";
             }
         }
 
         std::string node_color_html(Node node, std::vector<Node> targets) {
-            if (exists_in(node, targets)) {
-                return "#ff0000";
-            } else {
-                switch(node.unwrap()->type){
-                    case INPUT: return "#00ff00";
-                    case SHARED_INPUT:  return "#006400";
-                    case INPUT_DERIVED: return "#0000ff";
-                    case CONSTANT: return "#ffff00";
-                    case CONSTANT_DERIVED: return "#ffa500";
-                    case UPDATE: return "#FF1493";
-                    default: return "#800080";
+            // Check if it is a target
+            for(int i=0;i<targets.size();i++){
+                if(targets[i].unwrap() == node.unwrap()){
+                    return "#ff0000";
                 }
+            }
+            // Check if it is an update
+            Updates updates = node.unwrap()->graph->updates;
+            for(size_t i=0;i<updates.size(); i++){
+                if(node.unwrap() == updates[i].second.unwrap()){
+                    return "#FF1493";
+                }
+            }
+            switch(node.unwrap()->type){
+                case INPUT: return "#00ff00";
+                case SHARED_INPUT:  return "#006400";
+                case INPUT_DERIVED: return "#0000ff";
+                case CONSTANT: return "#ffff00";
+                case CONSTANT_DERIVED: return "#ffa500";
+                default: return "#800080";
             }
         }
 
@@ -125,8 +124,8 @@ namespace metadiff {
 
         void dagre_to_file(std::string file_name, Graph graph,
                            std::vector<Node> targets,
-                           const Updates& updates) {
-            graph->add_temporary_updates(updates);
+                           Updates& nupdates) {
+            graph->add_temporary_updates(nupdates);
 
             size_t max_grad_level = 0;
             for (size_t i = 0; i < targets.size(); i++) {
@@ -139,6 +138,12 @@ namespace metadiff {
             for (int i = 0; i < graph->nodes.size(); i++) {
                 node_to_html(graph->nodes[i], targets, nodes);
                 edges_to_html(graph->nodes[i], edges);
+            }
+            for (size_t i=0; i<nupdates.size(); i++){
+                std::pair<Node, Node> update = nupdates[i];
+                edges.push_back(
+                        "g.setEdge({v:'" + node_name_html(update.second) + "', w:'" +
+                                node_name_html(update.first) + "', name:'Update'}, {label: \"Update\"});");
             }
             std::ofstream f;
             f.open(file_name);

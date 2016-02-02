@@ -18,12 +18,12 @@ namespace metadiff{
         Diagonal(GraphInPtr graph, Node parent):
                 UnaryOperator("Diag", graph, parent){
             if(not parent.is_matrix()){
-                throw InvalidArguments(name, {parent}, "Parent is not a vector or a sqyare matrix.");
+                throw InvalidArguments(name, {parent}, "Parent is not a matrix.");
             }
             if(parent.is_vector()){
                 shape = {parent.unwrap()->shape[0], parent.unwrap()->shape[0], 1, 1};
             } else if(parent.unwrap()->shape[0] != parent.unwrap()->shape[1]){
-                throw InvalidArguments(name, {parent}, "Parent is not a vector or a sqyare matrix.");
+                throw InvalidArguments(name, {parent}, "Parent is not a matrix, but not square.");
             } else {
                 shape = {parent.unwrap()->shape[0], 1, 1, 1};
             }
@@ -62,7 +62,7 @@ namespace metadiff{
             if(product_parent != product_shape){
                 std::string shape_str;
                 throw InvalidArguments(name, {parent.unwrap()->id}, {parent.unwrap()->shape, this->shape},
-                                       "Operator 'Reshape' must not change the total number of elements");
+                                       "Total number of elements must not change.");
             }
         };
 
@@ -123,11 +123,11 @@ namespace metadiff{
             for(int i=0;i<4;i++){
                 if(order[i] > 4){
                     throw InvalidArguments(name, {this->parent},
-                                           "The ordering for 'Reorder' must contain elements in the range [0,3]");
+                                           "The ordering must contain elements in the range [0,3]");
                 }
                 if(check[order[i]]){
                     throw InvalidArguments(name, {this->parent},
-                                           "The ordering for 'Reorder' must not have repeating elements");
+                                           "The ordering must not have repeating elements");
                 }
             }
         };

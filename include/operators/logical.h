@@ -29,7 +29,7 @@ namespace metadiff {
         };
 
         Node get_parent_grad(Node my_grad, size_t index){
-            return my_grad;
+            throw WrongGradient(name, {parent1, parent2});
         }
     };
 
@@ -54,7 +54,7 @@ namespace metadiff {
         };
 
         Node get_parent_grad(Node my_grad, size_t index){
-            return my_grad;
+            throw WrongGradient(name, {parent});
         }
     };
 
@@ -268,7 +268,7 @@ namespace metadiff {
                 LogicalBinary("And", graph, parent1, parent2)
         {
             if(parent1.unwrap()->v_type != BOOLEAN or parent2.unwrap()->v_type != BOOLEAN){
-                throw UnknownError({parent1, parent2}, "Operator 'And' accepts only BOOLEAN inputs");
+                throw InvalidArguments(name, {parent1, parent2}, "Operator 'And' accepts only BOOLEAN parents");
             }
         };
 
@@ -297,7 +297,7 @@ namespace metadiff {
                 LogicalBinary("Or", graph, parent1, parent2)
         {
             if(parent1.unwrap()->v_type != BOOLEAN or parent2.unwrap()->v_type != BOOLEAN){
-                throw UnknownError({parent1, parent2}, "Operator 'Or' accepts only BOOLEAN inputs");
+                throw InvalidArguments(name, {parent1, parent2}, "Operator 'Or' accepts only BOOLEAN parents");
             }
         };
 
@@ -428,7 +428,7 @@ namespace metadiff {
             return std::make_shared<Select>(graph, ancestors[2], ancestors[0], ancestors[1]);
         }
 
-        NodeVec get_arguments() {
+        NodeVec get_arguments() const {
             return NodeVec {condition};
         }
 

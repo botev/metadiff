@@ -25,5 +25,5 @@ link_libraries(dl)
 link_libraries(curl)
 
 add_subdirectory(tests)
-add_executable(mnist_hinton.o examples/mnist_hinton.cpp examples/mnist.h)
+add_executable(mnist_hinton.o examples/mnist_hinton.cpp examples/mnist.h include/exceptions.h)
 #add_executable(test.o examples/tt.cpp)

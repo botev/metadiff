@@ -158,7 +158,7 @@ namespace metadiff{
         {
             Shape parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
-                throw UnknownError({parent}, "Operator 'MatrixInverse' takes only squared matrices");
+                throw InvalidArguments(name, {parent}, "Parent must be a square matrix.");
             }
         }
 
@@ -188,10 +188,10 @@ namespace metadiff{
         {
             auto parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
-                throw UnknownError({parent}, "Operator 'Determinant' takes only squared matrices");
+                throw InvalidArguments(name, {parent}, "Parent must be a square matrix.");
             }
             if(parent.unwrap()->v_type == BOOLEAN){
-                throw UnknownError({parent}, "Operator 'Determinant' is not applicable for node of type BOOLEAN");
+                throw InvalidArguments(name, {parent}, "Parent can not be a BOOLEAN");
             }
         }
 
@@ -224,10 +224,10 @@ namespace metadiff{
         {
             auto parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
-                throw UnknownError({parent}, "Operator 'Determinant' takes only squared matrices");
+                throw InvalidArguments(name, {parent}, "Parent must be a square matrix.");
             }
             if(parent.unwrap()->v_type == BOOLEAN){
-                throw UnknownError({parent}, "Operator 'Determinant' is not applicable for node of type BOOLEAN");
+                throw InvalidArguments(name, {parent}, "Parent can not be a BOOLEAN");
             }
         }
 
@@ -260,7 +260,7 @@ namespace metadiff{
         {
             auto parent_shape = parent.unwrap()->shape;
             if(parent_shape[0] != parent_shape[1] or parent_shape[2] != 1 or parent_shape[2] !=1){
-                throw UnknownError({parent}, "Operator 'Trace' takes only squared matrices");
+                throw InvalidArguments(name, {parent}, "Parent must be a square matrix.");
             }
         }
 

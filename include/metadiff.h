@@ -17,6 +17,7 @@
 #include "interface.h"
 //#include "test.h"
 #include "core.h"
+#include "exceptions.h"
 #include "core_impl.h"
 #include "operators.h"
 #include "visual.h"

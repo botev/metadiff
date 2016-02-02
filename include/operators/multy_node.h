@@ -50,8 +50,7 @@ namespace metadiff{
         {
             std::shared_ptr<MultiNode> multi_op = std::dynamic_pointer_cast<MultiNode>(parent.unwrap()->op);
             if(not multi_op){
-                throw UnknownError({parent}, "The operator 'MultiNodeIndex' can be applied only to nodes, "
-                        "whose operators are subclasses of 'MultiNode'");
+                throw InvalidArguments(name, {parent}, "Parent must be a result of an operator of type 'MultiNode'.");
             }
             if(index >= multi_op->results_shapes.size()){
                 throw InvalidArguments(name, {parent}, "Provided index is too big: " + std::to_string(index));
@@ -121,15 +120,13 @@ namespace metadiff{
                 if(axes.size() == 0){
                     axes_str = "NULL";
                 }
-                throw InvalidArguments(name, {parent}, axes_str);
+                throw InvalidArguments(name, {parent}, "Invalid axes: " + axes_str);
             }
             if(parent.unwrap()->v_type == BOOLEAN){
-                throw InvalidArguments(name, {parent}, "Operator 'MaxAndArgMax' can not be "
-                        "applied to a BOOLEAN node");
+                throw InvalidArguments(name, {parent}, "Parent can not be of type BOOLEAN");
             }
             if(parent.unwrap()->type == SYMBOLIC_INTEGER){
-                throw InvalidArguments(name, {parent}, "Operator 'MaxAndArgMax' can not be "
-                        "applied to a SYMBOLIC_INTEGER node");
+                throw InvalidArguments(name, {parent}, "Parent can not be of type SYMBOLIC_INTEGER");
             }
             Shape shape = parent.unwrap()->shape;
             for(int i=0;i<axes.size();i++){
@@ -175,15 +172,13 @@ namespace metadiff{
                 if(axes.size() == 0){
                     axes_str = "NULL";
                 }
-                throw InvalidArguments(name, {parent}, axes_str);
+                throw InvalidArguments(name, {parent}, "Invalid axes: " + axes_str);
             }
             if(parent.unwrap()->v_type == BOOLEAN){
-                throw InvalidArguments(name, {parent}, "Operator 'SortAndArgSort' can not be "
-                        "applied to a BOOLEAN node");
+                throw InvalidArguments(name, {parent}, "Parent can not be of type BOOLEAN");
             }
             if(parent.unwrap()->type == SYMBOLIC_INTEGER){
-                throw InvalidArguments(name, {parent}, "Operator 'SortAndArgSort' can not be "
-                        "applied to a SYMBOLIC_INTEGER node");
+                throw InvalidArguments(name, {parent}, "Parent can not be of type SYMBOLIC_INTEGER");
             }
             Shape shape = parent.unwrap()->shape;
             this->results_shapes = {shape, shape};

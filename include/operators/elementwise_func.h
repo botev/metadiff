@@ -22,7 +22,11 @@ namespace metadiff {
     };
 
     Node Node::exp() {
-        return apply<Exp>(this);
+        std::cout << this->unwrap()->op->name << std::endl;
+        auto real_op = get_base_op(this->unwrap()->op);
+        std::cout << real_op->name << std::endl;
+        std::cout << real_op->owner.unwrap()->id << std::endl;
+        return apply<Exp>(real_op->owner);
     }
 
     Node exp(Node node){
@@ -317,7 +321,6 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
-            one.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             Node square = owner.square();
             return mul(my_grad, add(one, square.neg()));
         }
@@ -343,7 +346,6 @@ namespace metadiff {
 
         Node get_parent_grad(Node my_grad, size_t index){
             Node one = graph->constant_value(1.0);
-            one.unwrap()->grad_level = my_grad.unwrap()->grad_level;
             Node square = owner.square();
             return mul(my_grad, add(one, square.neg()));
         }

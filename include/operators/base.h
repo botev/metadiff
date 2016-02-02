@@ -62,7 +62,7 @@ namespace metadiff {
                 parents(parents)
         {
             if(parents.size() < 2){
-                throw InvalidArguments(name, parents, "Need atleast 2 parents");
+                throw InvalidArguments(name, parents, "All NaryOperators require at least 2 parents");
             }
         };
 
@@ -182,12 +182,9 @@ namespace metadiff {
             return NodeVec {};
         }
 
-        void throw_grad_type_error() const{
-            throw UnknownError({parent1, parent2},
-                               "Gradient message present, but parents are " +
-                               to_string(parent1.unwrap()->type) + ", " +
-                               to_string(parent2.unwrap()->type));
-        }
+//        void throw_grad_type_error() const{
+//            throw WrongGradient::(name, {parent1, parent2});
+//        }
 
         bool equals(const std::shared_ptr<Operator> op) const{
             if(name == op->name){
@@ -266,8 +263,8 @@ namespace metadiff {
                     throw ImplicitBroadcast(name, parents);
                 } else{
                     if(graph->broadcast == ad_implicit_broadcast::WARN){
-                        auto msg = ImplicitBroadcast(name, parents);
-                        std::cout << "WARNING:" << msg.get_message() << std::endl;
+                        ImplicitBroadcast msg = ImplicitBroadcast(name, parents);
+                        std::cerr << "WARNING:" << msg.msg << std::endl;
                     }
                     this->parents.push_back(parents[i].broadcast(shape));
                 }
@@ -291,8 +288,8 @@ namespace metadiff {
                     throw ImplicitBroadcast(name, parents);
                 } else{
                     if(graph->broadcast == ad_implicit_broadcast::WARN){
-                        auto msg = ImplicitBroadcast(name, parents);
-                        std::cout << "WARNING:" << msg.get_message() << std::endl;
+                        ImplicitBroadcast msg = ImplicitBroadcast(name, parents);
+                        std::cout << "WARNING:" << msg.msg << std::endl;
                     }
                     if(i == 0){
                         this->parent1 = parent1.broadcast(shape);
@@ -405,7 +402,7 @@ namespace metadiff {
                 if(axes.size() == 0){
                     axes_str = "NULL";
                 }
-                throw InvalidArguments(name, {parent}, axes_str);
+                throw InvalidArguments(name, {parent}, "Invalid axes: " +  axes_str);
             }
         }
 
