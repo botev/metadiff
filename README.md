@@ -46,6 +46,7 @@ The framework is still in early development and there are number of things that 
 * [ ] Reuse some better visualization html library
 * [ ] Implement all of the operators in the `ArrayfireBackend`
 * [ ] Benchmark on several standard problems
+* [ ] Add Travis integration
 * [ ] Proper documentation
 
 ## Long term goals
