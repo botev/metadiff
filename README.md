@@ -20,11 +20,11 @@ The main distinctive features of Metadiff are:
 3. Source code generation is done via a separate Backend class which traverses the optimized graph. This allows
 very easily to implement different backends and reuse the whole graph framework.
 
-**4.** A main improvement for development perspective is including full size information on graph nodes. This is achieved by modelling
+4. A main improvement for development perspective is including full size information on graph nodes. This is achieved by modelling
 the sizes of variables by a Polynomials over the integers. The consequences of this is that any size mistake done will be
 detected at compile time(of the graph) rather than run time, significantly reducing development time.
 
-**5.** Because of point 4, all errors related to any operation can be thrown at compile time(of the graph). This means that
+5. Because of point 4, all errors related to any operation can be thrown at compile time(of the graph). This means that
 we can design a lot more meaningful errors to be thrown and inform the practitioner for what was the mistake, since it happens
 before any optimization has occurred.
 
