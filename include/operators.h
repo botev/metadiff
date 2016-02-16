@@ -12,6 +12,7 @@
 #include "operators/elementwise_func.h"
 #include "operators/shape.h"
 #include "operators/lin_algebra.h"
+#include "operators/index.h"
 #include "operators/multy_node.h"
 #include "operators/optimized.h"
 

@@ -23,6 +23,7 @@
 
 namespace metadiff {
     const size_t N = 100;
+    const size_t AUTOINFER_AXIS = 1000;
 
     typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
     typedef std::array<SymInt,4> Shape;
@@ -31,117 +32,117 @@ namespace metadiff {
         /**
          * The node is just a SymInt, which interacts with other nodes in an operator
          */
-        SYMBOLIC_INTEGER,
+                SYMBOLIC_INTEGER,
         /**
          * The node is a constant
          */
-        CONSTANT,
+                CONSTANT,
         /**
          * The node is derived from a constant, trough some operator manipulations
          */
-        CONSTANT_DERIVED,
+                CONSTANT_DERIVED,
         /**
          * The node is an input
          */
-        INPUT,
+                INPUT,
         /**
          * The node is a shared variable
          */
-        SHARED_INPUT,
+                SHARED_INPUT,
         /**
          * The node is derived from at least one input
          */
-        INPUT_DERIVED
+                INPUT_DERIVED
     };
 
     enum ad_value_type{
         /**
          * Represents floating point values, inrespectable of precision
          */
-        FLOAT,
+                FLOAT,
         /**
          * Represents integer values, inrespectable of precision
          */
-        INTEGER,
+                INTEGER,
         /**
          * Represents boolean values
          */
-        BOOLEAN
+                BOOLEAN
     };
 
     enum ad_device_type {
         /**
          * The device is one or more CPUs
          */
-        CPU,
+                CPU,
         /**
          * The device is a single GPU
          */
-        GPU
+                GPU
     };
 
     enum ad_implicit_broadcast {
         /**
          * If any node performs an implicit broadcast an exception is thrown
          */
-        RAISE,
+                RAISE,
         /**
          * If any node performs an implicit broadcast a warning is printed to the standard output
          */
-        WARN,
+                WARN,
         /**
          * If any node performs an implicit broadcast there is no notification
          */
-        QUIET
+                QUIET
     };
 
     enum ad_float_type {
         /**
          * 16 bit floating point number
          */
-        f16,
+                f16,
         /**
          * 32 bit floating point number
          */
-        f32,
+                f32,
         /**
          * 64 bit floating point number
          */
-        f64,
+                f64,
     };
     enum ad_integer_type {
         /**
          * Signed 8 bit integer
          */
-        s8,
+                s8,
         /**
          * Unsigned 8 bit integer
          */
-        u8,
+                u8,
         /**
         * Signed 16 bit integer
         */
-        s16,
+                s16,
         /**
          * Unsigned 16 bit integer
          */
-        u16,
+                u16,
         /**
         * Signed 32 bit integer
         */
-        s32,
+                s32,
         /**
          * Unsigned 32 bit integer
          */
-        u32,
+                u32,
         /**
         * Signed 64 bit integer
         */
-        s64,
+                s64,
         /**
          * Unsigned 64 bit integer
          */
-        u64
+                u64
     };
 
     /**
@@ -181,6 +182,11 @@ namespace metadiff {
          */
         bool inlined;
         /**
+         * Whether the node should be operated in place
+         * This is possible only when some of the operands lifespan expires
+         */
+        bool inplace;
+        /**
          * The graph optimizer register allocation
          */
         size_t register_id;
@@ -191,6 +197,7 @@ namespace metadiff {
         size_t lifespan;
         ExecutionData():
                 inlined(false),
+                inplace(false),
                 register_id(0),
                 lifespan(0) {};
 
@@ -200,9 +207,39 @@ namespace metadiff {
                 lifespan(data.lifespan) {};
     };
 
+    /**
+     * The class represents a group of nodes and other groups together.
+     * The hierarchy is a DAG as well starting with a single root group.
+     * The main goal of the groups is to provide a better way of visualizing the computation network
+     */
+    class NodeGroup{
+    public:
+        static const char delimiter = '/';
+        const std::string name;
+        const std::weak_ptr<NodeGroup> parent;
+        std::vector<std::weak_ptr<NodeGroup>> children;
+        NodeGroup():
+                name("_root"){};
+
+        NodeGroup(std::string name, std::weak_ptr<NodeGroup> parent):
+                name(name),
+                parent(parent) {};
+
+        std::string get_full_name() const{
+            std::string full_name = name;
+            NodeGroup* node = parent.lock().get();
+            while(node->name != "_root"){
+                full_name = node->name + delimiter + full_name;
+                node = node->parent.lock().get();
+            }
+            return full_name;
+        }
+    };
+
     class GraphInternal;
     typedef GraphInternal* GraphInPtr;
     typedef std::shared_ptr<GraphInternal> Graph;
+    typedef std::weak_ptr<NodeGroup> Group;
     class NodeInternal;
 
     /**
@@ -313,6 +350,9 @@ namespace metadiff {
         Node flatten(size_t ndim = 1);
         Node reorder(std::array<size_t, 4> order);
         Node reorder(size_t dim0, size_t dim1, size_t dim2=2, size_t dim3=3);
+
+        Node slice(Node index, size_t axis = 0);
+        Node index(Node index, size_t axis = AUTOINFER_AXIS);
     };
     typedef std::vector<Node> NodeVec;
     typedef std::vector<std::pair<Node, Node>> Updates;
@@ -427,6 +467,7 @@ namespace metadiff {
         SharedPtr shared;
         // Data populated by the optimizer
         ExecutionData execution;
+        Group group;
 
         NodeInternal(GraphInPtr graph, Device device):
                 graph(graph),
@@ -440,7 +481,8 @@ namespace metadiff {
                      ad_value_type v_type,
                      Shape shape,
                      std::shared_ptr<Operator> op,
-                     size_t grad_level):
+                     size_t grad_level,
+                     Group group):
                 graph(graph),
                 device(device),
                 id(id),
@@ -449,7 +491,8 @@ namespace metadiff {
                 v_type(v_type),
                 op(op),
                 grad_level(grad_level),
-                shape(shape) {}
+                shape(shape),
+                group(group){}
     };
 
     /**
@@ -467,10 +510,13 @@ namespace metadiff {
         ad_implicit_broadcast broadcast;
 
         size_t sym_integer_count;
-        size_t gradient_mode;
         std::vector<std::shared_ptr<NodeInternal>> nodes;
         std::vector<SharedPtr> shared_vars;
         Updates updates;
+
+        std::vector<std::shared_ptr<NodeGroup>> groups;
+        size_t gradient_mode;
+        Group current_group;
 
         GraphInternal() {
             // TODO Have a better preference of devices available in order
@@ -480,7 +526,9 @@ namespace metadiff {
             f_type = ad_float_type::f32;
             i_type = ad_integer_type::s32;
             broadcast = ad_implicit_broadcast::RAISE;
+            groups.push_back(std::make_shared<NodeGroup>());
             gradient_mode = 0;
+            current_group = groups[0];
         }
 
         bool is_temporary_constant(Node node){
@@ -551,6 +599,42 @@ namespace metadiff {
             return SymInt::variable(this->sym_integer_count - 1);
         }
 
+        Group get_group(std::string full_name){
+            std::weak_ptr<NodeGroup> group = groups[0];
+            std::stringstream name_stream(full_name);
+            std::string item;
+            while (std::getline(name_stream, item, NodeGroup::delimiter)) {
+                size_t index = group.lock()->children.size();
+                for(size_t i=0;i<index;i++){
+                    if(item.compare(group.lock()->children[i].lock()->name) == 0){
+                        index = i;
+                        break;
+                    }
+                }
+                // If not found make a new group
+                if(index == group.lock()->children.size()){
+                    groups.push_back(std::make_shared<NodeGroup>(item, group));
+                    group.lock()->children.push_back(groups.back());
+                    group = groups.back();
+                } else {
+                    group = group.lock()->children[index];
+                }
+            }
+            return group;
+        }
+
+        void set_group(std::string full_name){
+            current_group = get_group(full_name);
+        }
+
+        void set_group(std::string name, Group parent){
+            current_group = get_group(parent.lock()->get_full_name() + name);
+        }
+
+        void reset_group(){
+            current_group = groups[0];
+        }
+
         Node tensor(ad_value_type v_type,
                     std::array<SymInt, 4> shape,
                     std::string name = "InputTensor");
@@ -604,6 +688,7 @@ namespace metadiff {
         Node ones(Shape shape);
         Node zeros(Shape shape);
         Node constant_value(double value, Shape shape = {1, 1, 1, 1});
+        Node seq(SymInt start, SymInt end);
     };
 
     /**
@@ -616,15 +701,6 @@ namespace metadiff {
         }
         return base_op;
     }
-
-//    /**
-//     * Compares if the two operators are symboliclly equivalent.
-//     * Note this does not make any nodes on the graph and is not related to computation.
-//     */
-//    bool symbolic_equals(const std::shared_ptr<Operator> op1,
-//                         const std::shared_ptr<Operator> op2){
-//        return bas_op1->symbolic_equals(bas_op2) or bas_op2->symbolic_equals(bas_op1);
-//    }
 
     /**
      * Check if two nodes are symbolically equivalent.
@@ -700,78 +776,6 @@ namespace metadiff {
             return false;
         }
     };
-
-    /**
-     * Operator for updates
-     */
-//    class Update : public Operator {
-//    public:
-//        Node shared;
-//        Node update;
-//
-//        void verify_inputs(){
-//            if(shared.unwrap()->type != SHARED_INPUT){
-//                throw InvalidArguments(name, {shared, update},
-//                                       "First argument should be a shared variable not an expression.");
-//            }
-//            auto shared_shape = shared.unwrap()->shape;
-//            auto update_shape = update.unwrap()->shape;
-//            for(int i=0;i<4;i++){
-//                if(shared_shape[i] != update_shape[i]){
-//                    throw IncompatibleShapes(name, {shared, update});
-//                }
-//            }
-//            if(shared.unwrap()->v_type != update.unwrap()->v_type){
-//                throw InvalidArguments(name, {shared, update},
-//                                       "Shared variable and update should have same value type");
-//            }
-//        }
-//
-//        Update(GraphInPtr graph,
-//               Node shared,
-//               Node update):
-//                Operator("Update", graph),
-//                shared(shared),
-//                update(update){
-//            verify_inputs();
-//        }
-//
-//        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-//            return std::make_shared<Update>(graph, ancestors[0], ancestors[1]);
-//        }
-//
-//        ad_value_type get_value_type() const{
-//            return shared.unwrap()->v_type;
-//        }
-//
-//        Shape get_shape() const{
-//            return Shape{0, 0, 0, 0};
-//        }
-//
-//        ad_node_type get_node_type() const{
-//            return UPDATE;
-//        };
-//
-//        size_t get_gradient_level() const{
-//            return update.unwrap()->grad_level;
-//        }
-//
-//        NodeVec get_parents() const{
-//            return {update};
-//        }
-//
-//        NodeVec get_arguments() const{
-//            return {shared};
-//        }
-//
-//        Node get_parent_grad(Node my_grad, size_t index){
-//            return my_grad;
-//        }
-//
-//        bool equals(const std::shared_ptr<Operator> op) const{
-//            return false;
-//        }
-//    };
 
     std::string to_string(ad_node_type const & type){
         switch(type){

@@ -10,7 +10,7 @@ namespace metadiff{
     public:
         MakeConstant(GraphInPtr graph,
                      Node parent):
-                UnaryOperator("Const", graph, parent)
+                UnaryOperator("MakeConst", graph, parent)
         {};
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
@@ -184,5 +184,34 @@ namespace metadiff{
         }
         return owner.unwrap()->value.host<float>()[0];
     }
+
+    class Sequence: public ConstantOperator{
+    public:
+        SymInt start;
+        SymInt end;
+        Sequence(GraphInPtr graph, SymInt start, SymInt end):
+                ConstantOperator("Sequence", graph),
+                start(start),
+                end(end) {
+            shape = Shape {end - start, 1, 1, 1};
+        }
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
+            return std::make_shared<Sequence>(graph, start, end);
+        }
+
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<Sequence> cast_op = std::static_pointer_cast<Sequence>(op);
+                return start == cast_op->start and end == cast_op->end;
+            }
+            return false;
+        }
+    };
+
+    Node GraphInternal::seq(SymInt start, SymInt end) {
+        return derived_node(std::make_shared<Sequence>(this, start, end));
+    }
 }
+
 #endif //METADIFF_OPERATORS_CONSTANTS_H

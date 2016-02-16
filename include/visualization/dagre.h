@@ -53,12 +53,12 @@ namespace metadiff {
                 }
             }
             // Check if it is an update
-            Updates updates = node.unwrap()->graph->updates;
-            for(size_t i=0;i<updates.size(); i++){
-                if(node.unwrap() == updates[i].second.unwrap()){
-                    return "#FF1493";
-                }
-            }
+//            Updates updates = node.unwrap()->graph->updates;
+//            for(size_t i=0;i<updates.size(); i++){
+//                if(node.unwrap() == updates[i].second.unwrap()){
+//                    return "#FF1493";
+//                }
+//            }
             switch(node.unwrap()->type){
                 case INPUT: return "#00ff00";
                 case SHARED_INPUT:  return "#006400";
@@ -66,6 +66,61 @@ namespace metadiff {
                 case CONSTANT: return "#ffff00";
                 case CONSTANT_DERIVED: return "#ffa500";
                 default: return "#800080";
+            }
+        }
+
+        void write_node(Node node, std::vector<Node> &targets, std::ofstream& f ){
+            f << "\tmorpher.addNode(\"_root/"
+            << node.unwrap()->group.lock()->get_full_name() << "\", ";
+            std::string state_name = node_name_html(node);
+            std::string state_color = node_color_html(node, targets);
+            f << "\"" << state_name << "\", {\n";
+
+            NodeVec ancestors = node.unwrap()->op->get_ancestors();
+            std::string anc_id_str = "[";
+            for (int i = 0; i < ancestors.size(); i++) {
+                anc_id_str += std::to_string(ancestors[i].unwrap()->id);
+                if (i < ancestors.size() - 1) {
+                    anc_id_str += ", ";
+                }
+            }
+            anc_id_str += "]";
+            std::string child_id_str = "[";
+            for (int i=0;i<node.unwrap()->children.size(); i++){
+                child_id_str += std::to_string(node.unwrap()->children[i].unwrap()->id);
+                if (i < node.unwrap()->children.size() - 1) {
+                    child_id_str += ", ";
+                }
+            }
+            child_id_str += "]";
+            f << "\t\tdescription: \"Name: " + node.unwrap()->name + " <br> "
+                    "Type: " + to_string(node.unwrap()->type) + " <br> "
+                         "Device: " + to_string(node.unwrap()->device) + " <br> "
+                         "Value type: " + to_string(node.unwrap()->v_type) + " <br> "
+                         "Shape: [" + node.unwrap()->shape[0].to_string() + ", " +
+                 node.unwrap()->shape[1].to_string() + ", " + node.unwrap()->shape[2].to_string() + ", " +
+                 node.unwrap()->shape[3].to_string() + "] <br> "
+                         "Gradient Level:" + std::to_string(node.unwrap()->grad_level) + " <br> "
+                         "Parents: " + anc_id_str + " <br> "
+                         "Children: " + child_id_str + "<br>"
+                         "Group: " + node.unwrap()->group.lock()->name +
+                 "\",\n\t\tstyle: \"fill: " + state_color + "\",\n"
+                    "\t\tlabel: \"" << state_name << "\"});\n";
+
+        }
+
+        void write_node_edges(Node node, std::vector<Node> &targets, std::ofstream& f) {
+            std::string state_name = node_name_html(node);
+            auto ancestors = node.unwrap()->op->get_ancestors();
+            std::vector<std::string> anc_names;
+            for (int i = 0; i < ancestors.size(); i++) {
+                anc_names.push_back(node_name_html(ancestors[i]));
+            }
+
+            for (int i = 0; i < ancestors.size(); i++) {
+                f << "\tmorpher.addEdge(\"" << anc_names[i]
+                << "\", \"" << state_name << "\", \""
+                << i << "\");\n";
             }
         }
 
@@ -101,7 +156,8 @@ namespace metadiff {
                             node.unwrap()->shape[3].to_string() + "] <br> "
                                     "Gradient Level:" + std::to_string(node.unwrap()->grad_level) + " <br> "
                                     "Parents: " + anc_id_str + " <br> "
-                                    "Children: " + child_id_str +
+                                    "Children: " + child_id_str + "<br>"
+                                    "Group: " + node.unwrap()->group.lock()->name +
                             "\",\n\t\tstyle: \"fill: " + state_color + "\"\n"
                                     "\t}");
         }
@@ -133,18 +189,24 @@ namespace metadiff {
                     max_grad_level = targets[i].unwrap()->grad_level;
                 }
             }
-            std::vector<std::string> nodes;
-            std::vector<std::string> edges;
-            for (int i = 0; i < graph->nodes.size(); i++) {
-                node_to_html(graph->nodes[i], targets, nodes);
-                edges_to_html(graph->nodes[i], edges);
-            }
-            for (size_t i=0; i<nupdates.size(); i++){
-                std::pair<Node, Node> update = nupdates[i];
-                edges.push_back(
-                        "g.setEdge({v:'" + node_name_html(update.second) + "', w:'" +
-                                node_name_html(update.first) + "', name:'Update'}, {label: \"Update\"});");
-            }
+//            std::vector<std::string> nodes;
+//            std::vector<std::string> edges;
+//            for (int i = 0; i < graph->nodes.size(); i++) {
+//                node_to_html(graph->nodes[i], targets, nodes);
+//                edges_to_html(graph->nodes[i], edges);
+//            }
+//            for (size_t i=0; i<nupdates.size(); i++){
+//                std::pair<Node, Node> update = nupdates[i];
+//                std::string update_name = "Update " + update.first.unwrap()->name + "[" +
+//                                          std::to_string(update.first.unwrap()->id) + "]";
+//                nodes.push_back("'" + update_name +  "': {\n"
+//                        "\t\tdescription: \"\",\n"
+//                        "\t\tstyle: \"fill: #FF1493\"\n"
+//                        "\t}\n");
+//                edges.push_back(
+//                        "g.setEdge({v:'" + node_name_html(update.second) + "', w:'" +
+//                        update_name + "', name:'Update'}, {label: \"Update\"});");
+//            }
             std::ofstream f;
             f.open(file_name);
             f << ""
@@ -161,6 +223,7 @@ namespace metadiff {
                     "<link rel=\"stylesheet\" href=\"../../html_files/tipsy.css\">\n"
                     "<script src=\"../../html_files/jquery-1.9.1.min.js\"></script>\n"
                     "<script src=\"../../html_files/tipsy.js\"></script>\n"
+                    "<script src=\"../../html_files/graph.js\"></script>\n"
                     "\n"
                     "</head><body style=\"margin:0;padding:0\" height=\"100%\">"
                     "<h3 style=\"margin-bottom: 0px\">" << graph->name << "</h3>\n"
@@ -208,21 +271,58 @@ namespace metadiff {
                     "<svg width=\"1500\" height=\"900\"></svg>\n"
                     "\n"
                     "<script id=\"js\">\n"
-                    "// Create a new directed graph\n"
-                    "var g = new dagreD3.graphlib.Graph({compound:true, multigraph: true})\n"
-                    "\t\t.setGraph({})\n"
-                    "\t\t.setDefaultEdgeLabel(function() { return {}; });\n";
-            // Print the nodes
-            f << "// Nodes states\n"
-                    "var states = {\n";
-            for (int i = 0; i < nodes.size(); i++) {
-                if (i == nodes.size() - 1) {
-                    f << "\t" << nodes[i] << "\n";
-                } else {
-                    f << "\t" << nodes[i] << ",\n";
-                }
+                    "\t// Create a new graph morpher\n"
+                    "\tvar morpher = new GraphMorpher(\"g\", 1000, 600);\n";
+            // Print groups
+            f << "\t// Set all groups\n";
+            for(size_t i=1;i<graph->groups.size(); i++){
+                f << "\tmorpher.addGroup(\"_root/"
+                << graph->groups[i]->get_full_name()
+                << "\");\n";
             }
-            f << "}\n";
+
+            // Print the nodes
+            f << "\n\t// Add all nodes\n";
+            for(size_t i=0; i < graph->nodes.size(); i++){
+                write_node(graph->nodes[i], targets, f);
+            }
+
+            // Print updates
+            f << "\n\t// Add all update nodes\n";
+            for (size_t i=0; i<nupdates.size(); i++){
+                std::pair<Node, Node> update = nupdates[i];
+                std::string update_name = "Update " + update.first.unwrap()->name + "[" +
+                                          std::to_string(update.first.unwrap()->id) + "]";
+
+                f << "\t\tmorpher.addNode(\"_root/"
+                << update.second.unwrap()->group.lock()->get_full_name()
+                << "\", \"" << update_name << "\", {\n"
+                        "\t\tdescription: \"\",\n"
+                        "\t\tstyle: \"fill: #FF1493\"\n"
+                        "\t});\n";
+            }
+
+            // Print the edges
+            f << "\n\t// Add all edges\n";
+            for(size_t i=0; i < graph->nodes.size(); i++){
+                write_node_edges(graph->nodes[i], targets, f);
+            }
+
+            f << "\n\t// Add all update edges\n";
+            for(size_t i=0; i<nupdates.size(); i++){
+                std::string update_name = "Update " + nupdates[i].first.unwrap()->name + "[" +
+                                          std::to_string(nupdates[i].first.unwrap()->id) + "]";
+                f << "\tmorpher.addEdge(\"" << node_name_html(nupdates[i].second)
+                << "\", \"" << update_name << "\", \"\");\n";
+            }
+//            for (int i = 0; i < nodes.size(); i++) {
+//                if (i == nodes.size() - 1) {
+//                    f << "\t" << nodes[i] << "\n";
+//                } else {
+//                    f << "\t" << nodes[i] << ",\n";
+//                }
+//            }
+//            f << "}\n";
             // Print grad boxes
 //            f << "// Set the gradient level boxes\n";
 //            for (int i = 0; i <= max_grad_level; i++) {
@@ -231,55 +331,23 @@ namespace metadiff {
 //                     "', clusterLabelPos: 'top', style: 'fill: #d3d7e8'});\n";
 //            }
 
-            f << "// Add states to the graph, set labels, and style\n"
-                    "Object.keys(states).forEach(function(state) {\n"
-                    "  var value = states[state];\n"
-                    "  value.label = state;\n"
-                    "  value.rx = value.ry = 5;\n"
-                    "  g.setNode(state, value);\n"
-                    "});\n";
+//            f << "// Add states to the graph, set labels, and style\n"
+//                    "Object.keys(states).forEach(function(state) {\n"
+//                    "  var value = states[state];\n"
+//                    "  value.label = state;\n"
+//                    "  value.rx = value.ry = 5;\n"
+//                    "  g.setNode(state, value);\n"
+//                    "});\n";
 
             // Print the edge connections
-            f << "// Set up the edges\n";
-            for (int i = 0; i < edges.size(); i++) {
-                f << edges[i] << "\n";
-            }
-            f << "\n";
+//            f << "// Set up the edges\n";
+//            for (int i = 0; i < edges.size(); i++) {
+//                f << edges[i] << "\n";
+//            }
+//            f << "\n";
 
-            f << "// Create the renderer\n"
-                    "var render = new dagreD3.render();\n"
-                    "\n"
-                    "// Set up an SVG group so that we can translate the final graph.\n"
-                    "var svg = d3.select(\"svg\"),\n"
-                    "    inner = svg.append(\"g\");\n"
-                    "\n"
-                    "// Set up zoom support\n"
-                    "var zoom = d3.behavior.zoom().on(\"zoom\", function() {\n"
-                    "    inner.attr(\"transform\", \"translate(\" + d3.event.translate + \")\" +\n"
-                    "                                \"scale(\" + d3.event.scale + \")\");\n"
-                    "  });\n"
-                    "svg.call(zoom);\n"
-                    "\n"
-                    "// Simple function to style the tooltip for the given node.\n"
-                    "var styleTooltip = function(name, description) {\n"
-                    "  return \"<p class='name'>\" + name + \"</p>"
-                    "<p class='description'  style=\\\"text-align:left\\\">\" + description + \"</p>\";\n"
-                    "};\n"
-                    "\n"
-                    "// Run the renderer. This is what draws the final graph.\n"
-                    "render(inner, g);\n"
-                    "\n"
-                    "inner.selectAll(\"g.node\")\n"
-                    "  .attr(\"title\", function(v) { return styleTooltip(v, g.node(v).description) })\n"
-                    "  .each(function(v) { $(this).tipsy({ gravity: \"w\", opacity: 1, html: true }); });\n"
-                    "\n"
-                    "// Center the graph\n"
-                    "var initialScale = 0.75;\n"
-                    "zoom\n"
-                    "  .translate([(svg.attr(\"width\") - g.graph().width * initialScale) / 2, 20])\n"
-                    "  .scale(initialScale)\n"
-                    "  .event(svg);\n"
-                    "svg.attr('height', g.graph().height * initialScale + 40);\n"
+            f << "\t// Render graph\n"
+                    "\tmorpher.populateSVG();\n"
                     "</script>\n"
                     "</body></html>\n";
             f.close();

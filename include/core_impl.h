@@ -22,6 +22,7 @@ namespace metadiff{
         node->value = ptr->value;
         node->shared = ptr->shared;
         node->execution = ptr->execution;
+        node->group = ptr->group;
         for(size_t i=0;i<ancestors.size();i++){
             ancestors[i].unwrap()->children.push_back(node);
         }
@@ -159,6 +160,16 @@ namespace metadiff{
             return;
         }
 
+        // Sort out correct group
+        Group current_group = graph->current_group;
+        Group top_level = graph->get_group("Gradients " + std::to_string(graph->gradient_mode));
+        Group owner_group = this->owner.unwrap()->group;
+        std::string group_name = top_level.lock()->get_full_name();
+        group_name += NodeGroup::delimiter;
+        group_name += owner_group.lock()->get_full_name();
+        Group grad_group = graph->get_group(group_name);
+        graph->current_group = grad_group;
+
         // Get the gradient with respect to this node
         Node my_grad = messages[owner.unwrap()->id];
         // Update the message name
@@ -167,12 +178,12 @@ namespace metadiff{
         } else {
             my_grad.unwrap()->name += "Grad of " + std::to_string(owner.unwrap()->id) + "|";
         }
-
         // Check for any surprises, where all parents are constants
         // If that is the case this node should have been constant as well
         // and no message should have been sent to it
         NodeVec parents = get_parents();
         bool constant = name != "Input";
+        std::cout << parents.size() << std::endl;
         for(int i=0;i<parents.size();i++){
             if(not parents[i].is_constant()){
                 constant = false;
@@ -197,6 +208,7 @@ namespace metadiff{
                 send_grad_message(parents[i].unwrap()->id, parent_grad, messages);
             }
         }
+        graph->current_group = current_group;
     };
 
     Graph create_graph(){
@@ -211,6 +223,7 @@ namespace metadiff{
         new_graph->broadcast = broadcast;
         new_graph->sym_integer_count = sym_integer_count;
         new_graph->shared_vars = shared_vars;
+        new_graph->groups = groups;
         size_t n = nodes.size();
         NodeVec mapping(n, Node());
         // Copy nodes
@@ -305,6 +318,9 @@ namespace metadiff{
         return ancestors_mask;
     };
 
+    /**
+     * TODO have to do this function properly
+     */
     Node GraphInternal::find_same_node(std::shared_ptr<Operator> op){
         if(op->get_parents().size() > 0){
 //            std::cout << "Find same " << op->get_parents()[0].unwrap() -> id << std::endl;
@@ -371,6 +387,7 @@ namespace metadiff{
     }
 
     std::vector<Node> GraphInternal::gradient(Node objective, std::vector<Node> params){
+        Group old_group = this->current_group;
         if(not objective.is_scalar()){
             throw UnsupportedGradient();
         }
@@ -388,6 +405,7 @@ namespace metadiff{
             }
         }
         gradient_mode = objective.unwrap()->grad_level + 1;
+        this->current_group = get_group("Gradients " + std::to_string(gradient_mode));
         // Send the first message as 1 to the objective
         grad_messages[objective.unwrap()->id] = constant_value(1.0);
         // Send all gradient messages
@@ -404,6 +422,7 @@ namespace metadiff{
         }
         // Remove all nodes from the temporary constants
         temporary_constants.clear();
+        this->current_group = old_group;
         return grads;
     };
 
@@ -478,7 +497,8 @@ namespace metadiff{
                 dtype,
                 Shape {dims[0], dims[1], dims[2], dims[3]},
                 std::make_shared<Input>(shared_from_this().get()),
-                0
+                0,
+                current_group
         );
         result->shared = std::make_shared<SharedVariable>(shared_vars.size(), value);
         shared_vars.push_back(result->shared);
@@ -499,7 +519,8 @@ namespace metadiff{
                     op->get_value_type(),
                     op->get_shape(),
                     op,
-                    gradient_mode > op->get_gradient_level() ? gradient_mode : op->get_gradient_level()
+                    gradient_mode > op->get_gradient_level() ? gradient_mode : op->get_gradient_level(),
+                    current_group
             );
             nodes.push_back(result);
             op->owner = result;
@@ -582,7 +603,8 @@ namespace metadiff{
                 dtype,
                 Shape {dims[0], dims[1], dims[2], dims[3]},
                 std::make_shared<Input>(shared_from_this().get()),
-                0
+                0,
+                current_group
         );
         result->value = value;
         nodes.push_back(result);
@@ -602,7 +624,8 @@ namespace metadiff{
                 v_type,
                 shape,
                 std::make_shared<Input>(shared_from_this().get()),
-                0
+                0,
+                current_group
         );
         nodes.push_back(result);
         result->op->owner = result;

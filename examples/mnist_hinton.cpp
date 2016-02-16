@@ -36,28 +36,38 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
                 factor * 250, factor * 500, factor * 1000, 784};
     // Input data
     auto test = graph->constant_value(20);
+    std::string layers[10] {"Inputs", "Encoder 1", "Encoder 2", "Encoder 3", "Encoder 4",
+                          "Decoder 3", "Decoder 2", "Decoder 1", "Output Layer", "Objective"};
+    graph->set_group(layers[0]);
     md::NodeVec inputs = {graph->matrix(md::FLOAT, {d[0], n}, "Input")};
     // Parameters
     std::vector<md::Node> params;
+    std::cout << "G" << graph->groups.size() << std::endl;
     for(int i=1;i<9;i++){
+        graph->set_group(layers[i]);
         params.push_back(graph->shared_var(af::randn(d[i], d[i-1], f32) / 100.0, "W_" + std::to_string(i)));
         params.push_back(graph->shared_var(af::constant(float(0.0), d[i], 1, f32), "b_" + std::to_string(i)));
     }
-    // Input Layer
+    // First layer
+    graph->set_group(layers[1]);
     auto h = md::tanh(md::dot(params[0], inputs[0]) + params[1]);
     // All layers except one
     for(int i=1;i<7;i++){
+        graph->set_group(layers[i+1]);
         h = md::tanh(md::dot(params[2*i], h) + params[2*i+1]);
     }
     // Calculate only logits here
+    graph->set_group(layers[8]);
     h = md::dot(params[14], h) + params[15];
     // Loss
+    graph->set_group(layers[9]);
     auto error = md::binary_cross_entropy_logit(inputs[0], h);
     // Mean loss
     md::NodeVec loss = {error.sum() * graph->constant_value(1.0 / float(batch_size))};
     // Get grads
     auto grads = graph->gradient(loss[0], params);
     // Learning rate
+    graph->set_group("SGD");
     auto learning_rate = graph->constant_value(0.01);
     // Set up sgd
     md::Updates updates;
@@ -71,6 +81,7 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     md::NodeVec new_inputs;
     md::NodeVec new_loss;
     md::Updates new_updates;
+    std::cout << graph->groups.size() << std::endl;
     md::Graph optimized =  graph->optimize(loss, updates, inputs,
                                            new_loss, new_updates, new_inputs);
     std::cout << "Optimize" << std::endl;
