@@ -353,6 +353,11 @@ namespace metadiff {
 
         Node slice(Node index, size_t axis = 0);
         Node index(Node index, size_t axis = AUTOINFER_AXIS);
+
+        Node max(size_t axis = AUTOINFER_AXIS);
+        Node argmax(size_t axis = AUTOINFER_AXIS);
+        Node sort(size_t axis = AUTOINFER_AXIS);
+        Node argsort(size_t axis = AUTOINFER_AXIS);
     };
     typedef std::vector<Node> NodeVec;
     typedef std::vector<std::pair<Node, Node>> Updates;

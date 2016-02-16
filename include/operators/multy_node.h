@@ -101,27 +101,13 @@ namespace metadiff{
         }
     };
 
-    // First node is Max and second is ArgMax
     class MaxAndArgMax: public MultiNode {
     public:
-        std::vector<size_t> axes;
+        size_t axis;
         MaxAndArgMax(GraphInPtr graph,
-                     Node parent, std::vector<size_t> axes):
+                     Node parent, size_t axis):
                 MultiNode("MaxAndArgMax", graph, parent),
-                axes(axes){
-            if(not validate_axes(axes)){
-                std::string axes_str;
-                for(int i=0;i<axes.size();i++){
-                    axes_str += std::to_string(axes[i]);
-                    if(i < axes.size()-1){
-                        axes_str += ", ";
-                    }
-                }
-                if(axes.size() == 0){
-                    axes_str = "NULL";
-                }
-                throw InvalidArguments(name, {parent}, "Invalid axes: " + axes_str);
-            }
+                axis(axis){
             if(parent.unwrap()->v_type == BOOLEAN){
                 throw InvalidArguments(name, {parent}, "Parent can not be of type BOOLEAN");
             }
@@ -129,9 +115,7 @@ namespace metadiff{
                 throw InvalidArguments(name, {parent}, "Parent can not be of type SYMBOLIC_INTEGER");
             }
             Shape shape = parent.unwrap()->shape;
-            for(int i=0;i<axes.size();i++){
-                shape[axes[i]] = 1;
-            }
+            shape[axis] = 1;
             this->results_shapes = {shape, shape};
             if(parent.unwrap()->type == INPUT or parent.unwrap()->type == SHARED_INPUT or parent.unwrap()->type == INPUT_DERIVED){
                 this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
@@ -144,62 +128,105 @@ namespace metadiff{
         }
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<MaxAndArgMax>(graph, ancestors[0], axes);
+            return std::make_shared<MaxAndArgMax>(graph, ancestors[0], axis);
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            // TODO
-            return my_grad;
+            // Here the my_grad is the grad with respect to the max
+            return graph->derived_node(std::make_shared<IndexGrad>(graph, my_grad, owner.argmax(axis), axis, owner.unwrap()->shape[axis]));
         }
     };
 
-    // First node is Max and second is ArgMax
+    Node Node::max(size_t axis) {
+        if(axis == AUTOINFER_AXIS){
+            for(size_t i = 0; i < 4; i++){
+                if(unwrap()->shape[3-i] != 1){
+                    axis = 3 - i;
+                    break;
+                }
+            }
+        }
+        Node max_and_arg_max = unwrap()->graph->derived_node(
+                std::make_shared<MaxAndArgMax>(unwrap()->graph, this, axis));
+        return unwrap()->graph->derived_node(std::make_shared<MultiNodeIndex>(unwrap()->graph, max_and_arg_max, 0));
+    }
+
+    Node Node::argmax(size_t axis) {
+        if(axis == AUTOINFER_AXIS){
+            for(size_t i = 0; i < 4; i++){
+                if(unwrap()->shape[3-i] != 1){
+                    axis = 3 - i;
+                    break;
+                }
+            }
+        }
+        Node max_and_arg_max = unwrap()->graph->derived_node(
+                std::make_shared<MaxAndArgMax>(unwrap()->graph, this, axis));
+        return unwrap()->graph->derived_node(std::make_shared<MultiNodeIndex>(unwrap()->graph, max_and_arg_max, 1));
+    }
+
     class SortAndArgSort: public MultiNode {
     public:
-        std::vector<size_t> axes;
+        size_t axis;
         SortAndArgSort(GraphInPtr graph,
-                       Node parent, std::vector<size_t> axes):
-                MultiNode("SortAndArgSort", graph, parent),
-                axes(axes){
-            if(not validate_axes(axes)){
-                std::string axes_str;
-                for(int i=0;i<axes.size();i++){
-                    axes_str += std::to_string(axes[i]);
-                    if(i < axes.size()-1){
-                        axes_str += ", ";
-                    }
+        Node parent, size_t axis):
+        MultiNode("SortAndArgSort", graph, parent),
+        axis(axis){
+                if(parent.unwrap()->v_type == BOOLEAN){
+                    throw InvalidArguments(name, {parent}, "Parent can not be of type BOOLEAN");
                 }
-                if(axes.size() == 0){
-                    axes_str = "NULL";
+                if(parent.unwrap()->type == SYMBOLIC_INTEGER){
+                    throw InvalidArguments(name, {parent}, "Parent can not be of type SYMBOLIC_INTEGER");
                 }
-                throw InvalidArguments(name, {parent}, "Invalid axes: " + axes_str);
-            }
-            if(parent.unwrap()->v_type == BOOLEAN){
-                throw InvalidArguments(name, {parent}, "Parent can not be of type BOOLEAN");
-            }
-            if(parent.unwrap()->type == SYMBOLIC_INTEGER){
-                throw InvalidArguments(name, {parent}, "Parent can not be of type SYMBOLIC_INTEGER");
-            }
-            Shape shape = parent.unwrap()->shape;
-            this->results_shapes = {shape, shape};
-            if(parent.unwrap()->type == INPUT or parent.unwrap()->type == SHARED_INPUT or parent.unwrap()->type == INPUT_DERIVED){
-                this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
-            } else if(parent.unwrap()->type == CONSTANT_DERIVED){
-                this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
-            } else {
-                this->results_types = {CONSTANT, CONSTANT};
-            }
-            this->results_v_types = {parent.unwrap()->v_type, INTEGER};
+                Shape shape = parent.unwrap()->shape;
+                shape[axis] = 1;
+                this->results_shapes = {shape, shape};
+                if(parent.unwrap()->type == INPUT or parent.unwrap()->type == SHARED_INPUT or parent.unwrap()->type == INPUT_DERIVED){
+                    this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
+                } else if(parent.unwrap()->type == CONSTANT_DERIVED){
+                    this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
+                } else {
+                    this->results_types = {CONSTANT, CONSTANT};
+                }
+                this->results_v_types = {parent.unwrap()->v_type, INTEGER};
         }
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<SortAndArgSort>(graph, ancestors[0], axes);
+            return std::make_shared<MaxAndArgMax>(graph, ancestors[0], axis);
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            // TODO
-            return my_grad;
+            // Here the my_grad is the grad with respect to the max
+            return graph->derived_node(std::make_shared<IndexGrad>(graph, my_grad, owner.argsort(axis), axis, owner.unwrap()->shape[axis]));
         }
     };
+
+    Node Node::sort(size_t axis) {
+        if(axis == AUTOINFER_AXIS){
+            for(size_t i = 0; i < 4; i++){
+                if(unwrap()->shape[3-i] != 1){
+                    axis = 3 - i;
+                    break;
+                }
+            }
+        }
+        Node max_and_arg_max = unwrap()->graph->derived_node(
+                std::make_shared<SortAndArgSort>(unwrap()->graph, this, axis));
+        return unwrap()->graph->derived_node(std::make_shared<MultiNodeIndex>(unwrap()->graph, max_and_arg_max, 0));
+    }
+
+    Node Node::argsort(size_t axis){
+        if(axis == AUTOINFER_AXIS){
+            for(size_t i = 0; i < 4; i++){
+                if(unwrap()->shape[3-i] != 1){
+                    axis = 3 - i;
+                    break;
+                }
+            }
+        }
+        Node max_and_arg_max = unwrap()->graph->derived_node(
+                std::make_shared<SortAndArgSort>(unwrap()->graph, this, axis));
+        return unwrap()->graph->derived_node(std::make_shared<MultiNodeIndex>(unwrap()->graph, max_and_arg_max, 1));
+    }
 }
 #endif //METADIFF_OPERATORS_MULTY_NODE_H

@@ -106,7 +106,7 @@ namespace metadiff{
         };
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Slice>(graph, ancestors[0], ancestors[1], axis);
+            return std::make_shared<Index>(graph, ancestors[0], ancestors[1], axis);
         }
 
         Shape get_shape() const{
@@ -138,7 +138,7 @@ namespace metadiff{
         };
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Slice>(graph, ancestors[0], ancestors[1], axis, result);
+            return std::make_shared<IndexGrad>(graph, ancestors[0], ancestors[1], axis, result);
         }
 
         Shape get_shape() const{
@@ -166,7 +166,7 @@ namespace metadiff{
         // Auto infer axis
         if(axis == AUTOINFER_AXIS){
             for(size_t i=0;i<4;i++){
-                if(unwrap()->shape[i] != index.unwrap()->shape){
+                if(unwrap()->shape[i] != index.unwrap()->shape[i]){
                     axis = i;
                     break;
                 }
