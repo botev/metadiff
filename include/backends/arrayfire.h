@@ -162,7 +162,7 @@ namespace metadiff{
 
             // Update all of the shared_variables
             f << "\n\t// Update all shared variables\n";
-            std::cout << "U" << graph->updates.size() << " " << updates.size() << std::endl;
+//            std::cout << "U" << graph->updates.size() << " " << updates.size() << std::endl;
             for(int i=0;i<graph->updates.size(); i++){
                 print_update_node(f, graph->updates[i], expression_table);
             }
@@ -372,9 +372,17 @@ namespace metadiff{
             if(node->type == INPUT) {
                 throw 22;
             }
-            if(node->type == CONSTANT and
-                    (op_name == "Zeros" or op_name == "Ones" or op_name == "Value")){
-                return "float(" +  std::to_string(node->op->get_scalar_value()) + ")";
+            if(node->type == CONSTANT){
+                if(op_name == "Zeros"){
+                    return "0.0";
+                }
+                if (op_name == "Ones") {
+                    return "1.0";
+                }
+                if (op_name == "Value"){
+                    std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node->op);
+                    return std::to_string(cast_op->value);
+                }
             }
             if(op_name == "Alias"){
                 return expression_table[parents[0].unwrap()->id];
@@ -505,9 +513,6 @@ namespace metadiff{
             }
             if (op_name == "Log") {
                 return "af::log(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Exp") {
-                return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Log") {
                 return "af::log(" + expression_table[parents[0].unwrap()->id] + ")";

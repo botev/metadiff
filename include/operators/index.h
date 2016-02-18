@@ -7,6 +7,10 @@
 
 namespace metadiff{
 
+    /**
+     * Takes the slice of the parent on the axis specified
+     * according to the index argument
+     */
     class Slice: public UnaryOperator{
     public:
         Node index;
@@ -37,9 +41,22 @@ namespace metadiff{
             return NodeVec {index};
         }
 
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<Slice> cast_op = std::static_pointer_cast<Slice>(op);
+                return symbolic_equals(parent, cast_op->parent) and symbolic_equals(index, cast_op->index)
+                        and axis == cast_op->axis;
+            }
+            return false;
+        }
+
         Node get_parent_grad(Node my_grad, size_t index);
     };
 
+    /**
+     * This is the gradient of the slice.
+     * To some extend this can be thought of as sub-increment operation
+     */
     class SliceGrad : public UnaryOperator{
     public:
         Node index;
@@ -70,6 +87,15 @@ namespace metadiff{
             return std::make_shared<SliceGrad>(graph, ancestors[0], ancestors[1], axis, result);
         }
 
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<SliceGrad> cast_op = std::static_pointer_cast<SliceGrad>(op);
+                return symbolic_equals(parent, cast_op->parent) and symbolic_equals(index, cast_op->index)
+                       and axis == cast_op->axis and result == cast_op->result;
+            }
+            return false;
+        }
+
         Node get_parent_grad(Node my_grad, size_t index);
 
     };
@@ -86,6 +112,9 @@ namespace metadiff{
         return unwrap()->graph->derived_node(std::make_shared<Slice>(unwrap()->graph, this, index, axis));
     }
 
+    /**
+     * Takes the argument index as index of each entry along the axis speicified
+     */
     class Index: public UnaryOperator{
     public:
         Node index;
@@ -119,9 +148,22 @@ namespace metadiff{
             return NodeVec {index};
         }
 
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<Index> cast_op = std::static_pointer_cast<Index>(op);
+                return symbolic_equals(parent, cast_op->parent) and symbolic_equals(index, cast_op->index)
+                       and axis == cast_op->axis;
+            }
+            return false;
+        }
+
         Node get_parent_grad(Node my_grad, size_t index);
     };
 
+    /**
+     * This is the gradient of the index.
+     * To some extend this can be thought of as sub-increment operation
+     */
     class IndexGrad: public UnaryOperator{
     public:
         Node index;
@@ -151,6 +193,15 @@ namespace metadiff{
             return NodeVec {index};
         }
 
+        bool equals(const std::shared_ptr<Operator> op) const{
+            if(name == op->name){
+                std::shared_ptr<IndexGrad> cast_op = std::static_pointer_cast<IndexGrad>(op);
+                return symbolic_equals(parent, cast_op->parent) and symbolic_equals(index, cast_op->index)
+                       and axis == cast_op->axis and result == cast_op->result;
+            }
+            return false;
+        }
+
         Node get_parent_grad(Node my_grad, size_t index);
     };
 
@@ -164,7 +215,7 @@ namespace metadiff{
 
     Node Node::index(Node index, size_t axis) {
         // Auto infer axis
-        if(axis == AUTOINFER_AXIS){
+        if(axis == AUTO_INFER_AXIS){
             for(size_t i=0;i<4;i++){
                 if(unwrap()->shape[i] != index.unwrap()->shape[i]){
                     axis = i;
@@ -174,37 +225,5 @@ namespace metadiff{
         }
         return unwrap()->graph->derived_node(std::make_shared<Slice>(unwrap()->graph, this, index, axis));
     }
-
-//    class IndexGrad : public UnaryOperator{
-//    public:
-//        Node index;
-//        IndexGrad(GraphInPtr graph, Node parent, Node index):
-//                UnaryOperator("IndexGrad", graph, parent),
-//                index(index) {};
-//
-//        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-//            return std::make_shared<Index>(graph, ancestors[0], ancestors[1]);
-//        }
-//
-//        Node get_parent_grad(Node my_grad, size_t index){
-//            return mul(my_grad, owner);
-//        }
-//    };
-//
-//    class Index: public UnaryOperator{
-//    public:
-//        Node index;
-//        Index(GraphInPtr graph, Node parent, Node index):
-//                UnaryOperator("Index", graph, parent),
-//                index(index) {};
-//
-//        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-//            return std::make_shared<Index>(graph, ancestors[0], ancestors[1]);
-//        }
-//
-//        Node get_parent_grad(Node my_grad, size_t index){
-//            return mul(my_grad, owner);
-//        }
-//    };
 }
 #endif //METADIFF_INDEX_H

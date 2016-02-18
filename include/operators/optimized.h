@@ -7,6 +7,12 @@
 
 namespace metadiff {
 
+    /**
+     * Calculates the binary cross-entropy between p an x
+     * where x are the logits:
+     * sigma(x) = (1+exp(-x))^{-1}
+     * p * log(sigma(x)) + (1 - p) * log(1 - sigma(x))
+     */
     class BinaryCrossEntropyLogit : public ElementwiseBinary {
     public:
         Node softplus_x, softplus_mx;

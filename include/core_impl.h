@@ -7,7 +7,16 @@
 
 namespace metadiff{
 
+    std::shared_ptr<NodeInternal> Node::unwrap() const{
+        if(ptr.expired()){
+            std::cerr << "Trying to access a Node whose pointer has expired" << std::endl;
+            exit(1);
+        }
+        return ptr.lock();
+    }
+
     void Node::copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
+//        std::cout << "Copying node " << unwrap()->id;
         std::shared_ptr<NodeInternal> ptr = unwrap();
         std::shared_ptr<NodeInternal> node = std::make_shared<NodeInternal>(graph, ptr->device);
         node->id = graph->nodes.size();
@@ -26,10 +35,6 @@ namespace metadiff{
         for(size_t i=0;i<ancestors.size();i++){
             ancestors[i].unwrap()->children.push_back(node);
         }
-    }
-
-    void Node::update(Node update){
-        unwrap()->graph->update_node(this, update);
     }
 
     bool Node::is_constant() const{
@@ -136,31 +141,28 @@ namespace metadiff{
         return true;
     }
 
-    template <typename T>
-    Node apply(Node node) {
-        return node.unwrap()->graph->derived_node(std::make_shared<T>(node.unwrap()->graph, node));
-    }
+    void Operator::send_grad_message(size_t target, Node msg,
+                                     std::vector<Node>& messages)  const{
+//        std::cout << "Sending gradient message with id "
+//        << msg.unwrap()->id << " to node with id " << target << std::endl;
 
-
-    template <typename T>
-    Node apply(Node parent1, Node parent2){
-        GraphInPtr graph = parent1.unwrap()->graph;
-        return graph->derived_node(std::make_shared<T>(graph, parent1, parent2));
-    }
-
-    template <typename T>
-    Node apply(NodeVec parents){
-        GraphInPtr graph = parents[0].unwrap()->graph;
-        return graph->derived_node(std::make_shared<T>(graph, parents));
+        if (not messages[target].ptr.expired()) {
+            // If not first message add them and then send the sum
+            messages[target] = add(messages[target], msg);
+        } else {
+            // If first just send it
+            messages[target] = msg;
+        }
     }
 
     void Operator::generate_gradients(std::vector<Node> &messages){
-        // Check for any incoming messages
-        if(messages[owner.unwrap()->id].empty()){
+        // Check if there are any incoming gradient messages
+        if(messages[owner.unwrap()->id].ptr.expired()){
             return;
         }
+//        std::cout << "Generating gradients for " << owner.unwrap()->id << std::endl;
 
-        // Sort out correct group
+        // Sets the current group to _root/gradient0/parent_group
         Group current_group = graph->current_group;
         Group top_level = graph->get_group("Gradients " + std::to_string(graph->gradient_mode));
         Group owner_group = this->owner.unwrap()->group;
@@ -170,20 +172,23 @@ namespace metadiff{
         Group grad_group = graph->get_group(group_name);
         graph->current_group = grad_group;
 
-        // Get the gradient with respect to this node
+        // Retrieves the gradient messages representing the total gradient with respect to this node
         Node my_grad = messages[owner.unwrap()->id];
-        // Update the message name
+
+        // Update the gradient message name
         if(my_grad.unwrap()->name == "Derived Node" or my_grad.unwrap()->name == ""){
             my_grad.unwrap()->name = "Grad of " + std::to_string(owner.unwrap()->id) + "|";
         } else {
             my_grad.unwrap()->name += "Grad of " + std::to_string(owner.unwrap()->id) + "|";
         }
+
         // Check for any surprises, where all parents are constants
         // If that is the case this node should have been constant as well
-        // and no message should have been sent to it
+        // and no message should have been sent to it, however if the node is
+        // an input node than it is never constant
         NodeVec parents = get_parents();
         bool constant = name != "Input";
-        std::cout << parents.size() << std::endl;
+//        std::cout << parents.size() << std::endl;
         for(int i=0;i<parents.size();i++){
             if(not parents[i].is_constant()){
                 constant = false;
@@ -191,10 +196,12 @@ namespace metadiff{
             }
         }
         if(constant){
-            throw WrongGradient(name, {owner, my_grad});
+            WrongGradient e = WrongGradient(name, {owner, my_grad});
+//            LOG(ERROR) << e.msg;
+            throw e;
         }
 
-        // Compute and send gradients only to non constant nodes and send them
+        // Compute and send gradients only to non constant nodes
         for(size_t i=0;i<parents.size();i++) {
             if(not parents[i].is_constant()) {
                 Node parent_grad = get_parent_grad(my_grad, i);
@@ -211,11 +218,31 @@ namespace metadiff{
         graph->current_group = current_group;
     };
 
+    NodeVec Operator::get_ancestors() const {
+        NodeVec parents = get_parents();
+        NodeVec arguments = get_arguments();
+        for(int i=0; i<arguments.size();i++){
+            parents.push_back(arguments[i]);
+        }
+        return parents;
+    }
+
     Graph create_graph(){
         return std::make_shared<GraphInternal>();
     }
 
+    bool GraphInternal::is_temporary_constant(Node node) const{
+        std::shared_ptr<NodeInternal> ptr = node.unwrap();
+        for(size_t i=0;i<temporary_constants.size(); i++){
+            if(temporary_constants[i].unwrap() == ptr){
+                return true;
+            }
+        }
+        return false;
+    }
+
     NodeVec GraphInternal::copy(GraphInPtr new_graph, std::vector<bool> mask) const{
+//        std::cout << "Copying graph " << name << std::endl;
         new_graph->name = name + "_copy";
         new_graph->default_device = default_device;
         new_graph->f_type = f_type;
@@ -225,25 +252,29 @@ namespace metadiff{
         new_graph->shared_vars = shared_vars;
         new_graph->groups = groups;
         size_t n = nodes.size();
+        // Variable which maps each node (by id) of the original graph to a Node in the new graph
         NodeVec mapping(n, Node());
         // Copy nodes
         for(size_t i=0;i<n;i++){
+            // Only nodes that are masked
             if(mask[i]){
+                // Get all of the ancestors of the node and find their corresponding nodes
+                // in the new graph
                 NodeVec ancestors = nodes[i]->op->get_ancestors();
                 NodeVec new_ancestors;
                 for(size_t j=0;j<ancestors.size();j++){
                     new_ancestors.push_back(mapping[ancestors[j].unwrap()->id]);
                 }
+                // Copy the node using the new ancestors and put it in the mapping
                 Node(nodes[i]).copy_to(new_graph, new_ancestors);
                 mapping[nodes[i]->id] = new_graph->nodes.back();
             }
         }
-        // Copy updates
+        // Copy the updates, by just adding the corresponding nodes
         for(size_t i=0;i<updates.size(); i++){
-            if(mapping[updates[i].second.unwrap()->id].empty()){
-                std::cerr << "Could not copy the update for node " <<
-                        updates[i].first.unwrap()->id <<
-                        " because it was not part of the mask." << std::endl;
+            if(mapping[updates[i].second.unwrap()->id].ptr.expired()){
+                std::cerr << "Could not copy the update for node "
+                << updates[i].first.unwrap()->id << " because it was not part of the mask." << std::endl;
             } else {
                 Node shared = mapping[updates[i].first.unwrap()->id];
                 Node update = mapping[updates[i].second.unwrap()->id];
@@ -275,18 +306,21 @@ namespace metadiff{
 //                lengths.clear();
 //            }
 //        }
+//        std::cout << "Copy completed" << std::endl;
         return mapping;
     }
 
-    // Assumes computations are ordered
     std::vector<bool> GraphInternal::get_descendants_mask(NodeVec marked) const{
+//        std::cout << "Generating descendants mask" << std::endl;
         auto n = nodes.size();
         std::vector<bool> descendants_mask(n, false);
+
+        // Mark the nodes provided
         for(int i=0;i<marked.size();i++){
             descendants_mask[marked[i].unwrap()->id] = true;
         }
 
-        // Mark all direct children
+        // At each iteration if the node has been marked, mark its direct children
         for(int i=0;i<n; i++){
             if(descendants_mask[i]){
                 auto children = nodes[i]->children;
@@ -298,15 +332,17 @@ namespace metadiff{
         return descendants_mask;
     };
 
-    // Assumes that computations are ordered
     std::vector<bool> GraphInternal::get_ancestors_mask(NodeVec marked) const{
+//        std::cout << "Generating ancestors mask" << std::endl;
         auto n = nodes.size();
         std::vector<bool> ancestors_mask(n, false);
+
+        // Mark the nodes provided
         for(int i=0;i<marked.size();i++){
             ancestors_mask[marked[i].unwrap()->id] = true;
         }
 
-        // Mark all direct ancestors
+        // At each iteration if the node has been marked, mark its direct ancestors
         for(size_t i=n-1;i < n; i--){
             if(ancestors_mask[i]){
                 NodeVec ancestors = nodes[i]->op->get_ancestors();
@@ -331,6 +367,8 @@ namespace metadiff{
                 std::shared_ptr<Operator> candidate_op = candidates[i].unwrap()->op;
 //                std::cout << "candidate op " << op->name << std::endl;
                 if(candidate_op->equals(op) or op->equals(candidate_op)){
+//                    std::cout << "Found node with id " << candidates[i].unwrap()->id
+//                    << " as same to operator " << op->name << std::endl;
 //                    std::cout << "Found" << candidates[i].unwrap()->id << std::endl;
                     return candidates[i];
                 }
@@ -373,6 +411,8 @@ namespace metadiff{
 
     void GraphInternal::add_temporary_updates(const Updates& temp_updates){
         for(int i=0;i<temp_updates.size();i++){
+//            std::cout << "Adding a temporary update " << temp_updates[i].first.unwrap()->id
+//            << " := " << temp_updates[i].second.unwrap()->id << std::endl;
             temporary_updates.push_back(updates.size());
             updates.push_back(temp_updates[i]);
         }
@@ -381,17 +421,26 @@ namespace metadiff{
     void GraphInternal::clear_temporary_updates(){
         // Potentially might need to sort temporary_updates
         for(int i=0;i<temporary_updates.size();i++){
+//            std::cout << "Removing a temprary update " << updates[temporary_updates[i]].first.unwrap()->id
+//            << " := " << updates[temporary_updates[i]].second.unwrap()->id << std::endl;
             updates.erase(updates.begin()+temporary_updates[i]);
         }
         temporary_updates.clear();
     }
 
     std::vector<Node> GraphInternal::gradient(Node objective, std::vector<Node> params){
-        Group old_group = this->current_group;
+//        std::cout << "Getting gradients of " << objective.unwrap()->id << std::endl;
+        // Stores the current group in order to recreate it
+        Group old_group = current_group;
         if(not objective.is_scalar()){
-            throw UnsupportedGradient();
+            UnsupportedGradient e = UnsupportedGradient();
+//            LOG(ERROR) << e.what();
+            throw e;
         }
+
+        // This vector will contain at each index the gradient message to the corresponding node
         std::vector<Node> grad_messages(nodes.size(), Node());
+
         // Extract the flow tree between params and objective
         std::vector<bool> descendants_mask = get_descendants_mask(params);
         std::vector<bool> ancestors_mask = get_ancestors_mask(NodeVec{objective});
@@ -404,31 +453,44 @@ namespace metadiff{
                 temporary_constants.push_back(nodes[i]);
             }
         }
+
+        // The gradient mode is one higher than that of the objective
         gradient_mode = objective.unwrap()->grad_level + 1;
-        this->current_group = get_group("Gradients " + std::to_string(gradient_mode));
+
+        // Set the current group to the corresponding gradients group
+        current_group = get_group("Gradients " + std::to_string(gradient_mode));
+
         // Send the first message as 1 to the objective
         grad_messages[objective.unwrap()->id] = constant_value(1.0);
+
         // Send all gradient messages
         for (size_t i = flow_tree.size(); i > 0; i--) {
-            if (not grad_messages[flow_tree[i-1].unwrap()->id].empty()) {
+            if (not grad_messages[flow_tree[i-1].unwrap()->id].ptr.expired()) {
                 flow_tree[i-1].unwrap()->op->generate_gradients(grad_messages);
             }
         }
+
+        // Reset the gradient mode
         gradient_mode = 0;
+
         // Extract the gradients for each parameter
         std::vector<Node> grads;
         for (int i = 0; i < params.size(); i++) {
             grads.push_back(grad_messages[params[i].unwrap()->id]);
         }
+
         // Remove all nodes from the temporary constants
         temporary_constants.clear();
-        this->current_group = old_group;
+
+        // Restore the current group
+        current_group = old_group;
         return grads;
     };
 
     // Copies the graph and optimizes it, populating the execution data
     Graph GraphInternal::optimize(NodeVec& targets, Updates& updates, NodeVec& inputs,
                                   NodeVec& new_targets, Updates& new_updates, NodeVec& new_inputs){
+//        std::cout << "Running optimization of graph " << name << std::endl;
         // Copy only the relevant part of the graph
         Graph copy = create_graph();
         add_temporary_updates(updates);
@@ -468,7 +530,7 @@ namespace metadiff{
         for(int i=0;i<updates.size();i++){
             Node node1 = mapping[updates[i].first.unwrap()->id];
             Node node2 = mapping[updates[i].second.unwrap()->id];
-            std::cout << "update " << node1.unwrap()->id << " <- " << node2.unwrap()->id << std::endl;
+//            std::cout << "update " << node1.unwrap()->id << " <- " << node2.unwrap()->id << std::endl;
             new_updates.push_back(std::pair<Node, Node>(node1, node2));
         }
         for(int i=0;i<inputs.size();i++){
@@ -509,7 +571,8 @@ namespace metadiff{
 
     Node GraphInternal::derived_node(std::shared_ptr<Operator> op){
         Node same_node = find_same_node(op);
-        if(same_node.empty()) {
+        if(same_node.ptr.expired()) {
+//            std::cout << "Creating new derived node for operator " << op->name << std::endl;
             auto result = std::make_shared<NodeInternal>(
                     shared_from_this().get(),
                     default_device,
@@ -536,52 +599,37 @@ namespace metadiff{
 
     void GraphInternal::update_node(Node shared, Node update){
         std::shared_ptr<NodeInternal> shared_ptr = shared.unwrap();
+
+        // Check the first node is a shared variable
         if(shared_ptr->type != SHARED_INPUT){
-            throw InvalidArguments("Update", {shared, update},
-                                   "First argument can be only a SHARED_VARIABLE");
+            InvalidArguments e = InvalidArguments("Update",
+                                                  {shared, update},
+                                                  "First argument can be only a SHARED_VARIABLE");
+//            LOG(ERROR) << e.msg;
+            throw e;
         }
         auto shared_shape = shared_ptr->shape;
         auto update_shape = update.unwrap()->shape;
+
+        // Check that the shapes are correct
         for(int i=0;i<4;i++){
             if(shared_shape[i] != update_shape[i]){
-                throw IncompatibleShapes("Update", {shared, update});
+                IncompatibleShapes e = IncompatibleShapes("Update", {shared, update});
+//                LOG(ERROR) << e.msg;
+                throw e;
             }
         }
+
+        // Check that the value types are correct
         if(shared_ptr->v_type != update.unwrap()->v_type){
-            throw InvalidArguments("Update", {shared_ptr, update},
-                                   "Shared variable and update should have the same value type");
+            InvalidArguments e  = InvalidArguments("Update", {shared_ptr, update},
+                                                   "Shared variable and update should have the same value type");
+//            LOG(ERROR) << e.msg;
+            throw e;
         }
+        // Add it to the updates
         updates.push_back(std::pair<Node, Node>(shared, update));
     }
-//    Node GraphInternal::update_node(Node shared,
-//                                    Node update) {
-//        auto op = std::make_shared<Update>(shared_from_this().get(), shared, update);
-//        std::cout << "Update " << update.unwrap()->id << std::endl;
-//        std::cout << update.unwrap()->children.size() << " ::" << std::endl;
-//        Node same_node = find_same_node(op);
-//        if(same_node.empty()) {
-//            auto result = std::make_shared<NodeInternal>(
-//                    shared_from_this().get(),
-//                    default_device,
-//                    nodes.size(),
-//                    "Update Node",
-//                    op->get_node_type(),
-//                    op->get_value_type(),
-//                    op->get_shape(),
-//                    op,
-//                    gradient_mode > op->get_gradient_level() ? gradient_mode : op->get_gradient_level()
-//            );
-//            nodes.push_back(result);
-//            op->owner = result;
-//            NodeVec ancestors = op->get_ancestors();
-//            for (int i = 0; i < ancestors.size(); i++) {
-//                ancestors[i].unwrap()->children.push_back(result);
-//            }
-//            return result;
-//        } else {
-//            return same_node.alias();
-//        }
-//    };
 
     Node GraphInternal::constant_node(af::array value){
         ad_value_type dtype;
@@ -611,6 +659,47 @@ namespace metadiff{
         result->op->owner = result;
         return result;
     };
+
+    SymInt GraphInternal::get_new_symbolic_integer() {
+        this->sym_integer_count++;
+        return SymInt::variable(this->sym_integer_count - 1);
+    }
+
+    Group GraphInternal::get_group(std::string full_name){
+        std::weak_ptr<NodeGroup> group = groups[0];
+        std::stringstream name_stream(full_name);
+        std::string item;
+        while (std::getline(name_stream, item, NodeGroup::delimiter)) {
+            size_t index = group.lock()->children.size();
+            for(size_t i=0;i<index;i++){
+                if(item.compare(group.lock()->children[i].lock()->name) == 0){
+                    index = i;
+                    break;
+                }
+            }
+            // If not found make a new group
+            if(index == group.lock()->children.size()){
+                groups.push_back(std::make_shared<NodeGroup>(item, group));
+                group.lock()->children.push_back(groups.back());
+                group = groups.back();
+            } else {
+                group = group.lock()->children[index];
+            }
+        }
+        return group;
+    }
+
+    void GraphInternal::set_group(std::string full_name){
+        current_group = get_group(full_name);
+    }
+
+    void GraphInternal::set_group(std::string name, Group parent){
+        current_group = get_group(parent.lock()->get_full_name() + name);
+    }
+
+    void GraphInternal::reset_group(){
+        current_group = groups[0];
+    }
 
     Node GraphInternal::tensor(ad_value_type v_type,
                                std::array<SymInt, 4> shape,
@@ -773,6 +862,40 @@ namespace metadiff{
         std::array<SymInt, 4> shape_t{SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
         return tensor(v_type, shape_t, name);
     }
+
+    std::shared_ptr<Operator> get_base_op(const std::shared_ptr<Operator> op){
+        std::shared_ptr<Operator> base_op = op;
+        while(base_op->name == "Alias"){
+            base_op = base_op->get_parents()[0].unwrap()->op;
+        }
+        return base_op;
+    }
+
+    bool symbolic_equals(const Node& node1, const Node& node2){
+        if(node1.unwrap()->id == node2.unwrap()->id){
+            return true;
+        }
+        if(node1.unwrap()->type != node2.unwrap()->type){
+            return false;
+        }
+        ad_node_type type = node1.unwrap()->type;
+        switch (type){
+            case SYMBOLIC_INTEGER:{
+                return node1.unwrap()->sym_value == node2.unwrap()->sym_value;
+            }
+            case INPUT: {
+                return false;
+            }
+            case SHARED_INPUT: {
+                return false;
+            }
+            default: {
+                const std::shared_ptr<Operator> base_op1 = get_base_op(node1.unwrap()->op);
+                const std::shared_ptr<Operator> base_op2 = get_base_op(node2.unwrap()->op);
+                return base_op1->equals(base_op2) or base_op2->equals(base_op1);
+            }
+        }
+    };
 
 }
 #endif //METADIFF_CORE_IMPL_H

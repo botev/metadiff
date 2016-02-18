@@ -1,3 +1,6 @@
 [submodule "tests/lib/googletest"]
 	path = tests/lib/googletest
 	url = https://github.com/google/googletest.git
+[submodule "easyloggingpp"]
+	path = easyloggingpp
+	url = https://github.com/easylogging/easyloggingpp.git

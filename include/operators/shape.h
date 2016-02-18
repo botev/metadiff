@@ -7,11 +7,16 @@
 
 namespace metadiff{
 
-    // Helper function to get all elements
+    // Helper function to get all elements of a node
     SymInt number_of_elements(Shape shape){
         return shape[0] * shape[1] * shape[2] * shape[3];
     };
 
+    /**
+     * This operator has one of two possible results:
+     * 1. If parent is a square matrix returns a vector of the diagonal elements
+     * 2. If parent is a vector returns a square matrix, whose diagonal is equal to the parent
+     */
     class Diagonal: public UnaryOperator{
     public:
         Shape shape;
@@ -51,6 +56,9 @@ namespace metadiff{
         return node.diag();
     }
 
+    /**
+     * Reshapes the parent. The number of elements must be preserved
+     */
     class Reshape: public UnaryOperator{
     public:
         Shape shape;
@@ -113,6 +121,9 @@ namespace metadiff{
         return node.flatten(ndim);
     }
 
+    /**
+     * Similar to Theano dimshuffle, this operator changes the axis ordering of the tensor
+     */
     class Reorder: public UnaryOperator{
     public:
         std::array<size_t ,4> order;

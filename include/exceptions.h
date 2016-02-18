@@ -7,6 +7,7 @@
 namespace metadiff{
 
     class UnsupportedGradient : public std::exception {
+    public:
         const char* what() const throw(){
             return "\nThe gradient operation supports only scalar objectives";
         }
@@ -161,7 +162,7 @@ namespace metadiff{
                          std::string err_string):
                 GraphError(name, input_ids, input_shapes),
                 err_string(err_string) {
-
+            msg = generate_message();
         };
 
         InvalidArguments(std::string name,
@@ -169,7 +170,7 @@ namespace metadiff{
                          std::string err_string):
                 GraphError(name, inputs),
                 err_string(err_string) {
-
+            msg = generate_message();
         };
     };
 

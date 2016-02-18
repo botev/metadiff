@@ -11,7 +11,7 @@ namespace metadiff {
             if(node.unwrap()->type == ad_node_type::SYMBOLIC_INTEGER){
                 return "SYMINT[" + std::to_string(node.unwrap()->id) + "]";
             } else if (node.unwrap()->type == ad_node_type::CONSTANT) {
-                if(node.is_scalar()){
+                if(node.is_scalar() and node.unwrap()->op->name == "Value"){
 //                    std::string value;
 //                    if(node.unwrap()->v_type == FLOAT) {
 //                        float host[1];
@@ -26,8 +26,9 @@ namespace metadiff {
 //                        node.unwrap()->value.host(host);
 //                        value = std::to_string(host[0]);
 //                    }
+                    std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node.unwrap()->op);
                     std::stringstream name;
-                    name << node.unwrap()->op->get_scalar_value() << "[" << node.unwrap()->id << "]";
+                    name << cast_op->value << "[" << node.unwrap()->id << "]";
                     return name.str();
                 } else if(node.unwrap()->op->name != "Input") {
                     return node.unwrap()->op->name + "[" + std::to_string(node.unwrap()->id) + "]";

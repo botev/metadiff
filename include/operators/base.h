@@ -7,7 +7,8 @@
 
 namespace metadiff {
 
-    // Helper function to validate axes
+    // Helper function to validate axes argument
+    // Checks if each axes is a distinct integer between [0,3]
     bool validate_axes(std::vector<size_t> axes){
         if(axes.size() > 4){
             return false;
@@ -26,6 +27,7 @@ namespace metadiff {
     }
 
     // Helper function to verify shapes of elementwise operators
+    // Verifies that the shapes of the inputs are equa;l
     Shape verify_elementwise_shapes(std::string name, NodeVec node_ptrs){
         Shape max_shape  = node_ptrs[0].unwrap()->shape;
         for(int i=1; i<node_ptrs.size();i++){
@@ -51,6 +53,9 @@ namespace metadiff {
         return max_shape;
     }
 
+    /**
+     * Abstract class for any operators that take 2 or more arguments
+     */
     class NaryOperator: public Operator{
     public:
         NodeVec parents;
@@ -122,6 +127,10 @@ namespace metadiff {
         }
     };
 
+    /**
+     * Abstract class for binary operators
+     * Any subclass should explicitly populate the 'shape' variable
+     */
     class BinaryOperator : public Operator{
     public:
         Node parent1;
@@ -175,16 +184,14 @@ namespace metadiff {
         }
 
         size_t get_gradient_level() const{
-            return parent1.unwrap()->grad_level > parent2.unwrap()->grad_level ? parent1.unwrap()->grad_level : parent2.unwrap()->grad_level;
+            return parent1.unwrap()->grad_level > parent2.unwrap()->grad_level ?
+                   parent1.unwrap()->grad_level :
+                   parent2.unwrap()->grad_level;
         };
 
         NodeVec get_arguments() const{
             return NodeVec {};
         }
-
-//        void throw_grad_type_error() const{
-//            throw WrongGradient::(name, {parent1, parent2});
-//        }
 
         bool equals(const std::shared_ptr<Operator> op) const{
             if(name == op->name){
@@ -197,6 +204,9 @@ namespace metadiff {
 
     };
 
+    /**
+     * Abstract class for unary operators
+     */
     class UnaryOperator : public Operator{
     public:
         Node parent;
@@ -248,6 +258,9 @@ namespace metadiff {
         }
     };
 
+    /**
+     * Abstract class for nary operators which are applied elementwise
+     */
     class ElementwiseNary : public NaryOperator{
     public:
         ElementwiseNary(std::string const name,
@@ -272,6 +285,9 @@ namespace metadiff {
         };
     };
 
+    /**
+     * Abstract class for binary operators which are applied elementwise
+     */
     class ElementwiseBinary : public BinaryOperator{
     public:
         ElementwiseBinary(std::string const name,
@@ -301,6 +317,56 @@ namespace metadiff {
         }
     };
 
+    /**
+     * Operator for input variables
+     */
+    class Input : public Operator {
+    public:
+        Input(GraphInPtr graph):
+                Operator("Input", graph){}
+
+        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors)  const{
+            return std::make_shared<Input>(graph);
+        }
+
+        ad_value_type get_value_type()  const{
+            return ad_value_type::FLOAT;
+        }
+
+        Shape get_shape()  const{
+            return Shape{0, 0, 0, 0};
+        }
+
+        ad_node_type get_node_type()  const{
+            return INPUT;
+        };
+
+        size_t get_gradient_level()  const{
+            return 0;
+        }
+
+        NodeVec get_parents()  const{
+            return NodeVec {};
+        }
+
+        NodeVec get_arguments()  const{
+            return NodeVec {};
+        }
+
+        Node get_parent_grad(Node my_grad, size_t index){
+            return my_grad;
+        }
+
+        bool equals(const std::shared_ptr<Operator> op)  const{
+            return false;
+        }
+    };
+
+    /**
+     * Represents an alias for another node
+     * This could be particulary usefull for multiple device case
+     * where an Alias with another device would mean a transfer
+     */
     class Alias : public UnaryOperator{
     public:
         Alias(GraphInPtr graph, Node parent):
@@ -328,6 +394,9 @@ namespace metadiff {
         return apply<Alias>(node);
     }
 
+    /**
+     * Broadcasts the parent to the specified shape
+     */
     class Broadcast : public UnaryOperator {
     public:
         Shape to_shape;
@@ -380,7 +449,13 @@ namespace metadiff {
         return ptr->graph->derived_node(std::make_shared<Broadcast>(ptr->graph, this, shape));
     }
 
+    Node Node::broadcast_to(Node other){
+        return broadcast(other.unwrap()->shape);
+    }
 
+    /**
+     * Performs a sum redoction along the axes specified
+     */
     class Sum : public UnaryOperator {
     public:
         std::vector<size_t> axes;
@@ -437,6 +512,9 @@ namespace metadiff {
         return ptr->graph->derived_node(std::make_shared<Sum>(ptr->graph, this, axes));
     }
 
+    /**
+     * Addition operator
+     */
     class Add : public ElementwiseNary {
     public:
         Add(GraphInPtr graph, NodeVec parents) :
@@ -515,17 +593,9 @@ namespace metadiff {
         return add({node1, node2});
     };
 
-    void Operator::send_grad_message(size_t target, Node msg,
-                                     std::vector<Node>& messages)  const{
-        if (not messages[target].empty()) {
-            // If not first message add them and then send the sum
-            messages[target] = add(messages[target], msg);
-        } else {
-            // If first just send it
-            messages[target] = msg;
-        }
-    }
-
+    /**
+     * Unary negation
+     */
     class Neg : public UnaryOperator {
     public:
         Neg(GraphInPtr graph, Node parent) :
@@ -554,6 +624,9 @@ namespace metadiff {
         return add(node1, node2.neg());
     }
 
+    /**
+     * Elementwise multiplication
+     */
     class Mul : public ElementwiseNary {
     public:
         Mul(GraphInPtr graph, NodeVec parents) :
@@ -651,6 +724,9 @@ namespace metadiff {
         return mul(NodeVec{node1, node2});
     };
 
+    /**
+     * Unary division (inverse)
+     */
     class Div : public UnaryOperator {
     public:
         Div(GraphInPtr graph, Node parent) :
@@ -678,30 +754,6 @@ namespace metadiff {
     Node operator/(Node node1, Node node2){
         return mul(node1, node2.div());
     };
-
-    class Square : public UnaryOperator {
-    public:
-        Square(GraphInPtr graph, Node parent) :
-                UnaryOperator("Square", graph, parent) {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Square>(graph, ancestors[0]);
-        }
-
-        Node get_parent_grad(Node my_grad, size_t index){
-            Node two = graph->constant_value(2.0);
-            two.unwrap()->grad_level = my_grad.unwrap()->grad_level;
-            return mul({my_grad, two, parent});
-        }
-    };
-
-    Node Node::square(){
-        return apply<Square>(unwrap());
-    }
-
-    Node square(Node node){
-        return node.square();
-    }
 }
 
 #endif //METADIFF_OPERATORS_BASE_H

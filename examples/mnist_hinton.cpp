@@ -42,7 +42,6 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     md::NodeVec inputs = {graph->matrix(md::FLOAT, {d[0], n}, "Input")};
     // Parameters
     std::vector<md::Node> params;
-    std::cout << "G" << graph->groups.size() << std::endl;
     for(int i=1;i<9;i++){
         graph->set_group(layers[i]);
         params.push_back(graph->shared_var(af::randn(d[i], d[i-1], f32) / 100.0, "W_" + std::to_string(i)));
@@ -81,22 +80,21 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     md::NodeVec new_inputs;
     md::NodeVec new_loss;
     md::Updates new_updates;
-    std::cout << graph->groups.size() << std::endl;
+//    std::cout << "Optimize" << std::endl;
     md::Graph optimized =  graph->optimize(loss, updates, inputs,
                                            new_loss, new_updates, new_inputs);
-    std::cout << "Optimize" << std::endl;
 //    std::cout << "Original:" << graph->nodes.size() << std::endl;
 //    std::cout << "Optimized:" << optimized->nodes.size() << std::endl;
     md::dagre::dagre_to_file(name + "_optim.html", optimized, new_loss, new_updates);
-    std::cout << "Dagre" << std::endl;
+//    std::cout << "Dagre" << std::endl;
     // Create backend and compile function
     md::ArrayfireBackend md_backend = md::ArrayfireBackend();
 //    auto train_org = md_backend.compile_function(name, graph, inputs, loss, updates);
-    std::cout << "trainorg " << new_updates.size() << std::endl;
+//    std::cout << "trainorg " << new_updates.size() << std::endl;
     clock_t start = clock();
     double compile_time = 0;
     auto train_optim = md_backend.compile_function(name + "_optim", optimized, new_inputs, new_loss, new_updates);
-    std::cout << "train" << std::endl;
+//    std::cout << "train" << std::endl;
     compile_time = ((double)(1000 * (clock() - start))) / ((double)(CLOCKS_PER_SEC));
     // Run function
 
@@ -123,6 +121,7 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     return std::pair<double, double>(mean_time, compile_time);
 };
 
+//INITIALIZE_EASYLOGGINGPP
 
 int main(int argc, char **argv)
 {

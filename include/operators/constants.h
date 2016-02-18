@@ -6,6 +6,10 @@
 #define METADIFF_OPERATORS_CONSTANTS_H
 
 namespace metadiff{
+    /**
+     * Operator which is just a view of the parent, but is always constant
+     * meaning no gradients will be passed
+     */
     class MakeConstant: public UnaryOperator{
     public:
         MakeConstant(GraphInPtr graph,
@@ -34,6 +38,9 @@ namespace metadiff{
         return apply<MakeConstant>(this);
     }
 
+    /**
+     * Abstract class for any operators which produce constant expressions
+     */
     class ConstantOperator: public Operator{
     public:
         Shape shape;
@@ -88,6 +95,9 @@ namespace metadiff{
         }
     };
 
+    /**
+     * Matrix identity
+     */
     class Eye: public ConstantOperator{
     public:
         Eye(GraphInPtr graph, SymInt size):
@@ -106,6 +116,9 @@ namespace metadiff{
         return derived_node(std::make_shared<Eye>(this, size));
     }
 
+    /**
+     * Matrix filled with zeros
+     */
     class Zeros: public ConstantOperator{
     public:
         Zeros(GraphInPtr graph, Shape shape):
@@ -121,6 +134,9 @@ namespace metadiff{
         return derived_node(std::make_shared<Zeros>(this, shape));
     }
 
+    /**
+     * Matrix filled with ones
+     */
     class Ones: public ConstantOperator{
     public:
         Ones(GraphInPtr graph, Shape shape):
@@ -136,6 +152,9 @@ namespace metadiff{
         return derived_node(std::make_shared<Ones>(this, shape));
     }
 
+    /**
+     * Matrix filled with the same value
+     */
     class ConstantValue: public ConstantOperator{
     public:
         double value;
@@ -172,19 +191,22 @@ namespace metadiff{
         }
     }
 
-    double Operator::get_scalar_value()  const{
-        if(name == "Zeros") {
-            return 0;
-        }
-        if(name == "Ones"){
-            return 1;
-        }
-        if(name == "Value"){
-            return dynamic_cast<const ConstantValue* const>(this)->value;
-        }
-        return owner.unwrap()->value.host<float>()[0];
-    }
+//    double Operator::get_scalar_value()  const{
+//        if(name == "Zeros") {
+//            return 0;
+//        }
+//        if(name == "Ones"){
+//            return 1;
+//        }
+//        if(name == "Value"){
+//            return dynamic_cast<const ConstantValue* const>(this)->value;
+//        }
+//        return owner.unwrap()->value.host<float>()[0];
+//    }
 
+    /**
+     * A vector of the sequence from 'start' to 'end'
+     */
     class Sequence: public ConstantOperator{
     public:
         SymInt start;

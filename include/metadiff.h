@@ -15,11 +15,12 @@
 
 #include "symbolic.h"
 #include "interface.h"
+//#include "easylogging++.h"
 //#include "test.h"
 #include "core.h"
 #include "exceptions.h"
-#include "core_impl.h"
 #include "operators.h"
+#include "core_impl.h"
 #include "visual.h"
 #include "backends.h"
 

@@ -7,12 +7,13 @@
 
 namespace metadiff{
 
-    // Inverts the order of all non singular dimensions (numpy)
+    /**
+     * Inverts the order of all non singular dimensions (numpy)
+     */
     class Transpose: public UnaryOperator{
     public:
         Transpose(GraphInPtr graph, Node parent) :
-                UnaryOperator("Transpose", graph, parent)
-        {}
+                UnaryOperator("Transpose", graph, parent) {}
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
             return std::make_shared<Transpose>(graph, ancestors[0]);
@@ -60,6 +61,9 @@ namespace metadiff{
         return node.transpose();
     }
 
+    /**
+     * General Matrix-Matrix Multiplication (GEMM)
+     */
     class MatrixMultiplication: public NaryOperator{
     public:
         MatrixMultiplication(GraphInPtr graph,
@@ -116,9 +120,9 @@ namespace metadiff{
             }
 
             std::shared_ptr<Operator> op;
-            if (left_tr.empty()) {
+            if (left_tr.ptr.expired()) {
                 return apply<MatrixMultiplication>(my_grad, right_tr);
-            } else if (right_tr.empty()) {
+            } else if (right_tr.ptr.expired()) {
                 return apply<MatrixMultiplication>(left_tr, my_grad);
             } else {
                 return apply<MatrixMultiplication>(NodeVec{left_tr, my_grad, right_tr});
@@ -151,6 +155,9 @@ namespace metadiff{
         return dot({node1, node2});
     }
 
+    /**
+     * Takes the matrix inverse
+     */
     class MatrixInverse: public UnaryOperator{
     public:
         MatrixInverse(GraphInPtr graph, Node parent) :
@@ -181,6 +188,9 @@ namespace metadiff{
         return node.minv();
     }
 
+    /**
+     * Takes the determinant of a square matrix
+     */
     class Determinant: public UnaryOperator{
     public:
         Determinant(GraphInPtr graph, Node parent) :
@@ -217,6 +227,9 @@ namespace metadiff{
         return node.det();
     }
 
+    /**
+     * Takes the log of the determinant of a square matrix
+     */
     class LogDeterminant: public UnaryOperator{
     public:
         LogDeterminant(GraphInPtr graph, Node parent) :
@@ -253,6 +266,9 @@ namespace metadiff{
         return node.logdet();
     }
 
+    /**
+     * Takes the trace of a square matrix
+     */
     class Trace: public UnaryOperator{
     public:
         Trace(GraphInPtr graph, Node parent) :

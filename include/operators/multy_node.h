@@ -18,8 +18,7 @@ namespace metadiff{
         MultiNode(std::string const name,
                   GraphInPtr graph,
                   Node parent):
-                UnaryOperator(name, graph, parent)
-        {}
+                UnaryOperator(name, graph, parent) {}
 
         ad_value_type get_value_type() const{
             return results_v_types[0];
@@ -34,9 +33,9 @@ namespace metadiff{
         };
     };
 
-
-// Special operator for nodes which consist of more than 1 value
-// Such as MaxAndArgMax, SortAndArgSort
+    /**
+     * An operator which selects one of the children of a MultiNode operator
+     */
     class MultiNodeIndex : public Operator {
     public:
         Node parent;
@@ -101,6 +100,9 @@ namespace metadiff{
         }
     };
 
+    /**
+     * Max and argmax operator
+     */
     class MaxAndArgMax: public MultiNode {
     public:
         size_t axis;
@@ -138,7 +140,7 @@ namespace metadiff{
     };
 
     Node Node::max(size_t axis) {
-        if(axis == AUTOINFER_AXIS){
+        if(axis == AUTO_INFER_AXIS){
             for(size_t i = 0; i < 4; i++){
                 if(unwrap()->shape[3-i] != 1){
                     axis = 3 - i;
@@ -152,7 +154,7 @@ namespace metadiff{
     }
 
     Node Node::argmax(size_t axis) {
-        if(axis == AUTOINFER_AXIS){
+        if(axis == AUTO_INFER_AXIS){
             for(size_t i = 0; i < 4; i++){
                 if(unwrap()->shape[3-i] != 1){
                     axis = 3 - i;
@@ -165,30 +167,33 @@ namespace metadiff{
         return unwrap()->graph->derived_node(std::make_shared<MultiNodeIndex>(unwrap()->graph, max_and_arg_max, 1));
     }
 
+    /**
+     * Sort and argsort operator
+     */
     class SortAndArgSort: public MultiNode {
     public:
         size_t axis;
         SortAndArgSort(GraphInPtr graph,
-        Node parent, size_t axis):
-        MultiNode("SortAndArgSort", graph, parent),
-        axis(axis){
-                if(parent.unwrap()->v_type == BOOLEAN){
-                    throw InvalidArguments(name, {parent}, "Parent can not be of type BOOLEAN");
-                }
-                if(parent.unwrap()->type == SYMBOLIC_INTEGER){
-                    throw InvalidArguments(name, {parent}, "Parent can not be of type SYMBOLIC_INTEGER");
-                }
-                Shape shape = parent.unwrap()->shape;
-                shape[axis] = 1;
-                this->results_shapes = {shape, shape};
-                if(parent.unwrap()->type == INPUT or parent.unwrap()->type == SHARED_INPUT or parent.unwrap()->type == INPUT_DERIVED){
-                    this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
-                } else if(parent.unwrap()->type == CONSTANT_DERIVED){
-                    this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
-                } else {
-                    this->results_types = {CONSTANT, CONSTANT};
-                }
-                this->results_v_types = {parent.unwrap()->v_type, INTEGER};
+                       Node parent, size_t axis):
+                MultiNode("SortAndArgSort", graph, parent),
+                axis(axis){
+            if(parent.unwrap()->v_type == BOOLEAN){
+                throw InvalidArguments(name, {parent}, "Parent can not be of type BOOLEAN");
+            }
+            if(parent.unwrap()->type == SYMBOLIC_INTEGER){
+                throw InvalidArguments(name, {parent}, "Parent can not be of type SYMBOLIC_INTEGER");
+            }
+            Shape shape = parent.unwrap()->shape;
+            shape[axis] = 1;
+            this->results_shapes = {shape, shape};
+            if(parent.unwrap()->type == INPUT or parent.unwrap()->type == SHARED_INPUT or parent.unwrap()->type == INPUT_DERIVED){
+                this->results_types = {INPUT_DERIVED, CONSTANT_DERIVED};
+            } else if(parent.unwrap()->type == CONSTANT_DERIVED){
+                this->results_types = {CONSTANT_DERIVED, CONSTANT_DERIVED};
+            } else {
+                this->results_types = {CONSTANT, CONSTANT};
+            }
+            this->results_v_types = {parent.unwrap()->v_type, INTEGER};
         }
 
         std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
@@ -202,7 +207,7 @@ namespace metadiff{
     };
 
     Node Node::sort(size_t axis) {
-        if(axis == AUTOINFER_AXIS){
+        if(axis == AUTO_INFER_AXIS){
             for(size_t i = 0; i < 4; i++){
                 if(unwrap()->shape[3-i] != 1){
                     axis = 3 - i;
@@ -216,7 +221,7 @@ namespace metadiff{
     }
 
     Node Node::argsort(size_t axis){
-        if(axis == AUTOINFER_AXIS){
+        if(axis == AUTO_INFER_AXIS){
             for(size_t i = 0; i < 4; i++){
                 if(unwrap()->shape[3-i] != 1){
                     axis = 3 - i;
