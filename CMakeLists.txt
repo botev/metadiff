@@ -14,6 +14,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Werror=return-type -fope
 
 include_directories(include)
 include_directories(easyloggingpp/src)
+include_directories(spdlog/include/spdlog)
 include_directories(${ArrayFire_INCLUDE_DIRS})
 #include_directories(/opt/intel/mkl/include)
 #link_directories(/usr/local/lib)
@@ -26,5 +27,6 @@ link_libraries(dl)
 link_libraries(curl)
 
 add_subdirectory(tests)
-add_executable(mnist_hinton.o examples/mnist_hinton.cpp examples/mnist.h include/exceptions.h)
-#add_executable(test.o examples/tt.cpp)
+add_executable(mnist_hinton.o examples/mnist_hinton.cpp examples/mnist.h)
+add_executable(log_test.o examples/log_test.cpp include/logging.h)
+add_executable(test.o examples/ttt1.cpp)

@@ -261,6 +261,11 @@ namespace metadiff {
      * The class is an API wrapper around node of the graph
      */
     class Node {
+    private:
+        std::shared_ptr<spdlog::logger> logger() const{
+            return metadiff::logger("node");
+        }
+
     public:
         std::weak_ptr<NodeInternal> ptr;
 
@@ -279,14 +284,6 @@ namespace metadiff {
 
         Node(const Node* node):
                 ptr(node->ptr) {};
-
-//        /**
-//         * Checks if the Node is empty, could happen only if you manually construct this class
-//         * or the Graph instance is out of scope.
-//         */
-//        bool empty() const{
-//            return ptr.expired();
-//        }
 
         /**
          * Copies the node to another graph, by using the ancestors provided
@@ -376,6 +373,10 @@ namespace metadiff {
      * Abstract class for operators
      */
     class Operator{
+    private:
+        std::shared_ptr<spdlog::logger> logger() const{
+            return metadiff::logger("operator");
+        }
     public:
         /**
          * Pointer to the owning graph
@@ -509,8 +510,10 @@ namespace metadiff {
      */
     class GraphInternal : public std::enable_shared_from_this<GraphInternal> {
     private:
-        std::vector<Node> temporary_constants;
-        std::vector<size_t> temporary_updates;
+        std::shared_ptr<spdlog::logger> logger() const{
+            return metadiff::logger("graph");
+        }
+
     public:
         std::string name;
         Device default_device;
@@ -526,6 +529,9 @@ namespace metadiff {
         std::vector<std::shared_ptr<NodeGroup>> groups;
         size_t gradient_mode;
         Group current_group;
+
+        NodeVec temporary_constants;
+        Updates temporary_updates;
 
         GraphInternal() {
             // TODO Have a better preference of devices available in order
@@ -579,7 +585,7 @@ namespace metadiff {
 
         /**
          * Creates a new shared variable
-         * TODO This should be made independ from arrayfire as well as the whole SharedVariable class
+         * TODO This should be made independant from arrayfire as well as the whole SharedVariable class
          */
         Node shared_var(af::array value, std::string name = "SharedVar");
         /**

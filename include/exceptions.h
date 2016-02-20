@@ -196,6 +196,47 @@ namespace metadiff{
             msg = generate_message();
         };
     };
+
+    class MissingRequiredInput : public std::exception{
+    public:
+        std::vector<size_t> target_ids;
+        size_t input_id;
+        MissingRequiredInput(std::vector<size_t> targets, size_t input_id):
+                target_ids(target_ids),
+                input_id(input_id)
+        {}
+
+        MissingRequiredInput(std::vector<Node> targets, size_t input_id):
+                input_id(input_id)
+        {
+            for(int i=0;i<targets.size();i++){
+                this->target_ids.push_back(targets[i].unwrap()->id);
+            }
+        }
+
+        const char* what() const throw(){
+            std::string msg = "Missing required input " + std::to_string(input_id) + " for targets [";
+            for(int i=0;i<target_ids.size();i++){
+                msg += std::to_string(target_ids[i]);
+                if(i<target_ids.size()-1){
+                    msg += ", ";
+                }
+            }
+            msg += "]";
+            return msg.c_str();
+        }
+    };
+
+    class CompilationFailed : public std::exception{
+    public:
+        std::string msg;
+        CompilationFailed(std::string msg):
+                msg(msg) {};
+
+        const char* what() const throw() {
+            return ("Compilation failed due to:\n" + msg).c_str();
+        }
+    };
 }
 
 #endif //METADIFF_EXCEPTIONS_H

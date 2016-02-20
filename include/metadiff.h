@@ -5,6 +5,14 @@
 #ifndef METADIFF_METADIFF_H
 #define METADIFF_METADIFF_H
 
+//#ifdef DEBUG
+//#define METADIFF_LOGGING
+//#endif
+//
+//#ifdef METADIFF_LOGGING
+//sad
+//#endif
+
 #include <exception>
 #include <algorithm>
 #include "vector"
@@ -13,6 +21,7 @@
 #include "memory"
 #include <dlfcn.h>
 
+#include "logging.h"
 #include "symbolic.h"
 #include "interface.h"
 //#include "easylogging++.h"

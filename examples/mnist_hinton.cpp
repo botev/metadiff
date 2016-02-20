@@ -89,12 +89,12 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
 //    std::cout << "Dagre" << std::endl;
     // Create backend and compile function
     md::ArrayfireBackend md_backend = md::ArrayfireBackend();
+    md_backend.dir_path = "./mnist_hinton";
 //    auto train_org = md_backend.compile_function(name, graph, inputs, loss, updates);
-//    std::cout << "trainorg " << new_updates.size() << std::endl;
     clock_t start = clock();
     double compile_time = 0;
-    auto train_optim = md_backend.compile_function(name + "_optim", optimized, new_inputs, new_loss, new_updates);
-//    std::cout << "train" << std::endl;
+    auto train_optim = md_backend.compile_function(optimized, new_inputs, new_loss, new_updates);
+    std::cout << "train" << std::endl;
     compile_time = ((double)(1000 * (clock() - start))) / ((double)(CLOCKS_PER_SEC));
     // Run function
 
@@ -125,6 +125,9 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
 
 int main(int argc, char **argv)
 {
+    spdlog::set_pattern("*** [%H:%M:%S %z] [thread %t] %v ***");
+    md::metadiff_sink->add_sink(std::make_shared<spdlog::sinks::stdout_sink_st>());
+
     int batch_size_grid[3] = {1000, 5000, 10000};
     int factor_grid[3] = {1, 5, 10};
     // Default to CPU
