@@ -85,7 +85,7 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
                                            new_loss, new_updates, new_inputs);
 //    std::cout << "Original:" << graph->nodes.size() << std::endl;
 //    std::cout << "Optimized:" << optimized->nodes.size() << std::endl;
-    md::dagre::dagre_to_file(name + "_optim.html", optimized, new_loss, new_updates);
+    md::dagre::print_to_file(name + "_optim.html", optimized, new_updates);
 //    std::cout << "Dagre" << std::endl;
     // Create backend and compile function
     md::ArrayfireBackend md_backend = md::ArrayfireBackend();

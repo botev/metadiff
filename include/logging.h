@@ -5,7 +5,7 @@
 #ifndef METADIFF_LOGGING_H
 #define METADIFF_LOGGING_H
 
-#include "spdlog.h"
+#include "spdlog/spdlog.h"
 namespace metadiff{
     template<class Mutex>
     class dist_sink: public spdlog::sinks::base_sink<Mutex>
@@ -57,7 +57,7 @@ namespace metadiff{
     typedef dist_sink<std::mutex> dist_sink_mt;
     typedef dist_sink<spdlog::details::null_mutex> dist_sink_st;
 
-    static const std::shared_ptr<dist_sink_st> metadiff_sink = std::make_shared<dist_sink_st>();
+    static std::shared_ptr<dist_sink_st> metadiff_sink = std::make_shared<dist_sink_st>();
 
     std::shared_ptr<spdlog::logger> logger(std::string name){
         std::shared_ptr<spdlog::logger> ptr = spdlog::get(name);

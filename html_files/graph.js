@@ -97,7 +97,6 @@ var GraphMorpher = function(svg_tag, min_width, min_height) {
     this.addEdge = function (name_from, name_to, label) {
         var from_groups = this.prime_graph.node(name_from).getAllParentGroups();
         var to_groups = this.prime_graph.node(name_to).getAllParentGroups();
-//            console.log(label, from_groups, to_groups);
         // Set the original edge
         this.prime_graph.setEdge({v: name_from, w: name_to, name: label}, {label: label});
         for (var j = 0; j < to_groups.length; j++) {
@@ -322,7 +321,7 @@ var GraphMorpher = function(svg_tag, min_width, min_height) {
                         myCircle.setAttributeNS(null, "cx", y / 2 - r);
                         myCircle.setAttributeNS(null, "cy", -x / 2 + r);
                         myCircle.setAttributeNS(null, "r", r);
-                        myCircle.setAttributeNS(null, "fill", "black");
+                        myCircle.setAttributeNS(null, "fill", "#ffff00");
                         myCircle.setAttributeNS(null, "stroke", "none");
                         node.appendChild(myCircle);
                         myCircle.onclick = function (){

@@ -14,7 +14,7 @@ namespace metadiff{
 
         /**
          * Creates backend with a temporary directory for logging
-         * and inferes the ArrayFire include and libs from the enivromnetal variable
+         * and infers the ArrayFire include and libs from the environmental variable
          * AF_PATH or falls back to /opt/arrayfire-3
          */
         ArrayfireBackend() :
@@ -27,7 +27,7 @@ namespace metadiff{
 
         /**
          * Creates backend with the specified directory for logging
-         * and inferes the ArrayFire include and libs from the enivromnetal variable
+         * and infers the ArrayFire include and libs from the eenvironmental variable
          * AF_PATH or falls back to /opt/arrayfire-3
          */
         ArrayfireBackend(std::string dir_path):
