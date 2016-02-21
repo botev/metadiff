@@ -59,7 +59,7 @@ The framework is still in early development and there are number of things that 
 ## Examples
 Need to improve on this. Currently there is a single example in the `examples` folder which is the standard
 Hinton autoencoder applied to MNIST.
-Here is a [link](https://rawgit.com/Botev/metadiff/master/examples/mnist_hinton_optim.html) to view the graph visualization generated for this example. Note that currently if you run this on your machine, since it imports the javascript files as relative paths will work only if you build the project and execute it from the `bin` directory.
+Here is a [link](https://rawgit.com/Botev/metadiff/master/examples/graphs/mnist_hinton_optim.html) to view the graph visualization generated for this example. Note that currently if you run this on your machine, since it imports the javascript files as relative paths will work only if you build the project and execute it from the `bin` directory.
 
 ## License
 The framework is licensed under the MIT License.

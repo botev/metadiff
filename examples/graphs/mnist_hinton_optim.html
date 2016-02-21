@@ -1,0 +1,3565 @@
+<!DOCTYPE html>
+<!-- saved from url=(0065)http://cpettitt.github.io/project/dagre-d3/latest/demo/hover.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="utf-8">
+<title>Function Graph</title>
+
+<link rel="stylesheet" href="../../html_files/demo.css">
+<script src="../../html_files/d3.v3.min.js" charset="utf-8"></script>
+<script src="../../html_files/dagre-d3.js"></script><style type="text/css"></style>
+
+<!-- Pull in JQuery dependencies -->
+<link rel="stylesheet" href="../../html_files/tipsy.css">
+<script src="../../html_files/jquery-1.9.1.min.js"></script>
+<script src="../../html_files/tipsy.js"></script>
+<script src="../../html_files/graph.js"></script>
+
+</head><body style="margin:0;padding:0" height="100%"><h3 style="margin-bottom: 0px">mnist_hinton_copy</h3>
+<h5 style="margin-top: 0px; margin-bottom: 0px">Default device: CPU[0]</h5>
+<h5 style="margin-top: 0px; margin-bottom: 0px">Float type: f32</h5>
+<h5 style="margin-top: 0px; margin-bottom: 0px">Integer type: s32</h5>
+<h5 style="margin-top: 0px; margin-bottom: 0px">Broadcast policy: Quiet</h5>
+
+<svg width="1500" height="900"></svg>
+
+<script id="js">
+	// Create a new graph morpher
+	var morpher = new GraphMorpher("g", 1000, 600);
+	// Set all groups
+	morpher.addGroup("_root/Inputs");
+	morpher.addGroup("_root/Encoder 1");
+	morpher.addGroup("_root/Encoder 2");
+	morpher.addGroup("_root/Encoder 3");
+	morpher.addGroup("_root/Encoder 4");
+	morpher.addGroup("_root/Decoder 3");
+	morpher.addGroup("_root/Decoder 2");
+	morpher.addGroup("_root/Decoder 1");
+	morpher.addGroup("_root/Output Layer");
+	morpher.addGroup("_root/Objective");
+	morpher.addGroup("_root/Gradients 1");
+	morpher.addGroup("_root/Gradients 1/Objective");
+	morpher.addGroup("_root/Gradients 1/Output Layer");
+	morpher.addGroup("_root/Gradients 1/Decoder 1");
+	morpher.addGroup("_root/Gradients 1/Decoder 2");
+	morpher.addGroup("_root/Gradients 1/Decoder 3");
+	morpher.addGroup("_root/Gradients 1/Encoder 4");
+	morpher.addGroup("_root/Gradients 1/Encoder 3");
+	morpher.addGroup("_root/Gradients 1/Encoder 2");
+	morpher.addGroup("_root/Gradients 1/Encoder 1");
+	morpher.addGroup("_root/SGD");
+
+	// Add all nodes
+	morpher.addNode("_root/Inputs",
+		"Input[0]", {
+		label: "Input[0]",
+		shape: "rect",
+		description: 
+			"Name: Input <br>"+
+			"Group: Inputs <br>"+
+			"Type: INPUT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (17, 59, 70, 144) <br>"
+});
+	morpher.addNode("_root/Encoder 1",
+		"W_1[1]", {
+		label: "W_1[1]",
+		shape: "rect",
+		description: 
+			"Name: W_1 <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 784, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (17, 149) <br>"
+});
+	morpher.addNode("_root/Encoder 1",
+		"b_1[2]", {
+		label: "b_1[2]",
+		shape: "rect",
+		description: 
+			"Name: b_1 <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (18, 152) <br>"
+});
+	morpher.addNode("_root/Encoder 2",
+		"W_2[3]", {
+		label: "W_2[3]",
+		shape: "rect",
+		description: 
+			"Name: W_2 <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (21, 136, 155) <br>"
+});
+	morpher.addNode("_root/Encoder 2",
+		"b_2[4]", {
+		label: "b_2[4]",
+		shape: "rect",
+		description: 
+			"Name: b_2 <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (22, 158) <br>"
+});
+	morpher.addNode("_root/Encoder 3",
+		"W_3[5]", {
+		label: "W_3[5]",
+		shape: "rect",
+		description: 
+			"Name: W_3 <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (25, 126, 161) <br>"
+});
+	morpher.addNode("_root/Encoder 3",
+		"b_3[6]", {
+		label: "b_3[6]",
+		shape: "rect",
+		description: 
+			"Name: b_3 <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (26, 164) <br>"
+});
+	morpher.addNode("_root/Encoder 4",
+		"W_4[7]", {
+		label: "W_4[7]",
+		shape: "rect",
+		description: 
+			"Name: W_4 <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (29, 116, 167) <br>"
+});
+	morpher.addNode("_root/Encoder 4",
+		"b_4[8]", {
+		label: "b_4[8]",
+		shape: "rect",
+		description: 
+			"Name: b_4 <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (30, 170) <br>"
+});
+	morpher.addNode("_root/Decoder 3",
+		"W_5[9]", {
+		label: "W_5[9]",
+		shape: "rect",
+		description: 
+			"Name: W_5 <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 30, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (33, 106, 173) <br>"
+});
+	morpher.addNode("_root/Decoder 3",
+		"b_5[10]", {
+		label: "b_5[10]",
+		shape: "rect",
+		description: 
+			"Name: b_5 <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (34, 176) <br>"
+});
+	morpher.addNode("_root/Decoder 2",
+		"W_6[11]", {
+		label: "W_6[11]",
+		shape: "rect",
+		description: 
+			"Name: W_6 <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (37, 96, 179) <br>"
+});
+	morpher.addNode("_root/Decoder 2",
+		"b_6[12]", {
+		label: "b_6[12]",
+		shape: "rect",
+		description: 
+			"Name: b_6 <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (38, 182) <br>"
+});
+	morpher.addNode("_root/Decoder 1",
+		"W_7[13]", {
+		label: "W_7[13]",
+		shape: "rect",
+		description: 
+			"Name: W_7 <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (41, 86, 185) <br>"
+});
+	morpher.addNode("_root/Decoder 1",
+		"b_7[14]", {
+		label: "b_7[14]",
+		shape: "rect",
+		description: 
+			"Name: b_7 <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (42, 188) <br>"
+});
+	morpher.addNode("_root/Output Layer",
+		"W_8[15]", {
+		label: "W_8[15]",
+		shape: "rect",
+		description: 
+			"Name: W_8 <br>"+
+			"Group: Output Layer <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (45, 76, 191) <br>"
+});
+	morpher.addNode("_root/Output Layer",
+		"b_8[16]", {
+		label: "b_8[16]",
+		shape: "rect",
+		description: 
+			"Name: b_8 <br>"+
+			"Group: Output Layer <br>"+
+			"Type: SHARED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (46, 194) <br>"
+});
+	morpher.addNode("_root/Encoder 1",
+		"MatrixMul[17]", {
+		label: "MatrixMul[17]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (1, 0) <br>"+
+			"Children: (19) <br>"
+});
+	morpher.addNode("_root/Encoder 1",
+		"Broadcast[18]", {
+		label: "Broadcast[18]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (2) <br>"+
+			"Children: (19) <br>"
+});
+	morpher.addNode("_root/Encoder 1",
+		"Add[19]", {
+		label: "Add[19]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (17, 18) <br>"+
+			"Children: (20) <br>"
+});
+	morpher.addNode("_root/Encoder 1",
+		"Tanh[20]", {
+		label: "Tanh[20]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (19) <br>"+
+			"Children: (21, 134, 139) <br>"
+});
+	morpher.addNode("_root/Encoder 2",
+		"MatrixMul[21]", {
+		label: "MatrixMul[21]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (3, 20) <br>"+
+			"Children: (23) <br>"
+});
+	morpher.addNode("_root/Encoder 2",
+		"Broadcast[22]", {
+		label: "Broadcast[22]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (4) <br>"+
+			"Children: (23) <br>"
+});
+	morpher.addNode("_root/Encoder 2",
+		"Add[23]", {
+		label: "Add[23]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (21, 22) <br>"+
+			"Children: (24) <br>"
+});
+	morpher.addNode("_root/Encoder 2",
+		"Tanh[24]", {
+		label: "Tanh[24]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (23) <br>"+
+			"Children: (25, 124, 129) <br>"
+});
+	morpher.addNode("_root/Encoder 3",
+		"MatrixMul[25]", {
+		label: "MatrixMul[25]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (5, 24) <br>"+
+			"Children: (27) <br>"
+});
+	morpher.addNode("_root/Encoder 3",
+		"Broadcast[26]", {
+		label: "Broadcast[26]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (6) <br>"+
+			"Children: (27) <br>"
+});
+	morpher.addNode("_root/Encoder 3",
+		"Add[27]", {
+		label: "Add[27]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (25, 26) <br>"+
+			"Children: (28) <br>"
+});
+	morpher.addNode("_root/Encoder 3",
+		"Tanh[28]", {
+		label: "Tanh[28]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (27) <br>"+
+			"Children: (29, 114, 119) <br>"
+});
+	morpher.addNode("_root/Encoder 4",
+		"MatrixMul[29]", {
+		label: "MatrixMul[29]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (7, 28) <br>"+
+			"Children: (31) <br>"
+});
+	morpher.addNode("_root/Encoder 4",
+		"Broadcast[30]", {
+		label: "Broadcast[30]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (8) <br>"+
+			"Children: (31) <br>"
+});
+	morpher.addNode("_root/Encoder 4",
+		"Add[31]", {
+		label: "Add[31]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (29, 30) <br>"+
+			"Children: (32) <br>"
+});
+	morpher.addNode("_root/Encoder 4",
+		"Tanh[32]", {
+		label: "Tanh[32]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (31) <br>"+
+			"Children: (33, 104, 109) <br>"
+});
+	morpher.addNode("_root/Decoder 3",
+		"MatrixMul[33]", {
+		label: "MatrixMul[33]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (9, 32) <br>"+
+			"Children: (35) <br>"
+});
+	morpher.addNode("_root/Decoder 3",
+		"Broadcast[34]", {
+		label: "Broadcast[34]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (10) <br>"+
+			"Children: (35) <br>"
+});
+	morpher.addNode("_root/Decoder 3",
+		"Add[35]", {
+		label: "Add[35]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (33, 34) <br>"+
+			"Children: (36) <br>"
+});
+	morpher.addNode("_root/Decoder 3",
+		"Tanh[36]", {
+		label: "Tanh[36]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (35) <br>"+
+			"Children: (37, 94, 99) <br>"
+});
+	morpher.addNode("_root/Decoder 2",
+		"MatrixMul[37]", {
+		label: "MatrixMul[37]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (11, 36) <br>"+
+			"Children: (39) <br>"
+});
+	morpher.addNode("_root/Decoder 2",
+		"Broadcast[38]", {
+		label: "Broadcast[38]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (12) <br>"+
+			"Children: (39) <br>"
+});
+	morpher.addNode("_root/Decoder 2",
+		"Add[39]", {
+		label: "Add[39]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (37, 38) <br>"+
+			"Children: (40) <br>"
+});
+	morpher.addNode("_root/Decoder 2",
+		"Tanh[40]", {
+		label: "Tanh[40]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (39) <br>"+
+			"Children: (41, 84, 89) <br>"
+});
+	morpher.addNode("_root/Decoder 1",
+		"MatrixMul[41]", {
+		label: "MatrixMul[41]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (13, 40) <br>"+
+			"Children: (43) <br>"
+});
+	morpher.addNode("_root/Decoder 1",
+		"Broadcast[42]", {
+		label: "Broadcast[42]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (14) <br>"+
+			"Children: (43) <br>"
+});
+	morpher.addNode("_root/Decoder 1",
+		"Add[43]", {
+		label: "Add[43]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (41, 42) <br>"+
+			"Children: (44) <br>"
+});
+	morpher.addNode("_root/Decoder 1",
+		"Tanh[44]", {
+		label: "Tanh[44]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (43) <br>"+
+			"Children: (45, 74, 79) <br>"
+});
+	morpher.addNode("_root/Output Layer",
+		"MatrixMul[45]", {
+		label: "MatrixMul[45]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (15, 44) <br>"+
+			"Children: (47) <br>"
+});
+	morpher.addNode("_root/Output Layer",
+		"Broadcast[46]", {
+		label: "Broadcast[46]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (16) <br>"+
+			"Children: (47) <br>"
+});
+	morpher.addNode("_root/Output Layer",
+		"Add[47]", {
+		label: "Add[47]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (45, 46) <br>"+
+			"Children: (48, 51, 52, 53, 59) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Exp[48]", {
+		label: "Exp[48]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (47) <br>"+
+			"Children: (49) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Log1p[49]", {
+		label: "Log1p[49]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (48) <br>"+
+			"Children: (52) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"CONST[50]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (51) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Gt[51]", {
+		label: "Gt[51]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT_DERIVED <br>"+
+			"Value type: BOOLEAN <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (47, 50) <br>"+
+			"Children: (52) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Select[52]", {
+		label: "Select[52]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (47, 49, 51) <br>"+
+			"Children: (59) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Neg[53]", {
+		label: "Neg[53]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (47) <br>"+
+			"Children: (54, 57, 58) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Exp[54]", {
+		label: "Exp[54]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (53) <br>"+
+			"Children: (55, 64) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Log1p[55]", {
+		label: "Log1p[55]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (54) <br>"+
+			"Children: (58) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"CONST[56]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (57) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Gt[57]", {
+		label: "Gt[57]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT_DERIVED <br>"+
+			"Value type: BOOLEAN <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (53, 56) <br>"+
+			"Children: (58) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Select[58]", {
+		label: "Select[58]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (53, 55, 57) <br>"+
+			"Children: (59) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"BinCrossEntropyLogit[59]", {
+		label: "BinCrossEntropyLogit[59]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (0, 47, 52, 58) <br>"+
+			"Children: (61) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"CONST[60]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Grad msg 63->62|Grad of 62| <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (62, 63) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"CONST[60]_1", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Grad msg 63->62|Grad of 62| <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (62, 63) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Sum[61]", {
+		label: "Sum[61]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (59) <br>"+
+			"Children: (62) <br>"
+});
+	morpher.addNode("_root/Objective",
+		"Mul[62]", {
+		label: "Mul[62]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: (61, 60) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Broadcast[63]", {
+		label: "Broadcast[63]",
+		shape: "circle",
+		description: 
+			"Name: Grad msg 62->60|Grad of 60| <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (60) <br>"+
+			"Children: (72) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Alias[64]", {
+		label: "Alias[64]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (54) <br>"+
+			"Children: (66) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"CONST[65]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (66) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Add[66]", {
+		label: "Add[66]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (65, 64) <br>"+
+			"Children: (68) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"CONST[67]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (69) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Div[68]", {
+		label: "Div[68]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (66) <br>"+
+			"Children: (69) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Mul[69]", {
+		label: "Mul[69]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (67, 68) <br>"+
+			"Children: (71) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Neg[70]", {
+		label: "Neg[70]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (0) <br>"+
+			"Children: (71) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Add[71]", {
+		label: "Add[71]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (69, 70) <br>"+
+			"Children: (72) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Objective",
+		"Mul[72]", {
+		label: "Mul[72]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 60->48|Grad of 48|Grad msg 48->46|Grad msg 48->47|Grad of 47|Grad of 46| <br>"+
+			"Group: Objective <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (63, 71) <br>"+
+			"Children: (73, 75, 77) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Output Layer",
+		"Sum[73]", {
+		label: "Sum[73]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 47->17|Grad of 17| <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (72) <br>"+
+			"Children: (192) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Output Layer",
+		"Transpose[74]", {
+		label: "Transpose[74]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (44) <br>"+
+			"Children: (75) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Output Layer",
+		"MatrixMul[75]", {
+		label: "MatrixMul[75]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 46->16|Grad of 16| <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (72, 74) <br>"+
+			"Children: (189) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Output Layer",
+		"Transpose[76]", {
+		label: "Transpose[76]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 784, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (15) <br>"+
+			"Children: (77) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Output Layer",
+		"MatrixMul[77]", {
+		label: "MatrixMul[77]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 46->45|Grad of 45| <br>"+
+			"Group: Output Layer <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (76, 72) <br>"+
+			"Children: (82) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"CONST[78]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (81) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"Square[79]", {
+		label: "Square[79]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (44) <br>"+
+			"Children: (80) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"Neg[80]", {
+		label: "Neg[80]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (79) <br>"+
+			"Children: (81) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"Add[81]", {
+		label: "Add[81]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (78, 80) <br>"+
+			"Children: (82) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"Mul[82]", {
+		label: "Mul[82]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 45->44|Grad of 44|Grad msg 44->42|Grad msg 44->43|Grad of 43|Grad of 42| <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (77, 81) <br>"+
+			"Children: (83, 85, 87) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"Sum[83]", {
+		label: "Sum[83]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 43->15|Grad of 15| <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (82) <br>"+
+			"Children: (186) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"Transpose[84]", {
+		label: "Transpose[84]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (40) <br>"+
+			"Children: (85) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"MatrixMul[85]", {
+		label: "MatrixMul[85]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 42->14|Grad of 14| <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (82, 84) <br>"+
+			"Children: (183) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"Transpose[86]", {
+		label: "Transpose[86]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (13) <br>"+
+			"Children: (87) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 1",
+		"MatrixMul[87]", {
+		label: "MatrixMul[87]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 42->41|Grad of 41| <br>"+
+			"Group: Decoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (86, 82) <br>"+
+			"Children: (92) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"CONST[88]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (91) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"Square[89]", {
+		label: "Square[89]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (40) <br>"+
+			"Children: (90) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"Neg[90]", {
+		label: "Neg[90]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (89) <br>"+
+			"Children: (91) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"Add[91]", {
+		label: "Add[91]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (88, 90) <br>"+
+			"Children: (92) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"Mul[92]", {
+		label: "Mul[92]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 41->40|Grad of 40|Grad msg 40->38|Grad msg 40->39|Grad of 39|Grad of 38| <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (87, 91) <br>"+
+			"Children: (93, 95, 97) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"Sum[93]", {
+		label: "Sum[93]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 39->13|Grad of 13| <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (92) <br>"+
+			"Children: (180) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"Transpose[94]", {
+		label: "Transpose[94]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (36) <br>"+
+			"Children: (95) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"MatrixMul[95]", {
+		label: "MatrixMul[95]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 38->12|Grad of 12| <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (92, 94) <br>"+
+			"Children: (177) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"Transpose[96]", {
+		label: "Transpose[96]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (11) <br>"+
+			"Children: (97) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 2",
+		"MatrixMul[97]", {
+		label: "MatrixMul[97]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 38->37|Grad of 37| <br>"+
+			"Group: Decoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (96, 92) <br>"+
+			"Children: (102) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"CONST[98]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (101) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"Square[99]", {
+		label: "Square[99]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (36) <br>"+
+			"Children: (100) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"Neg[100]", {
+		label: "Neg[100]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (99) <br>"+
+			"Children: (101) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"Add[101]", {
+		label: "Add[101]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (98, 100) <br>"+
+			"Children: (102) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"Mul[102]", {
+		label: "Mul[102]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 37->36|Grad of 36|Grad msg 36->34|Grad msg 36->35|Grad of 35|Grad of 34| <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (97, 101) <br>"+
+			"Children: (103, 105, 107) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"Sum[103]", {
+		label: "Sum[103]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 35->11|Grad of 11| <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (102) <br>"+
+			"Children: (174) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"Transpose[104]", {
+		label: "Transpose[104]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 30, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (32) <br>"+
+			"Children: (105) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"MatrixMul[105]", {
+		label: "MatrixMul[105]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 34->10|Grad of 10| <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 30, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (102, 104) <br>"+
+			"Children: (171) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"Transpose[106]", {
+		label: "Transpose[106]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (9) <br>"+
+			"Children: (107) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Decoder 3",
+		"MatrixMul[107]", {
+		label: "MatrixMul[107]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 34->33|Grad of 33| <br>"+
+			"Group: Decoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (106, 102) <br>"+
+			"Children: (112) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"CONST[108]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (111) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"Square[109]", {
+		label: "Square[109]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (32) <br>"+
+			"Children: (110) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"Neg[110]", {
+		label: "Neg[110]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (109) <br>"+
+			"Children: (111) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"Add[111]", {
+		label: "Add[111]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (108, 110) <br>"+
+			"Children: (112) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"Mul[112]", {
+		label: "Mul[112]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 33->32|Grad of 32|Grad msg 32->30|Grad msg 32->31|Grad of 31|Grad of 30| <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (107, 111) <br>"+
+			"Children: (113, 115, 117) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"Sum[113]", {
+		label: "Sum[113]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 31->9|Grad of 9| <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (112) <br>"+
+			"Children: (168) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"Transpose[114]", {
+		label: "Transpose[114]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (28) <br>"+
+			"Children: (115) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"MatrixMul[115]", {
+		label: "MatrixMul[115]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 30->8|Grad of 8| <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (112, 114) <br>"+
+			"Children: (165) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"Transpose[116]", {
+		label: "Transpose[116]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 30, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (7) <br>"+
+			"Children: (117) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 4",
+		"MatrixMul[117]", {
+		label: "MatrixMul[117]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 30->29|Grad of 29| <br>"+
+			"Group: Encoder 4 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (116, 112) <br>"+
+			"Children: (122) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"CONST[118]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (121) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"Square[119]", {
+		label: "Square[119]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (28) <br>"+
+			"Children: (120) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"Neg[120]", {
+		label: "Neg[120]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (119) <br>"+
+			"Children: (121) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"Add[121]", {
+		label: "Add[121]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (118, 120) <br>"+
+			"Children: (122) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"Mul[122]", {
+		label: "Mul[122]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 29->28|Grad of 28|Grad msg 28->26|Grad msg 28->27|Grad of 27|Grad of 26| <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (117, 121) <br>"+
+			"Children: (123, 125, 127) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"Sum[123]", {
+		label: "Sum[123]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 27->7|Grad of 7| <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (122) <br>"+
+			"Children: (162) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"Transpose[124]", {
+		label: "Transpose[124]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (24) <br>"+
+			"Children: (125) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"MatrixMul[125]", {
+		label: "MatrixMul[125]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 26->6|Grad of 6| <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (122, 124) <br>"+
+			"Children: (159) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"Transpose[126]", {
+		label: "Transpose[126]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (5) <br>"+
+			"Children: (127) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 3",
+		"MatrixMul[127]", {
+		label: "MatrixMul[127]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 26->25|Grad of 25| <br>"+
+			"Group: Encoder 3 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (126, 122) <br>"+
+			"Children: (132) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"CONST[128]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (131) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"Square[129]", {
+		label: "Square[129]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (24) <br>"+
+			"Children: (130) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"Neg[130]", {
+		label: "Neg[130]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (129) <br>"+
+			"Children: (131) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"Add[131]", {
+		label: "Add[131]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (128, 130) <br>"+
+			"Children: (132) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"Mul[132]", {
+		label: "Mul[132]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 25->24|Grad of 24|Grad msg 24->22|Grad msg 24->23|Grad of 23|Grad of 22| <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (127, 131) <br>"+
+			"Children: (133, 135, 137) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"Sum[133]", {
+		label: "Sum[133]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 23->5|Grad of 5| <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (132) <br>"+
+			"Children: (156) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"Transpose[134]", {
+		label: "Transpose[134]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (20) <br>"+
+			"Children: (135) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"MatrixMul[135]", {
+		label: "MatrixMul[135]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 22->4|Grad of 4| <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (132, 134) <br>"+
+			"Children: (153) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"Transpose[136]", {
+		label: "Transpose[136]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (3) <br>"+
+			"Children: (137) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 2",
+		"MatrixMul[137]", {
+		label: "MatrixMul[137]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 22->21|Grad of 21| <br>"+
+			"Group: Encoder 2 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (136, 132) <br>"+
+			"Children: (142) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"CONST[138]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: () <br>"+
+			"Children: (141) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"Square[139]", {
+		label: "Square[139]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (20) <br>"+
+			"Children: (140) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"Neg[140]", {
+		label: "Neg[140]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (139) <br>"+
+			"Children: (141) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"Add[141]", {
+		label: "Add[141]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (138, 140) <br>"+
+			"Children: (142) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"Mul[142]", {
+		label: "Mul[142]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 21->20|Grad of 20|Grad msg 20->18|Grad msg 20->19|Grad of 19|Grad of 18| <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, a, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (137, 141) <br>"+
+			"Children: (143, 145) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"Sum[143]", {
+		label: "Sum[143]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 19->3|Grad of 3| <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (142) <br>"+
+			"Children: (150) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"Transpose[144]", {
+		label: "Transpose[144]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (a, 784, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (0) <br>"+
+			"Children: (145) <br>"
+});
+	morpher.addNode("_root/Gradients 1/Encoder 1",
+		"MatrixMul[145]", {
+		label: "MatrixMul[145]",
+		shape: "ellipse",
+		description: 
+			"Name: Grad msg 18->2|Grad of 2| <br>"+
+			"Group: Encoder 1 <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 784, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (142, 144) <br>"+
+			"Children: (147) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_0", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_1", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_2", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_3", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_4", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_5", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_6", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_7", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_8", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_9", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_10", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_11", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_12", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_13", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_14", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"CONST[146]_15", {
+		label: "",
+		shape: "circle",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: CONSTANT <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:0 <br>"+
+			"Parents: () <br>"+
+			"Children: (147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[147]", {
+		label: "Mul[147]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 784, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 145) <br>"+
+			"Children: (148) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[148]", {
+		label: "Neg[148]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 784, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (147) <br>"+
+			"Children: (149) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[149]", {
+		label: "Add[149]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 784, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (1, 148) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[150]", {
+		label: "Mul[150]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 143) <br>"+
+			"Children: (151) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[151]", {
+		label: "Neg[151]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (150) <br>"+
+			"Children: (152) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[152]", {
+		label: "Add[152]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (2, 151) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[153]", {
+		label: "Mul[153]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 135) <br>"+
+			"Children: (154) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[154]", {
+		label: "Neg[154]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (153) <br>"+
+			"Children: (155) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[155]", {
+		label: "Add[155]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (3, 154) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[156]", {
+		label: "Mul[156]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 133) <br>"+
+			"Children: (157) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[157]", {
+		label: "Neg[157]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (156) <br>"+
+			"Children: (158) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[158]", {
+		label: "Add[158]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (4, 157) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[159]", {
+		label: "Mul[159]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 125) <br>"+
+			"Children: (160) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[160]", {
+		label: "Neg[160]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (159) <br>"+
+			"Children: (161) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[161]", {
+		label: "Add[161]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (5, 160) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[162]", {
+		label: "Mul[162]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 123) <br>"+
+			"Children: (163) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[163]", {
+		label: "Neg[163]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (162) <br>"+
+			"Children: (164) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[164]", {
+		label: "Add[164]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (6, 163) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[165]", {
+		label: "Mul[165]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 115) <br>"+
+			"Children: (166) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[166]", {
+		label: "Neg[166]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (165) <br>"+
+			"Children: (167) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[167]", {
+		label: "Add[167]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (7, 166) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[168]", {
+		label: "Mul[168]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 113) <br>"+
+			"Children: (169) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[169]", {
+		label: "Neg[169]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (168) <br>"+
+			"Children: (170) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[170]", {
+		label: "Add[170]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (30, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (8, 169) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[171]", {
+		label: "Mul[171]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 30, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 105) <br>"+
+			"Children: (172) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[172]", {
+		label: "Neg[172]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 30, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (171) <br>"+
+			"Children: (173) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[173]", {
+		label: "Add[173]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 30, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (9, 172) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[174]", {
+		label: "Mul[174]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 103) <br>"+
+			"Children: (175) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[175]", {
+		label: "Neg[175]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (174) <br>"+
+			"Children: (176) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[176]", {
+		label: "Add[176]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (250, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (10, 175) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[177]", {
+		label: "Mul[177]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 95) <br>"+
+			"Children: (178) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[178]", {
+		label: "Neg[178]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (177) <br>"+
+			"Children: (179) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[179]", {
+		label: "Add[179]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 250, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (11, 178) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[180]", {
+		label: "Mul[180]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 93) <br>"+
+			"Children: (181) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[181]", {
+		label: "Neg[181]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (180) <br>"+
+			"Children: (182) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[182]", {
+		label: "Add[182]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (500, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (12, 181) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[183]", {
+		label: "Mul[183]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 85) <br>"+
+			"Children: (184) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[184]", {
+		label: "Neg[184]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (183) <br>"+
+			"Children: (185) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[185]", {
+		label: "Add[185]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 500, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (13, 184) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[186]", {
+		label: "Mul[186]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 83) <br>"+
+			"Children: (187) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[187]", {
+		label: "Neg[187]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (186) <br>"+
+			"Children: (188) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[188]", {
+		label: "Add[188]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (1000, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (14, 187) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[189]", {
+		label: "Mul[189]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 75) <br>"+
+			"Children: (190) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[190]", {
+		label: "Neg[190]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (189) <br>"+
+			"Children: (191) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[191]", {
+		label: "Add[191]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1000, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (15, 190) <br>"+
+			"Children: () <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Mul[192]", {
+		label: "Mul[192]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (146, 73) <br>"+
+			"Children: (193) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Neg[193]", {
+		label: "Neg[193]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (192) <br>"+
+			"Children: (194) <br>"
+});
+	morpher.addNode("_root/SGD",
+		"Add[194]", {
+		label: "Add[194]",
+		shape: "ellipse",
+		description: 
+			"Name: Derived Node <br>"+
+			"Group: SGD <br>"+
+			"Type: DERIVED <br>"+
+			"Value type: FLOAT <br>"+
+			"Shape: (784, 1, 1, 1) <br>"+
+			"Device: CPU[0] <br>"+
+			"Gradient Level:1 <br>"+
+			"Parents: (16, 193) <br>"+
+			"Children: () <br>"
+});
+
+	// Add graph update nodes
+
+	// Add temporary update nodes
+	morpher.addNode("_root/SGD", "Update W_1[1]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_1[2]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update W_2[3]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_2[4]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update W_3[5]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_3[6]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update W_4[7]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_4[8]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update W_5[9]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_5[10]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update W_6[11]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_6[12]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update W_7[13]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_7[14]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update W_8[15]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+	morpher.addNode("_root/SGD", "Update b_8[16]", {
+		style: "fill: #FF1493",
+		description: ""
+	});
+
+	// Add all edges
+	morpher.addEdge("W_1[1]", "MatrixMul[17]", "0");
+	morpher.addEdge("Input[0]", "MatrixMul[17]", "1");
+	morpher.addEdge("b_1[2]", "Broadcast[18]", "0");
+	morpher.addEdge("MatrixMul[17]", "Add[19]", "0");
+	morpher.addEdge("Broadcast[18]", "Add[19]", "1");
+	morpher.addEdge("Add[19]", "Tanh[20]", "0");
+	morpher.addEdge("W_2[3]", "MatrixMul[21]", "0");
+	morpher.addEdge("Tanh[20]", "MatrixMul[21]", "1");
+	morpher.addEdge("b_2[4]", "Broadcast[22]", "0");
+	morpher.addEdge("MatrixMul[21]", "Add[23]", "0");
+	morpher.addEdge("Broadcast[22]", "Add[23]", "1");
+	morpher.addEdge("Add[23]", "Tanh[24]", "0");
+	morpher.addEdge("W_3[5]", "MatrixMul[25]", "0");
+	morpher.addEdge("Tanh[24]", "MatrixMul[25]", "1");
+	morpher.addEdge("b_3[6]", "Broadcast[26]", "0");
+	morpher.addEdge("MatrixMul[25]", "Add[27]", "0");
+	morpher.addEdge("Broadcast[26]", "Add[27]", "1");
+	morpher.addEdge("Add[27]", "Tanh[28]", "0");
+	morpher.addEdge("W_4[7]", "MatrixMul[29]", "0");
+	morpher.addEdge("Tanh[28]", "MatrixMul[29]", "1");
+	morpher.addEdge("b_4[8]", "Broadcast[30]", "0");
+	morpher.addEdge("MatrixMul[29]", "Add[31]", "0");
+	morpher.addEdge("Broadcast[30]", "Add[31]", "1");
+	morpher.addEdge("Add[31]", "Tanh[32]", "0");
+	morpher.addEdge("W_5[9]", "MatrixMul[33]", "0");
+	morpher.addEdge("Tanh[32]", "MatrixMul[33]", "1");
+	morpher.addEdge("b_5[10]", "Broadcast[34]", "0");
+	morpher.addEdge("MatrixMul[33]", "Add[35]", "0");
+	morpher.addEdge("Broadcast[34]", "Add[35]", "1");
+	morpher.addEdge("Add[35]", "Tanh[36]", "0");
+	morpher.addEdge("W_6[11]", "MatrixMul[37]", "0");
+	morpher.addEdge("Tanh[36]", "MatrixMul[37]", "1");
+	morpher.addEdge("b_6[12]", "Broadcast[38]", "0");
+	morpher.addEdge("MatrixMul[37]", "Add[39]", "0");
+	morpher.addEdge("Broadcast[38]", "Add[39]", "1");
+	morpher.addEdge("Add[39]", "Tanh[40]", "0");
+	morpher.addEdge("W_7[13]", "MatrixMul[41]", "0");
+	morpher.addEdge("Tanh[40]", "MatrixMul[41]", "1");
+	morpher.addEdge("b_7[14]", "Broadcast[42]", "0");
+	morpher.addEdge("MatrixMul[41]", "Add[43]", "0");
+	morpher.addEdge("Broadcast[42]", "Add[43]", "1");
+	morpher.addEdge("Add[43]", "Tanh[44]", "0");
+	morpher.addEdge("W_8[15]", "MatrixMul[45]", "0");
+	morpher.addEdge("Tanh[44]", "MatrixMul[45]", "1");
+	morpher.addEdge("b_8[16]", "Broadcast[46]", "0");
+	morpher.addEdge("MatrixMul[45]", "Add[47]", "0");
+	morpher.addEdge("Broadcast[46]", "Add[47]", "1");
+	morpher.addEdge("Add[47]", "Exp[48]", "0");
+	morpher.addEdge("Exp[48]", "Log1p[49]", "0");
+	morpher.addEdge("Add[47]", "Gt[51]", "0");
+	morpher.addEdge("CONST[50]_0", "Gt[51]", "1");
+	morpher.addEdge("Add[47]", "Select[52]", "0");
+	morpher.addEdge("Log1p[49]", "Select[52]", "1");
+	morpher.addEdge("Gt[51]", "Select[52]", "2");
+	morpher.addEdge("Add[47]", "Neg[53]", "0");
+	morpher.addEdge("Neg[53]", "Exp[54]", "0");
+	morpher.addEdge("Exp[54]", "Log1p[55]", "0");
+	morpher.addEdge("Neg[53]", "Gt[57]", "0");
+	morpher.addEdge("CONST[56]_0", "Gt[57]", "1");
+	morpher.addEdge("Neg[53]", "Select[58]", "0");
+	morpher.addEdge("Log1p[55]", "Select[58]", "1");
+	morpher.addEdge("Gt[57]", "Select[58]", "2");
+	morpher.addEdge("Input[0]", "BinCrossEntropyLogit[59]", "0");
+	morpher.addEdge("Add[47]", "BinCrossEntropyLogit[59]", "1");
+	morpher.addEdge("Select[52]", "BinCrossEntropyLogit[59]", "2");
+	morpher.addEdge("Select[58]", "BinCrossEntropyLogit[59]", "3");
+	morpher.addEdge("BinCrossEntropyLogit[59]", "Sum[61]", "0");
+	morpher.addEdge("Sum[61]", "Mul[62]", "0");
+	morpher.addEdge("CONST[60]_0", "Mul[62]", "1");
+	morpher.addEdge("CONST[60]_1", "Broadcast[63]", "0");
+	morpher.addEdge("Exp[54]", "Alias[64]", "0");
+	morpher.addEdge("CONST[65]_0", "Add[66]", "0");
+	morpher.addEdge("Alias[64]", "Add[66]", "1");
+	morpher.addEdge("Add[66]", "Div[68]", "0");
+	morpher.addEdge("CONST[67]_0", "Mul[69]", "0");
+	morpher.addEdge("Div[68]", "Mul[69]", "1");
+	morpher.addEdge("Input[0]", "Neg[70]", "0");
+	morpher.addEdge("Mul[69]", "Add[71]", "0");
+	morpher.addEdge("Neg[70]", "Add[71]", "1");
+	morpher.addEdge("Broadcast[63]", "Mul[72]", "0");
+	morpher.addEdge("Add[71]", "Mul[72]", "1");
+	morpher.addEdge("Mul[72]", "Sum[73]", "0");
+	morpher.addEdge("Tanh[44]", "Transpose[74]", "0");
+	morpher.addEdge("Mul[72]", "MatrixMul[75]", "0");
+	morpher.addEdge("Transpose[74]", "MatrixMul[75]", "1");
+	morpher.addEdge("W_8[15]", "Transpose[76]", "0");
+	morpher.addEdge("Transpose[76]", "MatrixMul[77]", "0");
+	morpher.addEdge("Mul[72]", "MatrixMul[77]", "1");
+	morpher.addEdge("Tanh[44]", "Square[79]", "0");
+	morpher.addEdge("Square[79]", "Neg[80]", "0");
+	morpher.addEdge("CONST[78]_0", "Add[81]", "0");
+	morpher.addEdge("Neg[80]", "Add[81]", "1");
+	morpher.addEdge("MatrixMul[77]", "Mul[82]", "0");
+	morpher.addEdge("Add[81]", "Mul[82]", "1");
+	morpher.addEdge("Mul[82]", "Sum[83]", "0");
+	morpher.addEdge("Tanh[40]", "Transpose[84]", "0");
+	morpher.addEdge("Mul[82]", "MatrixMul[85]", "0");
+	morpher.addEdge("Transpose[84]", "MatrixMul[85]", "1");
+	morpher.addEdge("W_7[13]", "Transpose[86]", "0");
+	morpher.addEdge("Transpose[86]", "MatrixMul[87]", "0");
+	morpher.addEdge("Mul[82]", "MatrixMul[87]", "1");
+	morpher.addEdge("Tanh[40]", "Square[89]", "0");
+	morpher.addEdge("Square[89]", "Neg[90]", "0");
+	morpher.addEdge("CONST[88]_0", "Add[91]", "0");
+	morpher.addEdge("Neg[90]", "Add[91]", "1");
+	morpher.addEdge("MatrixMul[87]", "Mul[92]", "0");
+	morpher.addEdge("Add[91]", "Mul[92]", "1");
+	morpher.addEdge("Mul[92]", "Sum[93]", "0");
+	morpher.addEdge("Tanh[36]", "Transpose[94]", "0");
+	morpher.addEdge("Mul[92]", "MatrixMul[95]", "0");
+	morpher.addEdge("Transpose[94]", "MatrixMul[95]", "1");
+	morpher.addEdge("W_6[11]", "Transpose[96]", "0");
+	morpher.addEdge("Transpose[96]", "MatrixMul[97]", "0");
+	morpher.addEdge("Mul[92]", "MatrixMul[97]", "1");
+	morpher.addEdge("Tanh[36]", "Square[99]", "0");
+	morpher.addEdge("Square[99]", "Neg[100]", "0");
+	morpher.addEdge("CONST[98]_0", "Add[101]", "0");
+	morpher.addEdge("Neg[100]", "Add[101]", "1");
+	morpher.addEdge("MatrixMul[97]", "Mul[102]", "0");
+	morpher.addEdge("Add[101]", "Mul[102]", "1");
+	morpher.addEdge("Mul[102]", "Sum[103]", "0");
+	morpher.addEdge("Tanh[32]", "Transpose[104]", "0");
+	morpher.addEdge("Mul[102]", "MatrixMul[105]", "0");
+	morpher.addEdge("Transpose[104]", "MatrixMul[105]", "1");
+	morpher.addEdge("W_5[9]", "Transpose[106]", "0");
+	morpher.addEdge("Transpose[106]", "MatrixMul[107]", "0");
+	morpher.addEdge("Mul[102]", "MatrixMul[107]", "1");
+	morpher.addEdge("Tanh[32]", "Square[109]", "0");
+	morpher.addEdge("Square[109]", "Neg[110]", "0");
+	morpher.addEdge("CONST[108]_0", "Add[111]", "0");
+	morpher.addEdge("Neg[110]", "Add[111]", "1");
+	morpher.addEdge("MatrixMul[107]", "Mul[112]", "0");
+	morpher.addEdge("Add[111]", "Mul[112]", "1");
+	morpher.addEdge("Mul[112]", "Sum[113]", "0");
+	morpher.addEdge("Tanh[28]", "Transpose[114]", "0");
+	morpher.addEdge("Mul[112]", "MatrixMul[115]", "0");
+	morpher.addEdge("Transpose[114]", "MatrixMul[115]", "1");
+	morpher.addEdge("W_4[7]", "Transpose[116]", "0");
+	morpher.addEdge("Transpose[116]", "MatrixMul[117]", "0");
+	morpher.addEdge("Mul[112]", "MatrixMul[117]", "1");
+	morpher.addEdge("Tanh[28]", "Square[119]", "0");
+	morpher.addEdge("Square[119]", "Neg[120]", "0");
+	morpher.addEdge("CONST[118]_0", "Add[121]", "0");
+	morpher.addEdge("Neg[120]", "Add[121]", "1");
+	morpher.addEdge("MatrixMul[117]", "Mul[122]", "0");
+	morpher.addEdge("Add[121]", "Mul[122]", "1");
+	morpher.addEdge("Mul[122]", "Sum[123]", "0");
+	morpher.addEdge("Tanh[24]", "Transpose[124]", "0");
+	morpher.addEdge("Mul[122]", "MatrixMul[125]", "0");
+	morpher.addEdge("Transpose[124]", "MatrixMul[125]", "1");
+	morpher.addEdge("W_3[5]", "Transpose[126]", "0");
+	morpher.addEdge("Transpose[126]", "MatrixMul[127]", "0");
+	morpher.addEdge("Mul[122]", "MatrixMul[127]", "1");
+	morpher.addEdge("Tanh[24]", "Square[129]", "0");
+	morpher.addEdge("Square[129]", "Neg[130]", "0");
+	morpher.addEdge("CONST[128]_0", "Add[131]", "0");
+	morpher.addEdge("Neg[130]", "Add[131]", "1");
+	morpher.addEdge("MatrixMul[127]", "Mul[132]", "0");
+	morpher.addEdge("Add[131]", "Mul[132]", "1");
+	morpher.addEdge("Mul[132]", "Sum[133]", "0");
+	morpher.addEdge("Tanh[20]", "Transpose[134]", "0");
+	morpher.addEdge("Mul[132]", "MatrixMul[135]", "0");
+	morpher.addEdge("Transpose[134]", "MatrixMul[135]", "1");
+	morpher.addEdge("W_2[3]", "Transpose[136]", "0");
+	morpher.addEdge("Transpose[136]", "MatrixMul[137]", "0");
+	morpher.addEdge("Mul[132]", "MatrixMul[137]", "1");
+	morpher.addEdge("Tanh[20]", "Square[139]", "0");
+	morpher.addEdge("Square[139]", "Neg[140]", "0");
+	morpher.addEdge("CONST[138]_0", "Add[141]", "0");
+	morpher.addEdge("Neg[140]", "Add[141]", "1");
+	morpher.addEdge("MatrixMul[137]", "Mul[142]", "0");
+	morpher.addEdge("Add[141]", "Mul[142]", "1");
+	morpher.addEdge("Mul[142]", "Sum[143]", "0");
+	morpher.addEdge("Input[0]", "Transpose[144]", "0");
+	morpher.addEdge("Mul[142]", "MatrixMul[145]", "0");
+	morpher.addEdge("Transpose[144]", "MatrixMul[145]", "1");
+	morpher.addEdge("CONST[146]_0", "Mul[147]", "0");
+	morpher.addEdge("MatrixMul[145]", "Mul[147]", "1");
+	morpher.addEdge("Mul[147]", "Neg[148]", "0");
+	morpher.addEdge("W_1[1]", "Add[149]", "0");
+	morpher.addEdge("Neg[148]", "Add[149]", "1");
+	morpher.addEdge("CONST[146]_1", "Mul[150]", "0");
+	morpher.addEdge("Sum[143]", "Mul[150]", "1");
+	morpher.addEdge("Mul[150]", "Neg[151]", "0");
+	morpher.addEdge("b_1[2]", "Add[152]", "0");
+	morpher.addEdge("Neg[151]", "Add[152]", "1");
+	morpher.addEdge("CONST[146]_2", "Mul[153]", "0");
+	morpher.addEdge("MatrixMul[135]", "Mul[153]", "1");
+	morpher.addEdge("Mul[153]", "Neg[154]", "0");
+	morpher.addEdge("W_2[3]", "Add[155]", "0");
+	morpher.addEdge("Neg[154]", "Add[155]", "1");
+	morpher.addEdge("CONST[146]_3", "Mul[156]", "0");
+	morpher.addEdge("Sum[133]", "Mul[156]", "1");
+	morpher.addEdge("Mul[156]", "Neg[157]", "0");
+	morpher.addEdge("b_2[4]", "Add[158]", "0");
+	morpher.addEdge("Neg[157]", "Add[158]", "1");
+	morpher.addEdge("CONST[146]_4", "Mul[159]", "0");
+	morpher.addEdge("MatrixMul[125]", "Mul[159]", "1");
+	morpher.addEdge("Mul[159]", "Neg[160]", "0");
+	morpher.addEdge("W_3[5]", "Add[161]", "0");
+	morpher.addEdge("Neg[160]", "Add[161]", "1");
+	morpher.addEdge("CONST[146]_5", "Mul[162]", "0");
+	morpher.addEdge("Sum[123]", "Mul[162]", "1");
+	morpher.addEdge("Mul[162]", "Neg[163]", "0");
+	morpher.addEdge("b_3[6]", "Add[164]", "0");
+	morpher.addEdge("Neg[163]", "Add[164]", "1");
+	morpher.addEdge("CONST[146]_6", "Mul[165]", "0");
+	morpher.addEdge("MatrixMul[115]", "Mul[165]", "1");
+	morpher.addEdge("Mul[165]", "Neg[166]", "0");
+	morpher.addEdge("W_4[7]", "Add[167]", "0");
+	morpher.addEdge("Neg[166]", "Add[167]", "1");
+	morpher.addEdge("CONST[146]_7", "Mul[168]", "0");
+	morpher.addEdge("Sum[113]", "Mul[168]", "1");
+	morpher.addEdge("Mul[168]", "Neg[169]", "0");
+	morpher.addEdge("b_4[8]", "Add[170]", "0");
+	morpher.addEdge("Neg[169]", "Add[170]", "1");
+	morpher.addEdge("CONST[146]_8", "Mul[171]", "0");
+	morpher.addEdge("MatrixMul[105]", "Mul[171]", "1");
+	morpher.addEdge("Mul[171]", "Neg[172]", "0");
+	morpher.addEdge("W_5[9]", "Add[173]", "0");
+	morpher.addEdge("Neg[172]", "Add[173]", "1");
+	morpher.addEdge("CONST[146]_9", "Mul[174]", "0");
+	morpher.addEdge("Sum[103]", "Mul[174]", "1");
+	morpher.addEdge("Mul[174]", "Neg[175]", "0");
+	morpher.addEdge("b_5[10]", "Add[176]", "0");
+	morpher.addEdge("Neg[175]", "Add[176]", "1");
+	morpher.addEdge("CONST[146]_10", "Mul[177]", "0");
+	morpher.addEdge("MatrixMul[95]", "Mul[177]", "1");
+	morpher.addEdge("Mul[177]", "Neg[178]", "0");
+	morpher.addEdge("W_6[11]", "Add[179]", "0");
+	morpher.addEdge("Neg[178]", "Add[179]", "1");
+	morpher.addEdge("CONST[146]_11", "Mul[180]", "0");
+	morpher.addEdge("Sum[93]", "Mul[180]", "1");
+	morpher.addEdge("Mul[180]", "Neg[181]", "0");
+	morpher.addEdge("b_6[12]", "Add[182]", "0");
+	morpher.addEdge("Neg[181]", "Add[182]", "1");
+	morpher.addEdge("CONST[146]_12", "Mul[183]", "0");
+	morpher.addEdge("MatrixMul[85]", "Mul[183]", "1");
+	morpher.addEdge("Mul[183]", "Neg[184]", "0");
+	morpher.addEdge("W_7[13]", "Add[185]", "0");
+	morpher.addEdge("Neg[184]", "Add[185]", "1");
+	morpher.addEdge("CONST[146]_13", "Mul[186]", "0");
+	morpher.addEdge("Sum[83]", "Mul[186]", "1");
+	morpher.addEdge("Mul[186]", "Neg[187]", "0");
+	morpher.addEdge("b_7[14]", "Add[188]", "0");
+	morpher.addEdge("Neg[187]", "Add[188]", "1");
+	morpher.addEdge("CONST[146]_14", "Mul[189]", "0");
+	morpher.addEdge("MatrixMul[75]", "Mul[189]", "1");
+	morpher.addEdge("Mul[189]", "Neg[190]", "0");
+	morpher.addEdge("W_8[15]", "Add[191]", "0");
+	morpher.addEdge("Neg[190]", "Add[191]", "1");
+	morpher.addEdge("CONST[146]_15", "Mul[192]", "0");
+	morpher.addEdge("Sum[73]", "Mul[192]", "1");
+	morpher.addEdge("Mul[192]", "Neg[193]", "0");
+	morpher.addEdge("b_8[16]", "Add[194]", "0");
+	morpher.addEdge("Neg[193]", "Add[194]", "1");
+
+	// Add graph update edges
+
+	// Add temporary update edges
+	morpher.addEdge("Add[149]", "Update W_1[1]", "");
+	morpher.addEdge("Add[152]", "Update b_1[2]", "");
+	morpher.addEdge("Add[155]", "Update W_2[3]", "");
+	morpher.addEdge("Add[158]", "Update b_2[4]", "");
+	morpher.addEdge("Add[161]", "Update W_3[5]", "");
+	morpher.addEdge("Add[164]", "Update b_3[6]", "");
+	morpher.addEdge("Add[167]", "Update W_4[7]", "");
+	morpher.addEdge("Add[170]", "Update b_4[8]", "");
+	morpher.addEdge("Add[173]", "Update W_5[9]", "");
+	morpher.addEdge("Add[176]", "Update b_5[10]", "");
+	morpher.addEdge("Add[179]", "Update W_6[11]", "");
+	morpher.addEdge("Add[182]", "Update b_6[12]", "");
+	morpher.addEdge("Add[185]", "Update W_7[13]", "");
+	morpher.addEdge("Add[188]", "Update b_7[14]", "");
+	morpher.addEdge("Add[191]", "Update W_8[15]", "");
+	morpher.addEdge("Add[194]", "Update b_8[16]", "");
+	// Render graph
+	morpher.populateSVG();
+</script>
+</body></html>
