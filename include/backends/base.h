@@ -15,11 +15,11 @@ namespace metadiff{
     class FunctionBackend {
     protected:
         const char kPathSeparator =
-        #ifdef _WIN32
-                        '\\';
-        #else
-                        '/';
-        #endif
+#ifdef _WIN32
+                '\\';
+#else
+                '/';
+#endif
 
         /**
          * Function to create a temporary directory and return its path
@@ -48,7 +48,7 @@ namespace metadiff{
         }
 
         /**
-         * Handle to the opened DLL
+         * Handle to the underlying DLL
          */
         void *dll_handle;
 
@@ -67,21 +67,53 @@ namespace metadiff{
          */
         std::string dir_path;
 
-        FunctionBackend(std::string name, std::string dir_path) :
-                name(name),
-                dir_path(dir_path) { };
+        /**
+         * A debug flag
+         */
+        bool debug;
 
         FunctionBackend(std::string name) :
-                name(name) {
+                name(name),
+                debug(false){
             dir_path = get_and_create_temp_dir();
         };
 
+        FunctionBackend(std::string name, bool debug) :
+                name(name),
+                debug(debug){
+            dir_path = get_and_create_temp_dir();
+        };
+
+        FunctionBackend(std::string name, std::string dir_path) :
+                name(name),
+                dir_path(dir_path),
+                debug(false) {};
+
+
+        FunctionBackend(std::string name, std::string dir_path, bool debug) :
+                name(name),
+                dir_path(dir_path),
+                debug(debug){};
+
+
         typedef std::vector<T> (*func_ptr)(std::vector<T> &inputs, std::vector<SharedPtr> &shared);
 
+        /**
+         * Inner class for the function
+         */
         class EvaluationFunction {
         public:
+            /**
+             * The list of shared variables
+             */
             std::vector<SharedPtr> shared_variables;
+            /**
+             * The list of constant variables
+             */
             std::vector<T> constant_variables;
+            /**
+             * The actual function pointer
+             */
             const func_ptr eval_func;
 
             EvaluationFunction(func_ptr eval_func) :
@@ -100,7 +132,7 @@ namespace metadiff{
         /**
          * Generates the source code to the path specified
          */
-        virtual void generate_source(std::string source_path,
+        virtual void generate_source(std::string source_dir,
                                      Graph graph,
                                      std::vector<Node> inputs,
                                      std::vector<Node> targets) = 0;
@@ -108,9 +140,20 @@ namespace metadiff{
         /**
          * Compiles the source file to a dynamic library
          */
-        virtual void compile_file(std::string source_path, std::string dll_path) = 0;
+        virtual void compile(std::string source_dir,
+                             std::string target_dir,
+                             std::string graph_name) = 0;
 
-        EvaluationFunction link_dll(std::string dll_path) {
+        /**
+         * Links all of the compiled files and returns the final
+         * EvaluationFunction instance
+         */
+        virtual EvaluationFunction link(std::string target_dir,
+                                        std::string graph_name) = 0;
+        /**
+         * Function to open and link the DLL specified
+         */
+        EvaluationFunction link_dll(std::string dll_path, std::string name) {
             logger()->debug() << name  << "] Linking file " << dll_path;
             char *error_msg;
             dll_handle = dlopen((dll_path).c_str(), RTLD_LAZY);
@@ -119,7 +162,7 @@ namespace metadiff{
                 logger()->error() << name << "] " << e.what();
                 throw e;
             }
-            auto func_handle = (func_ptr) dlsym(dll_handle, "eval_func");
+            auto func_handle = (func_ptr) dlsym(dll_handle, name.c_str());
             if ((error_msg = dlerror()) != NULL) {
                 CompilationFailed e = CompilationFailed("Error when finding symbol:" + std::string(error_msg));
                 logger()->error() << name << "] " << error_msg;
@@ -128,10 +171,18 @@ namespace metadiff{
             return EvaluationFunction(func_handle);
         };
 
+        /**
+         * Closes the opened underlying DLL
+         * Any function calls after will fail.
+         */
         void close() {
             dlclose(dll_handle);
         }
 
+        /**
+         * Compiles a function from the graph given the
+         * inputs, targets and extra updates
+         */
         EvaluationFunction compile_function(Graph graph,
                                             std::vector<Node> inputs,
                                             std::vector<Node> targets,
@@ -139,31 +190,27 @@ namespace metadiff{
             logger()->debug() << name << "] Compiling function to " << dir_path;
             check_create_dir(dir_path);
             // Set path for the source
-            std::string source_path = dir_path;
-            source_path += kPathSeparator;
-            source_path += "src";
-            check_create_dir(source_path);
-            source_path += kPathSeparator;
-            source_path += graph->name + ".cpp";
+            std::string source_dir = dir_path;
+            source_dir += kPathSeparator;
+            source_dir += "src";
+            check_create_dir(source_dir);
 
             // Generate the source
             graph->add_temporary_updates(updates);
-            generate_source(source_path, graph, inputs, targets);
+            generate_source(source_dir, graph, inputs, targets);
             graph->clear_temporary_updates();
 
             // Set path for the lib
-            std::string dll_path = dir_path;
-            dll_path += kPathSeparator;
-            dll_path += "lib";
-            check_create_dir(dll_path);
-            dll_path += kPathSeparator;
-            dll_path += graph->name + ".so";
+            std::string target_dir = dir_path;
+            target_dir += kPathSeparator;
+            target_dir += "lib";
+            check_create_dir(target_dir);
 
             // Compile the source to the lib
-            compile_file(source_path, dll_path);
+            compile(source_dir, target_dir, graph->name);
 
             // Open the DLL
-            EvaluationFunction function = link_dll(dll_path);
+            EvaluationFunction function = link(target_dir, graph->name);
 
             // Set the shared variables
             function.shared_variables = graph->shared_vars;

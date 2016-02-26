@@ -231,10 +231,10 @@ namespace metadiff{
     public:
         std::string msg;
         CompilationFailed(std::string msg):
-                msg(msg) {};
+                msg("Compilation failed due to:\n" + msg) {};
 
         const char* what() const throw() {
-            return ("Compilation failed due to:\n" + msg).c_str();
+            return msg.c_str();
         }
     };
 }

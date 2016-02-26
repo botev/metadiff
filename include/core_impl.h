@@ -501,6 +501,9 @@ namespace metadiff{
         // Optimize
         for(size_t i=0;i<copy->nodes.size();i++){
             Node node = copy->nodes[i];
+            if(node.unwrap()->op->name == "Input"){
+                node.unwrap()->execution.inlined = true;
+            }
             if(node.is_scalar() and node.is_constant()){
                 node.unwrap()->execution.inlined = true;
             }

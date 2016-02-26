@@ -89,7 +89,7 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
 //    std::cout << "Dagre" << std::endl;
     // Create backend and compile function
     md::ArrayfireBackend md_backend = md::ArrayfireBackend();
-    md_backend.dir_path = "./mnist_hinton";
+//    md_backend.dir_path = "./mnist_hinton";
 //    auto train_org = md_backend.compile_function(name, graph, inputs, loss, updates);
     clock_t start = clock();
     double compile_time = 0;
@@ -121,7 +121,6 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     return std::pair<double, double>(mean_time, compile_time);
 };
 
-//INITIALIZE_EASYLOGGINGPP
 
 int main(int argc, char **argv)
 {

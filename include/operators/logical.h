@@ -72,7 +72,7 @@ namespace metadiff {
                 LogicalUnary("Not", graph, parent) {
             if(parent.unwrap()->v_type != BOOLEAN){
                 throw InvalidArguments(name, {parent},
-                                       "The operator accpets only BOOLEAN inputs");
+                                       "The operator accepts only BOOLEAN inputs");
             }
         };
 

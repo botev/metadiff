@@ -9,52 +9,57 @@
 namespace metadiff{
     class ArrayfireBackend : public FunctionBackend<af::array> {
     public:
-        std::string include_path;
-        std::string lib_path;
+        std::string af_path;
 
-        /**
-         * Creates backend with a temporary directory for logging
-         * and infers the ArrayFire include and libs from the environmental variable
-         * AF_PATH or falls back to /opt/arrayfire-3
-         */
         ArrayfireBackend() :
                 FunctionBackend("ArrayFire"){
-            // Create backend and compile function
-            const char *AF_PATH = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-            include_path = std::string(AF_PATH) + "/include";
-            lib_path = std::string(AF_PATH) + "/lib";
+            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
         };
 
-        /**
-         * Creates backend with the specified directory for logging
-         * and infers the ArrayFire include and libs from the eenvironmental variable
-         * AF_PATH or falls back to /opt/arrayfire-3
-         */
-        ArrayfireBackend(std::string dir_path):
-                FunctionBackend("ArrayFire", dir_path){};
+        ArrayfireBackend(bool debug) :
+                FunctionBackend("ArrayFire", debug){
+            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
+        };
 
-        /**
-         * Creates backend with the specified directory for logging
-         * and a specified directory for the Arrayfire home directory
-         */
+        ArrayfireBackend(std::string dir_path):
+                FunctionBackend("ArrayFire", dir_path){
+            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
+        };
+
+        ArrayfireBackend(std::string dir_path, bool debug):
+                FunctionBackend("ArrayFire", dir_path, debug){
+            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
+        };
+
         ArrayfireBackend(std::string dir_path,
                          std::string af_path) :
-                FunctionBackend("ArrayFire", dir_path){
-            include_path = af_path + "/include";
-            lib_path = af_path + "/lib";
-        }
+                FunctionBackend("ArrayFire", dir_path),
+                af_path(af_path) {};
+
+        ArrayfireBackend(std::string dir_path,
+                         std::string af_path,
+                         bool debug) :
+                FunctionBackend("ArrayFire", dir_path, debug),
+                af_path(af_path) {};
 
 
-        /**
-         * Compiles the generated source code with the required flags
-         */
-        void compile_file(std::string source_path, std::string dll_path) {
+        void compile(std::string source_dir, std::string target_dir, std::string graph_name) {
+            std::string source_path = source_dir;
+            source_path += kPathSeparator;
+            source_path += graph_name + ".cpp";
+            std::string dll_path = target_dir;
+            dll_path += kPathSeparator;
+            dll_path += graph_name + ".so";
             logger()->debug() << name  << "] Compiling file " << source_path << " to " << dll_path;
             std::string log_path = source_path + ".log";
             std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
             command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
-            command += " -I" + include_path;
-            command += " -L" + lib_path;
+            command += " -I" + af_path;
+            command += kPathSeparator;
+            command += "include";
+            command += " -L" + af_path;
+            command += kPathSeparator;
+            command += "lib";
             command += " -o " + dll_path + " " + source_path;
             command += " > " + log_path + " 2>&1";
             logger()->debug() << name << "] Compile command: " << command;
@@ -65,20 +70,31 @@ namespace metadiff{
                                     std::istreambuf_iterator<char>());
                 CompilationFailed e = CompilationFailed("Bad compilation response: " + std::to_string(response) +
                                                         "\nCommand output: " + err_msg);
-                logger()->error() << e.what();
+                logger()->error() << e.msg;
                 throw e;
             }
             return;
         }
 
-        void generate_source(std::string source_path,
+        EvaluationFunction link(std::string target_dir,
+                                std::string graph_name){
+            std::string dll_path = target_dir;
+            dll_path += kPathSeparator;
+            dll_path += graph_name + ".so";
+            return link_dll(dll_path, "eval_func");
+        }
+
+        void generate_source(std::string source_dir,
                              Graph graph,
                              std::vector<Node> inputs,
                              std::vector<Node> targets) {
             logger()->trace() << name << "] Generating source file";
+            std::string source_path = source_dir;
+            source_path += kPathSeparator;
+            source_path += graph->name + ".cpp";
             std::ofstream f;
             f.open(source_path);
-            std::string tabs = "";
+
             // Print disclaimer
             f << "// Auto generated by Metadiff\n// Please do not edit\n\n";
 
@@ -92,49 +108,29 @@ namespace metadiff{
             // Write the interface to Shared Variables and InputShapeExceptions
             write_interface(f);
 
-//                f << "void print_mem_info(std::string name){\n"
-//                        "    size_t alloc_bytes,alloc_buffers,lock_bytes,lock_buffers;\n"
-//                        "    af::deviceMemInfo(&alloc_bytes,&alloc_buffers,&lock_bytes,&lock_buffers);\n"
-//                        "    std::cout << \"Memory info\" << name << std::endl;\n"
-//                        "    std::cout << \"Allocated: \" << alloc_bytes / 1024 << \" KB\" << std::endl;\n"
-//                        "    std::cout << \"Buffers allocated: \" << alloc_buffers << std::endl;\n"
-//                        "    std::cout << \"In use: \" << lock_bytes / 1024 << \" KB\" << std::endl;\n"
-//                        "    std::cout << \"Buffers in use: \" << lock_buffers << std::endl;\n"
-//                        "    return;\n"
-//                        "};\n\n";
-//
-//                f << "inline af::array softplus(af::array input, int threshold) {\n"
-//                        "            af::array result = af::log1p(af::exp(input));\n"
-//                        "            af::replace(result, input < threshold, input);\n"
-//                        "            return result;\n"
-//                        "        }\n";
-//
-//                f << "\n";
-            // Print the function interface
-            f <<
-            "extern \"C\" std::vector<af::array> eval_func(std::vector<af::array>& inputs, std::vector<SharedPtr>& shared_vars){\n";
+            // Print a helper function for memory info
+            f << "void print_mem_info(std::string name){\n"
+                    "\tsize_t alloc_bytes,alloc_buffers,lock_bytes,lock_buffers;\n"
+                    "\taf::deviceMemInfo(&alloc_bytes,&alloc_buffers,&lock_bytes,&lock_buffers);\n"
+                    "\tstd::cout << \"Memory info\" << name << std::endl;\n"
+                    "\tstd::cout << \"Allocated: \" << alloc_bytes / 1024 << \" KB\" << std::endl;\n"
+                    "\tstd::cout << \"Buffers allocated: \" << alloc_buffers << std::endl;\n"
+                    "\tstd::cout << \"In use: \" << lock_bytes / 1024 << \" KB\" << std::endl;\n"
+                    "\tstd::cout << \"Buffers in use: \" << lock_buffers << std::endl;\n"
+                    "\treturn;\n"
+                    "};\n\n";
 
+            // Print the function interface
+            f << "extern \"C\" std::vector<af::array> "
+                    "eval_func(std::vector<af::array>& inputs, "
+                    "std::vector<SharedPtr>& shared_vars){\n";
+            // Use the gfor
             f << "\t// Set up automatic broadcasting\n";
             f << "\taf::gforSet(true);\n";
 
-            // Get ancestors mask
-            NodeVec marked(graph->updates.size() + graph->temporary_updates.size() + targets.size());
-            for (size_t i = 0; i < targets.size(); i++) {
-                marked[i] = targets[i];
-            }
-
-            for (size_t i = 0; i < graph->updates.size(); i++) {
-                marked[targets.size() + i] = graph->updates[i].second;
-            }
-
-            for (size_t i = 0; i < graph->temporary_updates.size(); i++) {
-                marked[targets.size() + i] = graph->temporary_updates[i].second;
-            }
-
-            auto ancestor_mask = graph->get_ancestors_mask(marked);
-            // Check that all inputs required are given
-            for (size_t i = 0; i < ancestor_mask.size(); i++) {
-                if (ancestor_mask[i] and graph->nodes[i]->type == INPUT) {
+            // Check all of the required inputs are provided
+            for (size_t i = 0; i < graph->nodes.size(); i++) {
+                if (graph->nodes[i]->type == INPUT) {
                     for (size_t j = 0; j <= inputs.size(); j++) {
                         if (j == inputs.size()) {
                             throw MissingRequiredInput(targets, i);
@@ -145,283 +141,304 @@ namespace metadiff{
                     }
                 }
             }
-//            std::cout << "1" <<std::endl;
+
+            // An expression table for all nodes
             std::vector<std::string> expression_table(graph->nodes.size(), "Undefined");
 
-            // Expressions for all inputs
-            for (int i = 0; i < inputs.size(); i++) {
-                expression_table[inputs[i].unwrap()->id] = "inputs[" + std::to_string(i) + "]";
-                ancestor_mask[inputs[i].unwrap()->id] = false;
-            }
-            // Expressions for all shared variables
-            for (int i = 0; i < graph->nodes.size(); i++) {
-                Node node = graph->nodes[i];
-                if (node.unwrap()->type == SHARED_INPUT) {
-                    expression_table[i] = "shared_vars[" + std::to_string(node.unwrap()->shared->id) + "]->value";
-                    ancestor_mask[i] = false;
-                }
-            }
-//            std::cout << "2" <<std::endl;
-//            // Calculate all of the symbolic integers
-//            calculate_symbolics(f, graph, inputs);
-//            // Validate input shapes
-//            validate_input_shapes(f, graph, inputs);
-
-            // Calculate all of the other nodes
+            // Loop over all nodes and calculate their expressions
+            // as well as write anything that is not inlined
             f << "\n\t// Calculate all of the computation nodes\n";
-            for (size_t i = 0; i < ancestor_mask.size(); i++) {
-                if (ancestor_mask[i]) {
-                    std::string expression = calculate_node(graph, i, expression_table);
-                    if (graph->nodes[i]->execution.inlined or graph->nodes[i]->op->name == "Broadcast") {
-                        expression_table[i] = expression;
-                    } else {
-//                        f << "\tstd::cout << \"Evaluating: \" << " << i << " << std::endl;\n";
-//                        std::cout << "Node: " << i << std::endl;
-                        if (graph->nodes[i]->type == CONSTANT and Node(graph->nodes[i]).is_scalar()) {
-                            f << "\tfloat ";
-                        }
-                        else {
-                            f << "\taf::array ";
-                        }
-                        f << "node_" << i << " = " << expression << ";\n";
-                        expression_table[i] = "node_" + std::to_string(i);
+            for (size_t i = 0; i < graph->nodes.size(); i++) {
+                std::shared_ptr<NodeInternal> node = graph->nodes[i];
+
+                std::string expression = node_expression(node, expression_table);
+                if (graph->nodes[i]->execution.inlined) {
+                    expression_table[i] = expression;
+                } else {
+                    if(debug){
+                        f << "\tstd::cout << \"Calculating node '" << i << "'\" << std::endl;\n";
+                    }
+
+                    // TODO this should be properly done for all scalar types
+                    // The code generated is af::array node_index = <expression>;
+                    if (graph->nodes[i]->type == CONSTANT and Node(graph->nodes[i]).is_scalar()) {
+                        f << "\tfloat ";
+                    }
+                    else {
+                        f << "\taf::array ";
+                    }
+                    f << "node_" << i << " = " << expression << ";\n";
+                    expression_table[i] = "node_" + std::to_string(i);
+
+                    if(debug){
+                        f << "\tstd::cout << \"Node size:\" << node_" << i << ".dims() << std::endl;\n";
                     }
                 }
             }
 
-            // Disable the automatic broadcasting
-
             // Update all of the shared_variables
             f << "\n\t// Update all shared variables\n";
-//            std::cout << "U" << graph->updates.size() << " " << updates.size() << std::endl;
             for (size_t i = 0; i < graph->updates.size(); i++) {
-                print_update_node(f, graph->updates[i], expression_table);
+                if(debug){
+                    f << "\tstd::cout << \"Calculating update '" << i << "'\" << std::endl;\n";
+                }
+                print_update(f, graph->updates[i], expression_table);
             }
             for (size_t i = 0; i < graph->temporary_updates.size(); i++) {
-                print_update_node(f, graph->temporary_updates[i], expression_table);
+                if(debug){
+                    f << "\tstd::cout << \"Calculating update '" << i << "'\" << std::endl;\n";
+                }
+                print_update(f, graph->temporary_updates[i], expression_table);
             }
-//            for(int i=0;i<graph->nodes.size();i++){
-//                if(graph->nodes[i]->type == UPDATE){
-////                    auto shared_id = graph->nodes[i]->op->get_arguments()[0].unwrap()->shared->id;
-////                    auto update_id = graph->nodes[i]->op->get_parents()[0].unwrap()->id;
-////                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update_id] << ";\n";
-//                    print_update_node(f, graph->nodes[i], expression_table);
-//                }
-//            }
-            f << "\taf::gforSet(false);";
-            // Write all of the output nodes as the result
+
+            // Disable the automatic broadcasting
+            // TODO Decide whether to include this? Maybe have to check what it was before
+            // f << "\taf::gforSet(false);";
+
+            // Write all of the output nodes as the return statement
             f << "\n\t// Write all of the output nodes in correct order\n";
             f << "\treturn {";
-            for (int i = 0; i < targets.size(); i++) {
+            for (size_t i = 0; i < targets.size(); i++) {
                 if (i < targets.size() - 1) {
                     f << expression_table[targets[i].unwrap()->id] << ", ";
                 } else {
                     f << expression_table[targets[i].unwrap()->id] << "};\n";
                 }
             }
+            // Close the function block and the file
             f << "}\n";
             f.close();
         }
 
-        void print_update_node(std::ofstream &f, std::pair<Node, Node> graph_update,
-                               std::vector<std::string> &expression_table) {
-//            f << "\tstd::cout << \"Updating node \" << " << node.unwrap()->id << " << std::endl;\n";
-            size_t shared_id = graph_update.first.unwrap()->shared->id;
-            Node update = graph_update.second;
-//            std::cout << update.unwrap()->id << update.unwrap()->op->name <<
-//                    update.unwrap()->execution.inlined << " " << shared_id << std::endl;
+        void print_operator(std::string name, std::vector<size_t> p1,
+                            std::vector<size_t> args){
 
-            if (update.unwrap()->execution.inlined) {
-                if (update.unwrap()->op->name == "Mul") {
-                    NodeVec parents = update.unwrap()->op->get_parents();
-                    int index = -1;
-                    bool all_div = true;
-                    for (int j = 0; j < parents.size(); j++) {
-                        if (parents[j].unwrap()->type == SHARED_INPUT) {
-                            if (parents[j].unwrap()->shared->id == shared_id) {
-                                index = j;
-                            } else {
-                                all_div = false;
-                            }
-                        } else if (parents[j].unwrap()->op->name != "Div") {
-                            all_div = false;
-                        }
-                    }
-                    if (index == -1) {
-                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] <<
-                        ";\n";
-                    } else if (all_div) {
-                        f << "\tshared_vars[" << shared_id << "]->value /= ";
-                        bool first = true;
-                        for (int j = 0; j < parents.size(); j++) {
-                            if (j != index) {
-                                if (first) {
-                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                    first = false;
-                                } else {
-                                    f << " * " <<
-                                    expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                }
-                            }
-                        }
-                        f << ";\n";
-                    } else {
-                        f << "\tshared_vars[" << shared_id << "]->value *= ";
-                        bool first = true;
-                        for (int j = 0; j < parents.size(); j++) {
-                            if (j != index) {
-                                if (first) {
-                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                    first = false;
-                                } else if (parents[j].unwrap()->op->name == "Div") {
-                                    f <<
-                                    " / " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                } else {
-                                    f << " * " + expression_table[parents[j].unwrap()->id];
-                                }
-                            }
-                        }
-                        f << ";\n";
-                    }
-                } else if (update.unwrap()->op->name == "Add") {
-//                    std::cout << "DA" << std::endl;
-                    NodeVec parents = update.unwrap()->op->get_parents();
-                    int index = -1;
-                    bool all_neg = true;
-                    for (int j = 0; j < parents.size(); j++) {
-                        if (parents[j].unwrap()->type == SHARED_INPUT) {
-//                            std::cout << parents[j].unwrap()->type << parents[j].unwrap()->shared->id << std::endl;
-                            if (parents[j].unwrap()->shared->id == shared_id) {
-                                index = j;
-                            } else {
-                                all_neg = false;
-                            }
-                        } else if (parents[j].unwrap()->op->name != "Neg") {
-                            all_neg = false;
-                        }
-                    }
-//                    std::cout << index << std::endl;
-                    if (index == -1) {
-//                        std::cout << -1 << std::endl;
-                        f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] <<
-                        ";\n";
-                    } else if (all_neg) {
-//                        std::cout << "all neg" << std::endl;
-                        f << "\tshared_vars[" << shared_id << "]->value -= ";
-                        bool first = true;
-                        for (int j = 0; j < parents.size(); j++) {
-                            if (j != index) {
-                                if (first) {
-                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                    first = false;
-                                } else {
-                                    f << " + " <<
-                                    expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                }
-                            }
-                        }
-                        f << ";\n";
-                    } else {
-//                        std::cout << "HERE" << std::endl;
-                        f << "\tshared_vars[" << shared_id << "]->value += ";
-                        bool first = true;
-                        for (int j = 0; j < parents.size(); j++) {
-                            if (j != index) {
-                                if (first) {
-                                    f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                    first = false;
-                                } else if (parents[j].unwrap()->op->name == "Neg") {
-                                    f <<
-                                    " - " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-                                } else {
-                                    f << " + " + expression_table[parents[j].unwrap()->id];
-                                }
-                            }
-                        }
-                        f << ";\n";
-                    }
-                } else {
-                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] <<
-                    ";\n";
-                }
-            } else {
-                f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] << ";\n";
-            }
         }
 
-//        void calculate_symbolics(std::ofstream& f, Graph graph, std::vector<Node> inputs){
-//            f << "\n\t// Set all of the symbolic variables\n";
-//            for(size_t i=0;i<graph->sym_integer_count;i++){
-//                SymInt variable = SymInt::variable(i);
-//                f << "\tint " << variable << " = ";
-//                bool done = false;
-//                for(int j=0;j<inputs.size();j++){
-//                    auto shape = graph->nodes[inputs[j].unwrap()->id]->shape;
-//                    for(int s=0;s<4;s++){
-//                        if(shape[s] == variable){
-//                            f << "node_" << inputs[j].unwrap()->id << ".dims(" << s << ")";
-//                            done = true;
-//                            break;
+        void print_update(std::ofstream &f, std::pair<Node, Node> graph_update,
+                          std::vector<std::string> &expression_table) {
+            size_t shared_id = graph_update.first.unwrap()->shared->id;
+            Node update = graph_update.second;
+
+            if (not update.unwrap()->execution.inlined or
+                (update.unwrap()->op->name != "Add" and update.unwrap()->op->name != "Mul")) {
+                f << "\tshared_vars[" << shared_id << "]->value = "
+                << expression_table[update.unwrap()->id] << ";\n";
+            } else {
+                // This part is for updates of the form
+                // x = x + ..., x - ..., x * ... or x / ...
+                // I try to merge this cases into one
+                // Note that all of this operations are either and Add or a Mul
+                std::string pos_char, neg_char, pos_name, neg_name;
+                std::string prefix = "";
+                if (update.unwrap()->op->name == "Add") {
+                    pos_char = "+";
+                    neg_char = "-";
+                    pos_name = "Add";
+                    neg_name = "Neg";
+                } else {
+                    pos_char = "*";
+                    neg_char = "/";
+                    pos_name = "Mul";
+                    neg_name = "Div";
+                }
+                // Index of the shared_variable if it is present in the operator
+                int index = -1;
+                // All other parents are negative operator
+                bool all_neg = true;
+                NodeVec parents = update.unwrap()->op->get_parents();
+                for (int i = 0; i < parents.size(); i++) {
+                    if (parents[i].unwrap()->type == SHARED_INPUT) {
+                        if (parents[i].unwrap()->shared->id == shared_id) {
+                            index = i;
+                        }
+                    } else if (parents[i].unwrap()->op->name != neg_name and
+                               parents[i].unwrap()->op->name != neg_name) {
+                        all_neg = false;
+                    }
+                }
+                if (index == -1){
+                    // The update is not +=, -=, *= or /=
+                    f << "\tshared_vars[" << shared_id << "]->value = "
+                    << expression_table[update.unwrap()->id] << ";\n";
+                } else {
+                    // This is an increment or one of the others
+                    parents.erase(parents.begin() + index);
+                    if(all_neg){
+                        prefix = neg_char;
+                    } else {
+                        prefix = pos_char;
+                    }
+                    f << "\tshared_vars[" << shared_id << "]->value " << prefix << "=";
+                    if(all_neg){
+                        for(size_t i=0; i<parents.size(); i++){
+                            size_t id = parents[i].unwrap()->op->get_parents()[0].unwrap()->id;
+                            if(i == 0){
+                                f << " " << expression_table[id];
+                            } else {
+                                f << " " << pos_char << " " << expression_table[id];
+                            }
+                            if(i < parents.size() - 1) {
+                                f << pos_char;
+                            }
+                        }
+                        f << ";\n";
+                    } else {
+                        for(size_t i=0; i<parents.size(); i++){
+                            if(i == 0 or parents[i].unwrap()->op->name != neg_name){
+                                f << " " << expression_table[parents[i].unwrap()->id];
+                            } else {
+                                size_t id = parents[i].unwrap()->op->get_parents()[0].unwrap()->id;
+                                f << neg_char << " " << expression_table[id];
+                            }
+                        }
+                        f << ";\n";
+                    }
+
+                }
+            }
+
+//                if (index == -1) {
+//                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] <<
+//                    ";\n";
+//                } else if (all_div) {
+//                    f << "\tshared_vars[" << shared_id << "]->value /= ";
+//                    bool first = true;
+//                    for (int j = 0; j < parents.size(); j++) {
+//                        if (j != index) {
+//                            if (first) {
+//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                                first = false;
+//                            } else {
+//                                f << " * " <<
+//                                expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                            }
 //                        }
 //                    }
-//                    if(done){
-//                        break;
+//                    f << ";\n";
+//                } else {
+//                    f << "\tshared_vars[" << shared_id << "]->value *= ";
+//                    bool first = true;
+//                    for (int j = 0; j < parents.size(); j++) {
+//                        if (j != index) {
+//                            if (first) {
+//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                                first = false;
+//                            } else if (parents[j].unwrap()->op->name == "Div") {
+//                                f <<
+//                                " / " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                            } else {
+//                                f << " * " + expression_table[parents[j].unwrap()->id];
+//                            }
+//                        }
+//                    }
+//                    f << ";\n";
+//                }
+//            } else if (update.unwrap()->op->name == "Add") {
+//                NodeVec parents = update.unwrap()->op->get_parents();
+//                int index = -1;
+//                bool all_neg = true;
+//                for (int j = 0; j < parents.size(); j++) {
+//                    if (parents[j].unwrap()->type == SHARED_INPUT) {
+//                        if (parents[j].unwrap()->shared->id == shared_id) {
+//                            index = j;
+//                        } else {
+//                            all_neg = false;
+//                        }
+//                    } else if (parents[j].unwrap()->op->name != "Neg") {
+//                        all_neg = false;
 //                    }
 //                }
-//                f << ";\n";
+//                if (index == -1) {
+//                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] <<
+//                    ";\n";
+//                } else if (all_neg) {
+//                    f << "\tshared_vars[" << shared_id << "]->value -= ";
+//                    bool first = true;
+//                    for (int j = 0; j < parents.size(); j++) {
+//                        if (j != index) {
+//                            if (first) {
+//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                                first = false;
+//                            } else {
+//                                f << " + " <<
+//                                expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                            }
+//                        }
+//                    }
+//                    f << ";\n";
+//                } else {
+//                    f << "\tshared_vars[" << shared_id << "]->value += ";
+//                    bool first = true;
+//                    for (int j = 0; j < parents.size(); j++) {
+//                        if (j != index) {
+//                            if (first) {
+//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                                first = false;
+//                            } else if (parents[j].unwrap()->op->name == "Neg") {
+//                                f <<
+//                                " - " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
+//                            } else {
+//                                f << " + " + expression_table[parents[j].unwrap()->id];
+//                            }
+//                        }
+//                    }
+//                    f << ";\n";
+//                }
 //            }
-//        }
-//
-//        void validate_input_shapes(std::ofstream& f, Graph graph, std::vector<Node> inputs){
-//            f <<"\n\t// Verify input sizes are correct\n";
-//            for(int i=0;i<inputs.size();i++){
-//                auto node = graph->nodes[i];
-//                f << "\tsize_t node_" << node->id << "_expected_shape[4]{";
-//                for(int j=0;j<4;j++){
-//                    f << node->shape[j].to_string_with_star();
-//                    if(j<3){
-//                        f << ", ";
-//                    }
-//                }
-//                f << "};\n";
-//                f << "\tsize_t node_" << node->id << "_actual_shape[4]{";
-//                for(int j=0;j<4;j++){
-//                    f << "node_" << node->id << ".dims(" << j << ")";
-//                    if(j<3){
-//                        f << ", ";
-//                    }
-//                }
-//                f << "};\n";
-//                f << "\tif(node_" << node->id << "_expected_shape[0] != node_" << node->id << "_actual_shape[0]\n"
-//                        "\t\tor node_" << node->id << "_expected_shape[1] != node_" << node->id << "_actual_shape[1]\n"
-//                        "\t\tor node_" << node->id << "_expected_shape[2] != node_" << node->id << "_actual_shape[2]\n"
-//                        "\t\tor node_" << node->id << "_expected_shape[3] != node_" << node->id << "_actual_shape[3]){\n"
-//                        "\t\t throw InvalidInputShape(" << node->id <<
-//                ", node_" << node->id << "_expected_shape, node_" << node->id << "_actual_shape);\n"
-//                        "\t}\n";
-//            }
-//        }
+        }
 
-        static std::string calculate_node(Graph graph, size_t id,
-                                          std::vector<std::string> &expression_table) {
-            auto node = graph->nodes[id];
-            auto op_name = node->op->name;
-            auto parents = node->op->get_parents();
-            auto args = node->op->get_arguments();
-            auto children = node->children;
-            if (node->type == INPUT) {
-                throw 22;
+        std::string node_expression(Node node, std::vector<std::string> &expression_table) {
+            auto node_in = node.unwrap();
+            auto op_name = node_in->op->name;
+            auto parents = node_in->op->get_parents();
+            auto args = node_in->op->get_arguments();
+            auto children = node_in->children;
+
+            // Constant operators
+            if(op_name == "MakeConst"){
+                return expression_table[node_in->id];
             }
-            if (node->type == CONSTANT) {
-                if (op_name == "Zeros") {
+            if(op_name == "Eye"){
+                // TODO actually have to implement symbolics
+                return "NotImplemented";
+            }
+            if(op_name == "Zeros"){
+                if(node.is_scalar()){
                     return "0.0";
+                } else {
+                    // TODO actually have to implement symbolics
+                    return "NotImplemented";
                 }
-                if (op_name == "Ones") {
+            }
+            if(op_name == "Ones"){
+                if(node.is_scalar()){
                     return "1.0";
+                } else {
+                    // TODO
+                    return "NotImplemented";
                 }
-                if (op_name == "Value") {
-                    std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node->op);
+            }
+            if (op_name == "Value") {
+                std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node_in->op);
+                if(node.is_scalar()){
                     return std::to_string(cast_op->value);
+                } else {
+                    // TODO
+                    return "NotImplemented";
+                }
+            }
+            if (op_name == "Seq" ){
+                // TODO
+                return "NotImplemented";
+            }
+
+            // Base operators
+            if (op_name == "Input"){
+                if (node_in->type == SHARED_INPUT){
+                    return "shared_vars[" + std::to_string(node_in->shared->id) + "]->value";
+                } else {
+                    return "inputs[" + std::to_string(node_in->id) + "]";
                 }
             }
             if (op_name == "Alias") {
@@ -429,7 +446,7 @@ namespace metadiff{
             }
             if (op_name == "Broadcast") {
                 bool not_supported = false;
-                for (int i = 0; i < children.size(); i++) {
+                for (size_t i = 0; i < children.size(); i++) {
                     auto name = children[i].unwrap()->op->name;
                     if (name != "Add" and name != "Mul"
                         and name != "Neg" and name != "Div") {
@@ -438,10 +455,11 @@ namespace metadiff{
                     }
                 }
                 if (not_supported) {
+// For operators where this is not supported we have to use af::tile()
                     std::string expression = "af::tile(" + expression_table[parents[0].unwrap()->id] + ", ";
                     for (int i = 0; i < 4; i++) {
-                        if (node->shape[i] != parents[0].unwrap()->shape[i]) {
-                            expression += node->shape[i].to_string_with_star();
+                        if (node_in->shape[i] != parents[0].unwrap()->shape[i]) {
+                            expression += node_in->shape[i].to_string_with_star();
                         } else {
                             expression += "1";
                         }
@@ -483,7 +501,7 @@ namespace metadiff{
                 return "(1.0/" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Sum") {
-                auto axes = dynamic_cast<Sum *>(node->op.get())->axes;
+                auto axes = dynamic_cast<Sum *>(node_in->op.get())->axes;
                 if (Node(node).is_scalar()) {
                     return "af::sum(af::flat(" + expression_table[parents[0].unwrap()->id] + "))";
                 } else {
@@ -494,11 +512,9 @@ namespace metadiff{
                     return expression;
                 }
             }
-            if (op_name == "Square") {
-                return expression_table[parents[0].unwrap()->id] + " * " + expression_table[parents[0].unwrap()->id];
-            }
-            if (op_name == "Const") {
-                return expression_table[parents[0].unwrap()->id];
+// Logical operators
+            if (op_name == "Not") {
+                return "!" + expression_table[parents[0].unwrap()->id];
             }
             if (op_name == "Gt") {
                 return expression_table[parents[0].unwrap()->id] + " > " + expression_table[parents[1].unwrap()->id];
@@ -515,15 +531,9 @@ namespace metadiff{
             if (op_name == "Eq") {
                 return expression_table[parents[0].unwrap()->id] + " == " + expression_table[parents[1].unwrap()->id];
             }
-            if (op_name == "Neq") {
-                return expression_table[parents[0].unwrap()->id] + " != " + expression_table[parents[1].unwrap()->id];
-            }
             if (op_name == "ApproxEq") {
-                // TODO
-                return "WTF";
-            }
-            if (op_name == "ApproxNe") {
-                return "WTF";
+// TODO
+                return "NotImplemented";
             }
             if (op_name == "And") {
                 return expression_table[parents[0].unwrap()->id] + " && " + expression_table[parents[1].unwrap()->id];
@@ -533,9 +543,6 @@ namespace metadiff{
             }
             if (op_name == "ZeroElem") {
                 return "af::iszero(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "NoneZeroElem") {
-                return "!af::iszero(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "IsNaN") {
                 return "af::isNaN(" + expression_table[parents[0].unwrap()->id] + ")";
@@ -548,26 +555,21 @@ namespace metadiff{
                        expression_table[parents[0].unwrap()->id] + ", " +
                        expression_table[parents[1].unwrap()->id] + ")";
             }
+// Elementwise
+            if (op_name == "Square") {
+                return expression_table[parents[0].unwrap()->id] + " * " + expression_table[parents[0].unwrap()->id];
+            }
             if (op_name == "Exp") {
                 return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Log") {
                 return "af::log(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Log") {
-                return "af::log(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Exp") {
-                return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Log1p") {
-                return "af::log1p(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Abs") {
                 return "af::abs(" + expression_table[parents[0].unwrap()->id] + ")";
             }
-            if (op_name == "Sigmoid") {
-                return "float(1.0) / (float(1.0) + af::exp(-" + expression_table[parents[0].unwrap()->id] + "))";
+            if (op_name == "Log1p") {
+                return "af::log1p(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Sin") {
                 return "af::sin(" + expression_table[parents[0].unwrap()->id] + ")";
@@ -588,15 +590,19 @@ namespace metadiff{
                 return "af::tanh(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Pow") {
-                return "af::pow(" + expression_table[parents[0].unwrap()->id] + ")";
+// TODO
+                return "UnImplemented";
             }
+// Linear Algebra operators
             if (op_name == "Transpose") {
                 return "af::transpose(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "MatrixMul") {
                 if (parents.size() > 2) {
-                    throw "Currently only matmul of 2 parents is supported";
+// TODO
+                    return "Matmul implemented only for 2 parents";
                 }
+// Have to check for transpose to use flags
                 std::string p0;
                 std::string flag0 = "AF_MAT_NONE";
                 std::string p1;
@@ -628,14 +634,15 @@ namespace metadiff{
             if (op_name == "Trace") {
                 return "af::sum(af::diag(" + expression_table[parents[0].unwrap()->id] + "))";
             }
+// Shape operators
             if (op_name == "Diag") {
                 return "af::diag(" + expression_table[parents[0].unwrap()->id] + ", 0, " +
-                       std::to_string(node->shape[1] == 1) + ")";
+                       std::to_string(node_in->shape[1] == 1) + ")";
             }
             if (op_name == "Reshape") {
                 std::string expression = "af::moddims(" + expression_table[parents[0].unwrap()->id] + ", ";
                 for (int i = 0; i < 4; i++) {
-                    expression += node->shape[i].to_string_with_star();
+                    expression += node_in->shape[i].to_string_with_star();
                     if (i < 3) {
                         expression += ", ";
                     }
@@ -644,7 +651,7 @@ namespace metadiff{
             }
             if (op_name == "Reorder") {
                 std::string expression = "af::reorder(" + expression_table[parents[0].unwrap()->id] + ", ";
-                auto order = dynamic_cast<Reorder *>(node->op.get())->order;
+                auto order = dynamic_cast<Reorder *>(node_in->op.get())->order;
                 for (int i = 0; i < 4; i++) {
                     expression += order[i];
                     if (i < 3) {
@@ -653,19 +660,41 @@ namespace metadiff{
                 }
                 return expression + ")";
             }
+            // Indexing operators
+            if (op_name == "Slice"){
+            // TODO
+                return "UnImplemented";
+            }
+            if (op_name == "SliceGrad"){
+// TODO
+                return "UnImplemented";
+            }
+            if (op_name == "Index"){
+// TODO
+                return "UnImplemented";
+            }
+            if (op_name == "IndexGrad"){
+// TODO
+                return "UnImplemented";
+            }
+// Multy-node operators
+            if (op_name == "MaxAndArgMax") {
+// TODO
+                return "UnImplemented";
+            }
+            if (op_name == "SortAndArgSort") {
+// TODO
+                return "UnImplemented";
+            }
+// Optimized operators
             if (op_name == "BinCrossEntropyLogit") {
                 std::string p = expression_table[parents[0].unwrap()->id];
                 std::string sfx = expression_table[args[0].unwrap()->id];
                 std::string sfmx = expression_table[args[1].unwrap()->id];
-                return p + " * " + sfmx + " + (float(1.0) - " + p + ") * " + sfx;
+                return p + " * " + sfmx + " + (1.0 - " + p + ") * " + sfx;
             }
-            if (op_name == "MaxAndArgMax") {
-                return "WTF";
-            }
-            if (op_name == "SortAndArgSort") {
-                return "WTF";
-            }
-            return "WTF2";
+
+            return "Unreachable";
         }
 
         void print_shape_esception(std::ofstream &f) {

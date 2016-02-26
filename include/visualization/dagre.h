@@ -261,7 +261,6 @@ namespace metadiff {
             // The javascript code is:
             // moprpher.addNode("<group>", "<node name>", "{<node attributes>}");
             auto first = update.first.unwrap();
-            std::cout << "TV" << std::endl;
             auto second = update.second.unwrap();
             f << "\tmorpher.addNode(\"_root/" << second->group.lock()->get_full_name() << "\", "
             << "\"Update " <<  first->name << "[" << first->id << "]\", {\n"

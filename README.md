@@ -42,8 +42,8 @@ The framework is still in early development and there are number of things that 
 * [ ] Convolution and max pooling operators
 * [ ] Other special Neural Networks operators
 * [ ] A symbolic for loop (SCAN)
-* [ ] Groups implementation on the nodes for better visualization
-* [ ] Reuse some better visualization html library
+* [x] Groups implementation on the nodes for better visualization
+* [x] Reuse some better visualization html library
 * [ ] Implement all of the operators in the `ArrayfireBackend`
 * [ ] Benchmark on several standard problems
 * [ ] Add Travis integration

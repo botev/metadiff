@@ -82,8 +82,7 @@ namespace metadiff {
         }
 
         Node get_parent_grad(Node my_grad, size_t index){
-            Node div = parent.div();
-            return mul(my_grad, div);
+            return mul(my_grad, parent.div());
         }
     };
 
