@@ -234,12 +234,10 @@ namespace metadiff{
                 if (update.unwrap()->op->name == "Add") {
                     pos_char = "+";
                     neg_char = "-";
-                    pos_name = "Add";
                     neg_name = "Neg";
                 } else {
                     pos_char = "*";
                     neg_char = "/";
-                    pos_name = "Mul";
                     neg_name = "Div";
                 }
                 // First we need to check if the shared variable is in this operator
