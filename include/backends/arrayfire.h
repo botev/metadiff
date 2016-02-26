@@ -242,9 +242,11 @@ namespace metadiff{
                     pos_name = "Mul";
                     neg_name = "Div";
                 }
+                // First we need to check if the shared variable is in this operator
                 // Index of the shared_variable if it is present in the operator
                 int index = -1;
                 // All other parents are negative operator
+                // This is required in order to distinguish between += and -=, *= and /=
                 bool all_neg = true;
                 NodeVec parents = update.unwrap()->op->get_parents();
                 for (int i = 0; i < parents.size(); i++) {
@@ -257,39 +259,45 @@ namespace metadiff{
                         all_neg = false;
                     }
                 }
-                if (index == -1){
-                    // The update is not +=, -=, *= or /=
+                if (index == -1) {
+                    // If the shared variable is not in the operator than it is a standard syntax
                     f << "\tshared_vars[" << shared_id << "]->value = "
                     << expression_table[update.unwrap()->id] << ";\n";
                 } else {
-                    // This is an increment or one of the others
+                    // Remove the shared variable from the parents
                     parents.erase(parents.begin() + index);
-                    if(all_neg){
+                    // If all are negative we make the prefix the neg_char, otherwise the pos_char
+                    if (all_neg) {
                         prefix = neg_char;
                     } else {
                         prefix = pos_char;
                     }
                     f << "\tshared_vars[" << shared_id << "]->value " << prefix << "=";
-                    if(all_neg){
-                        for(size_t i=0; i<parents.size(); i++){
+                    if (all_neg) {
+                        // If all are negative we need the grand parents rather than the parents
+                        for (size_t i = 0; i < parents.size(); i++) {
                             size_t id = parents[i].unwrap()->op->get_parents()[0].unwrap()->id;
-                            if(i == 0){
+                            if (i == 0) {
                                 f << " " << expression_table[id];
                             } else {
                                 f << " " << pos_char << " " << expression_table[id];
                             }
-                            if(i < parents.size() - 1) {
+                            if (i < parents.size() - 1) {
                                 f << pos_char;
                             }
                         }
                         f << ";\n";
                     } else {
-                        for(size_t i=0; i<parents.size(); i++){
-                            if(i == 0 or parents[i].unwrap()->op->name != neg_name){
+                        for (size_t i = 0; i < parents.size(); i++) {
+                            // If the parent is a negative operator we need to write its grand parent
+                            // with a neg_char
+                            if (i == 0) {
                                 f << " " << expression_table[parents[i].unwrap()->id];
+                            } else if (parents[i].unwrap()->op->name != neg_name) {
+                                f << " " << pos_char << " " << expression_table[parents[i].unwrap()->id];
                             } else {
                                 size_t id = parents[i].unwrap()->op->get_parents()[0].unwrap()->id;
-                                f << neg_char << " " << expression_table[id];
+                                f << " " << neg_char << " " << expression_table[id];
                             }
                         }
                         f << ";\n";
@@ -297,96 +305,8 @@ namespace metadiff{
 
                 }
             }
-
-//                if (index == -1) {
-//                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] <<
-//                    ";\n";
-//                } else if (all_div) {
-//                    f << "\tshared_vars[" << shared_id << "]->value /= ";
-//                    bool first = true;
-//                    for (int j = 0; j < parents.size(); j++) {
-//                        if (j != index) {
-//                            if (first) {
-//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                                first = false;
-//                            } else {
-//                                f << " * " <<
-//                                expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                            }
-//                        }
-//                    }
-//                    f << ";\n";
-//                } else {
-//                    f << "\tshared_vars[" << shared_id << "]->value *= ";
-//                    bool first = true;
-//                    for (int j = 0; j < parents.size(); j++) {
-//                        if (j != index) {
-//                            if (first) {
-//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                                first = false;
-//                            } else if (parents[j].unwrap()->op->name == "Div") {
-//                                f <<
-//                                " / " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                            } else {
-//                                f << " * " + expression_table[parents[j].unwrap()->id];
-//                            }
-//                        }
-//                    }
-//                    f << ";\n";
-//                }
-//            } else if (update.unwrap()->op->name == "Add") {
-//                NodeVec parents = update.unwrap()->op->get_parents();
-//                int index = -1;
-//                bool all_neg = true;
-//                for (int j = 0; j < parents.size(); j++) {
-//                    if (parents[j].unwrap()->type == SHARED_INPUT) {
-//                        if (parents[j].unwrap()->shared->id == shared_id) {
-//                            index = j;
-//                        } else {
-//                            all_neg = false;
-//                        }
-//                    } else if (parents[j].unwrap()->op->name != "Neg") {
-//                        all_neg = false;
-//                    }
-//                }
-//                if (index == -1) {
-//                    f << "\tshared_vars[" << shared_id << "]->value = " << expression_table[update.unwrap()->id] <<
-//                    ";\n";
-//                } else if (all_neg) {
-//                    f << "\tshared_vars[" << shared_id << "]->value -= ";
-//                    bool first = true;
-//                    for (int j = 0; j < parents.size(); j++) {
-//                        if (j != index) {
-//                            if (first) {
-//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                                first = false;
-//                            } else {
-//                                f << " + " <<
-//                                expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                            }
-//                        }
-//                    }
-//                    f << ";\n";
-//                } else {
-//                    f << "\tshared_vars[" << shared_id << "]->value += ";
-//                    bool first = true;
-//                    for (int j = 0; j < parents.size(); j++) {
-//                        if (j != index) {
-//                            if (first) {
-//                                f << expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                                first = false;
-//                            } else if (parents[j].unwrap()->op->name == "Neg") {
-//                                f <<
-//                                " - " + expression_table[parents[j].unwrap()->op->get_parents()[0].unwrap()->id];
-//                            } else {
-//                                f << " + " + expression_table[parents[j].unwrap()->id];
-//                            }
-//                        }
-//                    }
-//                    f << ";\n";
-//                }
-//            }
         }
+
 
         std::string node_expression(Node node, std::vector<std::string> &expression_table) {
             auto node_in = node.unwrap();
@@ -455,7 +375,7 @@ namespace metadiff{
                     }
                 }
                 if (not_supported) {
-// For operators where this is not supported we have to use af::tile()
+                    // For operators where this is not supported we have to use af::tile()
                     std::string expression = "af::tile(" + expression_table[parents[0].unwrap()->id] + ", ";
                     for (int i = 0; i < 4; i++) {
                         if (node_in->shape[i] != parents[0].unwrap()->shape[i]) {
@@ -512,7 +432,7 @@ namespace metadiff{
                     return expression;
                 }
             }
-// Logical operators
+            // Logical operators
             if (op_name == "Not") {
                 return "!" + expression_table[parents[0].unwrap()->id];
             }
@@ -532,7 +452,7 @@ namespace metadiff{
                 return expression_table[parents[0].unwrap()->id] + " == " + expression_table[parents[1].unwrap()->id];
             }
             if (op_name == "ApproxEq") {
-// TODO
+                // TODO
                 return "NotImplemented";
             }
             if (op_name == "And") {
@@ -555,7 +475,7 @@ namespace metadiff{
                        expression_table[parents[0].unwrap()->id] + ", " +
                        expression_table[parents[1].unwrap()->id] + ")";
             }
-// Elementwise
+            // Elementwise operators
             if (op_name == "Square") {
                 return expression_table[parents[0].unwrap()->id] + " * " + expression_table[parents[0].unwrap()->id];
             }
@@ -590,19 +510,19 @@ namespace metadiff{
                 return "af::tanh(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "Pow") {
-// TODO
+                // TODO
                 return "UnImplemented";
             }
-// Linear Algebra operators
+            // Linear Algebra operators
             if (op_name == "Transpose") {
                 return "af::transpose(" + expression_table[parents[0].unwrap()->id] + ")";
             }
             if (op_name == "MatrixMul") {
                 if (parents.size() > 2) {
-// TODO
+                    // TODO
                     return "Matmul implemented only for 2 parents";
                 }
-// Have to check for transpose to use flags
+                // Have to check for transpose to use flags
                 std::string p0;
                 std::string flag0 = "AF_MAT_NONE";
                 std::string p1;
@@ -634,7 +554,7 @@ namespace metadiff{
             if (op_name == "Trace") {
                 return "af::sum(af::diag(" + expression_table[parents[0].unwrap()->id] + "))";
             }
-// Shape operators
+            // Shape operators
             if (op_name == "Diag") {
                 return "af::diag(" + expression_table[parents[0].unwrap()->id] + ", 0, " +
                        std::to_string(node_in->shape[1] == 1) + ")";
@@ -666,27 +586,27 @@ namespace metadiff{
                 return "UnImplemented";
             }
             if (op_name == "SliceGrad"){
-// TODO
+                // TODO
                 return "UnImplemented";
             }
             if (op_name == "Index"){
-// TODO
+                // TODO
                 return "UnImplemented";
             }
             if (op_name == "IndexGrad"){
-// TODO
+                // TODO
                 return "UnImplemented";
             }
-// Multy-node operators
+            // Multy-node operators
             if (op_name == "MaxAndArgMax") {
-// TODO
+                // TODO
                 return "UnImplemented";
             }
             if (op_name == "SortAndArgSort") {
-// TODO
+                // TODO
                 return "UnImplemented";
             }
-// Optimized operators
+            // Optimized operators
             if (op_name == "BinCrossEntropyLogit") {
                 std::string p = expression_table[parents[0].unwrap()->id];
                 std::string sfx = expression_table[args[0].unwrap()->id];
