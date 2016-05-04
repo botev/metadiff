@@ -65,6 +65,8 @@ EXTRACT_PRIVATE      = NO
 # If the HIDE_UNDOC_MEMBERS tag is set to YES, Doxygen will hide all
 # undocumented members inside documented classes or files.
 
+EXTRACT_STATIC       = YES
+
 HIDE_UNDOC_MEMBERS   = NO
 
 # If the HIDE_UNDOC_CLASSESS tag is set to YES, Doxygen will hide all

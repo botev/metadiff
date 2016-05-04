@@ -6,70 +6,66 @@
 #define METADIFF_OPERATORS_OPTIMIZED_H
 
 namespace metadiff {
+    namespace op {
+        using namespace core;
+        using namespace exceptions;
 
-    /**
-     * Calculates the binary cross-entropy between p an x
-     * where x are the logits:
-     * sigma(x) = (1+exp(-x))^{-1}
-     * p * log(sigma(x)) + (1 - p) * log(1 - sigma(x))
-     */
-    class BinaryCrossEntropyLogit : public ElementwiseBinary {
-    public:
-        Node softplus_x, softplus_mx;
-        BinaryCrossEntropyLogit(GraphInPtr graph, Node p, Node x):
-                ElementwiseBinary("BinCrossEntropyLogit", graph, p, x)
-        {
-            softplus_x = softplus(x);
-            softplus_mx = softplus(-x);
-        }
+        /** Binary cross-entropy between p an sigmoid(x) */
+        class BinaryCrossEntropyLogit : public ElementwiseBinary {
+        public:
+            Node softplus_x, softplus_mx;
 
-        BinaryCrossEntropyLogit(GraphInPtr graph, Node p, Node x,
-                Node softplus_x, Node softplus_mx):
-                ElementwiseBinary("BinCrossEntropyLogit", graph, p, x),
-                softplus_x(softplus_x),
-                softplus_mx(softplus_mx) {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<BinaryCrossEntropyLogit>(graph,
-                                                             ancestors[0], ancestors[1],
-                                                             ancestors[2], ancestors[3]);
-        }
-
-        ad_value_type get_value_type() const{
-            return FLOAT;
-        };
-
-        NodeVec get_arguments() const{
-            return {softplus_x, softplus_mx};
-        }
-
-        Node get_parent_grad(Node my_grad, size_t index){
-            // Parents - p, x
-            // Arguments - sf(x), sf(-x)
-            // Node computes f = - p * log(q) - (1-p) * log(1-q)
-            // log(q) = -sf(-x), log(1-q) = -sf(x)
-            // Node computes f = p * sf(-x) + (1 - p)*sf(x) = p*(sf(-x)-sf(x)) + sf(x)
-            // dE/dp = dE * (sf(-x)-sf(x))
-            // dE/dx = dE * (q-p) = dE * (sigmoid(x) - p)
-            if(index == 0){
-                return my_grad * (softplus_mx - softplus_x);
-            } else {
-                return my_grad * (sigmoid(parent2) - parent1);
+            BinaryCrossEntropyLogit(GraphInPtr graph, Node p, Node x) :
+                    ElementwiseBinary("BinCrossEntropyLogit", graph, p, x) {
+                softplus_x = x.softplus();
+                softplus_mx = x.neg().softplus();
             }
+
+            BinaryCrossEntropyLogit(GraphInPtr graph, Node p, Node x,
+                                    Node softplus_x, Node softplus_mx) :
+                    ElementwiseBinary("BinCrossEntropyLogit", graph, p, x),
+                    softplus_x(softplus_x),
+                    softplus_mx(softplus_mx) {};
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const {
+                return std::make_shared<BinaryCrossEntropyLogit>(graph,
+                                                                 ancestors[0], ancestors[1],
+                                                                 ancestors[2], ancestors[3]);
+            }
+
+            dType get_dtype() const{
+                return graph->max_float;
+            }
+
+            NodeVec get_arguments() const {
+                return {softplus_x, softplus_mx};
+            }
+
+            Node get_parent_grad(Node my_grad, unsigned short index) {
+                // Parents - p, x
+                // Arguments - sf(x), sf(-x)
+                // Node computes f = - p * log(q) - (1-p) * log(1-q)
+                // log(q) = -sf(-x), log(1-q) = -sf(x)
+                // Node computes f = p * sf(-x) + (1 - p)*sf(x) = p*(sf(-x)-sf(x)) + sf(x)
+                // dE/dp = dE * (sf(-x)-sf(x))
+                // dE/dx = dE * (q-p) = dE * (sigmoid(x) - p)
+                if (index == 0) {
+                    return Node::mul(my_grad, softplus_mx - softplus_x);
+                } else {
+                    return Node::mul(my_grad, parent2.sigmoid() - parent1);
+                }
+            }
+        };
+    }
+    namespace core{
+        Node Node::binary_cross_entropy_logit(Node node) {
+            return apply<op::BinaryCrossEntropyLogit>(this, node);
         }
-    };
 
-    Node binary_cross_entropy_logit(Node p, Node x){
-        return apply<BinaryCrossEntropyLogit>(p, x);
-    }
-
-    Node Node::relu(){
-        std::shared_ptr<NodeInternal> ptr = unwrap();
-        return ptr->graph->constant_value(0.5) * (this + abs());
-    }
-
-    Node relu(Node x){
-        return x.relu();
+        Node Node::relu() {
+            // TODO Check if this is optimal?
+            return unwrap()->graph->constant_value(0.5) * (this + abs());
+        }
     }
 };
 

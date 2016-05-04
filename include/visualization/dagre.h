@@ -108,19 +108,16 @@ namespace metadiff {
          */
         std::ofstream& print_name(std::ofstream& f, Node node_in) {
             auto node = node_in.unwrap();
-            if(node-> type == ad_node_type::SYMBOLIC_INTEGER){
-                f << "SYMINT[" << node->id << "]";
-            } else if (node->type == ad_node_type::CONSTANT) {
+            if (node->type == ad_node_type::CONSTANT) {
                 if(node_in.is_scalar() and node->op->name == "Value"){
                     std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node->op);
-                    f << cast_op->value << "[" << node->id << "]";
+                    f << cast_op->to_string() << "[" << node->id << "]";
                 } else if(node->op->name != "Input") {
                     f <<  node->op->name << "[" << node->id << "]";
                 } else {
                     f << "CONST[" << node->id << "]";
                 }
-            } else if (node->type == ad_node_type::INPUT or
-                       node->type == ad_node_type::SHARED_INPUT) {
+            } else if (node->type == ad_node_type::INPUT) {
                 f << node->name << "[" << node->id << "]";
             } else {
                 f << node->op->name << "[" << node->id << "]";
@@ -132,13 +129,25 @@ namespace metadiff {
          * Helper function to print the correct color of the node
          */
         std::ofstream& print_color(std::ofstream& f, Node node){
-            switch(node.unwrap()->type){
-                case INPUT: f << "#00ff00"; return f;
-                case SHARED_INPUT:  f << "#006400"; return f;
-                case INPUT_DERIVED: f << "#0000ff"; return f;
-                case CONSTANT: f << "#ffff00"; return f;
-                case CONSTANT_DERIVED: f << "#ffa500"; return f;
-                default: f << "#800080"; return f;
+            if(node->op->name == "Shared"){
+                f << "#006400"; return f;
+            }
+            switch (node.unwrap()->type) {
+                case INPUT:
+                    f << "#00ff00";
+                    return f;
+                case INPUT_DERIVED:
+                    f << "#0000ff";
+                    return f;
+                case CONSTANT:
+                    f << "#ffff00";
+                    return f;
+                case CONSTANT_DERIVED:
+                    f << "#ffa500";
+                    return f;
+                default:
+                    f << "#800080";
+                    return f;
             }
         }
 
@@ -146,13 +155,25 @@ namespace metadiff {
          * Helper function to print the correct shape of the node
          */
         std::ofstream& print_shape(std::ofstream& f, Node node){
+            if(node->op->name == "Shared"){
+                f << "rect"; return f;
+            }
             switch(node.unwrap()->type){
-                case INPUT: f << "rect"; return f;
-                case SHARED_INPUT:  f << "rect"; return f;
-                case INPUT_DERIVED: f << "ellipse"; return f;
-                case CONSTANT: f << "circle"; return f;
-                case CONSTANT_DERIVED: f << "ellipse"; return f;
-                default: f << "rect"; return f;
+                case INPUT:
+                    f << "rect";
+                    return f;
+                case INPUT_DERIVED:
+                    f << "ellipse";
+                    return f;
+                case CONSTANT:
+                    f << "circle";
+                    return f;
+                case CONSTANT_DERIVED:
+                    f << "ellipse";
+                    return f;
+                default:
+                    f << "rect";
+                    return f;
             }
         }
 
@@ -202,7 +223,7 @@ namespace metadiff {
          * Helper function to return true if the node is constant input
          */
         bool is_constant(Node node){
-            if(node.unwrap()-> type == CONSTANT or node.unwrap()-> type == SYMBOLIC_INTEGER){
+            if(node.unwrap()-> type == CONSTANT){
                 std::string op_name = node.unwrap()->op->name;
                 return op_name == "Input" or op_name == "Value" or op_name == "Zeros" or op_name == "Ones";
             }

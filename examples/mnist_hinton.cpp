@@ -88,7 +88,8 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     md::dagre::print_to_file(name + "_optim.html", optimized, new_updates);
 //    std::cout << "Dagre" << std::endl;
     // Create backend and compile function
-    md::ArrayfireBackend md_backend = md::ArrayfireBackend();
+    md::ArrayfireBackend md_backend = md::ArrayfireBackend(std::string("./mnist_hinton"));
+//    std::cout << "Backend dir: " << md_backend.dir_path << std::endl;
 //    md_backend.dir_path = "./mnist_hinton";
 //    auto train_org = md_backend.compile_function(name, graph, inputs, loss, updates);
     clock_t start = clock();

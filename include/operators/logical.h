@@ -6,471 +6,450 @@
 #define METADIFF_OPERATORS_LOGICAL_H
 
 namespace metadiff {
+    namespace op {
+        using namespace core;
+        using namespace exceptions;
+        
+        /** Logical not - !p */
+        class Not : public LogicalUnary {
+        public:
+            Not(GraphInPtr graph, Node parent) :
+                    LogicalUnary("Not", graph, parent) {
+                if (parent->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{parent},
+                                                          "Logical operators should be called only on b8 inputs"));
+                    this->parent = parent.cast(b8);
+                }
+            }
 
-    /**
-     * Abstract class for any binary logical operators
-     */
-    class LogicalBinary : public ElementwiseBinary{
-    public:
-        LogicalBinary(std::string const name,
-                      GraphInPtr graph,
-                      Node parent1,
-                      Node parent2):
-                ElementwiseBinary(name, graph, parent1, parent2) {};
-
-        ad_value_type get_value_type() const{
-            return BOOLEAN;
-        };
-
-        ad_node_type get_node_type() const{
-            if(parent1.unwrap()->type == CONSTANT and parent2.unwrap()->type == CONSTANT){
-                return CONSTANT;
-            } else {
-                return CONSTANT_DERIVED;
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Not>(graph, ancestors[0]);
             }
         };
 
-        Node get_parent_grad(Node my_grad, size_t index){
-            throw WrongGradient(name, {parent1, parent2});
-        }
-    };
+        /** Logical and - p1 && p2 */
+        class And : public LogicalBinary {
+        public:
+            And(GraphInPtr graph,
+                Node parent1,
+                Node parent2) :
+                    LogicalBinary("And", graph, parent1, parent2) {
+                if (parent1->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                                          "Logical operators should be called only on b8 inputs"));
+                    this->parent1 = parent1.cast(b8);
+                }
+                if (parent2->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                                          "Logical operators should be called only on b8 inputs"));
+                    this->parent2 = parent2.cast(b8);
+                }
+            };
 
-    /**
-     * Abstract class for any unary logical operators
-     */
-    class LogicalUnary : public UnaryOperator{
-    public:
-        LogicalUnary(std::string const name,
-                     GraphInPtr graph,
-                     Node parent):
-                UnaryOperator(name, graph, parent) {};
-
-        ad_value_type get_value_type() const{
-            return BOOLEAN;
-        };
-
-        ad_node_type get_node_type() const{
-            if(parent.unwrap()->type == CONSTANT){
-                return CONSTANT;
-            } else {
-                return CONSTANT_DERIVED;
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<And>(graph, ancestors[0], ancestors[1]);
             }
         };
 
-        Node get_parent_grad(Node my_grad, size_t index){
-            throw WrongGradient(name, {parent});
-        }
-    };
+        /** Logical and - p1 && p2 */
+        class Or : public LogicalBinary {
+        public:
+            Or(GraphInPtr graph,
+                Node parent1,
+                Node parent2) :
+                    LogicalBinary("Or", graph, parent1, parent2) {
+                if (parent1->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                                          "Logical operators should be called only on b8 inputs"));
+                    this->parent1 = parent1.cast(b8);
+                }
+                if (parent2->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                                          "Logical operators should be called only on b8 inputs"));
+                    this->parent2 = parent2.cast(b8);
+                }
+            };
 
-    /**
-     * Elementwise NOT operation
-     */
-    class Not : public LogicalUnary {
-    public:
-        Not(GraphInPtr graph,
-                     Node parent) :
-                LogicalUnary("Not", graph, parent) {
-            if(parent.unwrap()->v_type != BOOLEAN){
-                throw InvalidArguments(name, {parent},
-                                       "The operator accepts only BOOLEAN inputs");
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Or>(graph, ancestors[0], ancestors[1]);
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Not>(graph, ancestors[0]);
-        }
-    };
-
-    Node Node::nt() {
-        return apply<Not>(this);
-    }
-
-    Node operator!(Node node){
-        return apply<Not>(node);
-    }
-
-    /**
-     * Elementwise comparison '>'
-     */
-    class GreaterThan : public LogicalBinary {
-    public:
-        GreaterThan(GraphInPtr graph,
-                    Node parent1,
-                    Node parent2) :
-                LogicalBinary("Gt", graph, parent1, parent2) {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<GreaterThan>(graph, ancestors[0], ancestors[1]);
-        }
-    };
-
-
-    Node gt(Node node1, Node node2){
-        return apply<GreaterThan>(node1, node2);
-    }
-
-    Node Node::gt(Node node) {
-        return apply<GreaterThan>(this, node);
-    }
-
-    Node operator>(Node node1, Node node2){
-        return apply<GreaterThan>(node1, node2);
-    }
-
-    /**
-     * Elementwise comparison '>='
-     */
-    class GreaterThanOrEqual : public LogicalBinary {
-    public:
-        GreaterThanOrEqual(GraphInPtr graph,
-                           Node parent1,
-                           Node parent2) :
-                LogicalBinary("Ge", graph, parent1, parent2) {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<GreaterThanOrEqual>(graph, ancestors[0], ancestors[1]);
-        }
-    };
-
-    Node Node::ge(Node node) {
-        return apply<GreaterThanOrEqual>(this, node);
-    }
-
-    Node ge(Node node1, Node node2){
-        return apply<GreaterThanOrEqual>(node1, node2);
-    }
-
-    Node operator>=(Node node1, Node node2){
-        return apply<GreaterThanOrEqual>(node1, node2);
-    }
-
-    /**
-     * Elementwise comparison '<'
-     */
-    class LessThan : public LogicalBinary {
-    public:
-        LessThan(GraphInPtr graph,
-                 Node parent1,
-                 Node parent2) :
-                LogicalBinary("Lt", graph, parent1, parent2) {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<LessThan>(graph, ancestors[0], ancestors[1]);
-        }
-    };
-
-    Node Node::lt(Node node) {
-        return apply<LessThan>(this, node);
-    }
-
-    Node lt(Node node1, Node node2){
-        return apply<LessThan>(node1, node2);
-    }
-
-    Node operator<(Node node1, Node node2){
-        return apply<LessThan>(node1, node2);
-    }
-
-    /**
-     * Elementwise comparison '<='
-     */
-    class LessThanOrEqual : public LogicalBinary {
-    public:
-        LessThanOrEqual(GraphInPtr graph,
+        /** Elementwise comparison for p1 > p2 */
+        class GreaterThan : public LogicalBinary {
+        public:
+            GreaterThan(GraphInPtr graph,
                         Node parent1,
                         Node parent2) :
-                LogicalBinary("Le", graph, parent1, parent2) {};
+                    LogicalBinary("Gt", graph, parent1, parent2) {};
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<LessThanOrEqual>(graph, ancestors[0], ancestors[1]);
-        }
-    };
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<GreaterThan>(graph, ancestors[0], ancestors[1]);
+            }
+        };
 
-    Node Node::le(Node node) {
-        return apply<LessThanOrEqual>(this, node);
-    }
+        /** Elementwise comparison for p1 >= p2 */
+        class GreaterThanOrEqual : public LogicalBinary {
+        public:
+            GreaterThanOrEqual(GraphInPtr graph,
+                               Node parent1,
+                               Node parent2) :
+                    LogicalBinary("Ge", graph, parent1, parent2) {};
 
-    Node le(Node node1, Node node2){
-        return apply<LessThanOrEqual>(node1, node2);
-    }
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<GreaterThanOrEqual>(graph, ancestors[0], ancestors[1]);
+            }
+        };
 
-    Node operator<=(Node node1, Node node2){
-        return apply<LessThanOrEqual>(node1, node2);
-    }
+        /** Elementwise comparison for p1 < p2 */
+        class LessThan : public LogicalBinary {
+        public:
+            LessThan(GraphInPtr graph,
+                     Node parent1,
+                     Node parent2) :
+                    LogicalBinary("Lt", graph, parent1, parent2) {};
 
-    /**
-     * Elementwise comparison '=='
-     */
-    class Equals : public LogicalBinary {
-    public:
-        Equals(GraphInPtr graph,
-               Node parent1,
-               Node parent2) :
-                LogicalBinary("Eq", graph, parent1, parent2) {};
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<LessThan>(graph, ancestors[0], ancestors[1]);
+            }
+        };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Equals>(graph, ancestors[0], ancestors[1]);
-        }
-    };
-
-    Node Node::eq(Node node){
-        return apply<Equals>(this, node);
-    }
-
-    Node eq(Node node1, Node node2){
-        return apply<Equals>(node1, node2);
-    }
-
-    Node operator==(Node node1, Node node2){
-        return apply<Equals>(node1, node2);
-    }
-
-    Node Node::neq(Node node){
-        return !(this == node);
-    }
-
-    Node neq(Node node1, Node node2){
-        return !(node1 == node2);
-    }
-
-    Node operator!=(Node node1, Node node2){
-        return !(node1 == node2);
-    }
-
-    /**
-     * Checks if the two nodes are approximately equal (up to a tolerance measure)
-     * This is particulary useful for floating point nodes, where machine precision
-     * might have effect.
-     */
-    class ApproximatelyEquals : public LogicalBinary {
-    public:
-        double tol;
-        ApproximatelyEquals(GraphInPtr graph,
+        /** Elementwise comparison for p1 <= p2 */
+        class LessThanOrEqual : public LogicalBinary {
+        public:
+            LessThanOrEqual(GraphInPtr graph,
                             Node parent1,
-                            Node parent2,
-                            double tol) :
-                LogicalBinary("ApproxEq", graph, parent1, parent2),
-                tol(tol) {};
+                            Node parent2) :
+                    LogicalBinary("Le", graph, parent1, parent2) { };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<ApproximatelyEquals>(graph, ancestors[0], ancestors[1], tol);
-        }
-    };
-
-    Node Node::approx_eq(Node node, double tol){
-        GraphInPtr graph = unwrap()->graph;
-        return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, this, node, tol));
-    }
-
-    Node approx_eq(Node node1, Node node2, double tol = 0.00001){
-        GraphInPtr graph = node1.unwrap()->graph;
-        return graph->derived_node(std::make_shared<ApproximatelyEquals>(graph, node1, node2, tol));
-    }
-
-    Node Node::approx_neq(Node node, double tol){
-        return !(this->approx_eq(node, tol));
-    }
-
-    Node approx_neq(Node node1, Node node2, double tol=0.00001){
-        return !(node1.approx_eq(node2, tol));
-    }
-
-    /**
-     * Elementwise logical AND
-     */
-    class And : public LogicalBinary {
-    public:
-        And(GraphInPtr graph,
-            Node parent1,
-            Node parent2) :
-                LogicalBinary("And", graph, parent1, parent2)
-        {
-            if(parent1.unwrap()->v_type != BOOLEAN or parent2.unwrap()->v_type != BOOLEAN){
-                throw InvalidArguments(name, {parent1, parent2}, "Operator 'And' accepts only BOOLEAN parents");
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<LessThanOrEqual>(graph, ancestors[0], ancestors[1]);
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<And>(graph, ancestors[0], ancestors[1]);
-        }
-    };
+        /** Elementwise comparison for p1 == p2 */
+        class Equals : public LogicalBinary {
+        public:
+            Equals(GraphInPtr graph,
+                   Node parent1,
+                   Node parent2) :
+                    LogicalBinary("Eq", graph, parent1, parent2) {};
 
-    Node Node::logical_and(Node node){
-        return apply<And>(this, node);
-    }
-
-    Node logical_and(Node node1, Node node2){
-        return apply<And>(node1, node2);
-    }
-
-    Node operator&&(Node node1, Node node2){
-        return apply<And>(node1, node2);
-    }
-
-    /**
-     * Elementwise logical OR
-     */
-    class Or : public LogicalBinary {
-    public:
-        Or(GraphInPtr graph,
-           Node parent1,
-           Node parent2) :
-                LogicalBinary("Or", graph, parent1, parent2)
-        {
-            if(parent1.unwrap()->v_type != BOOLEAN or parent2.unwrap()->v_type != BOOLEAN){
-                throw InvalidArguments(name, {parent1, parent2}, "Operator 'Or' accepts only BOOLEAN parents");
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Equals>(graph, ancestors[0], ancestors[1]);
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Or>(graph, ancestors[0], ancestors[1]);
-        }
-    };
+        /** Elementwise comparison for p1 != p2 */
+        class NotEquals : public LogicalBinary {
+        public:
+            NotEquals(GraphInPtr graph,
+                   Node parent1,
+                   Node parent2) :
+                    LogicalBinary("NotEq", graph, parent1, parent2) {};
 
-    Node Node::logical_or(Node node){
-        return apply<Or>(this, node);
-    }
-
-    Node logical_or(Node node1, Node node2){
-        return apply<Or>(node1, node2);
-    }
-
-    Node operator||(Node node1, Node node2){
-        return apply<Or>(node1, node2);
-    }
-
-    /**
-     * Checks every element if its equal to 0
-     */
-    class ZeroElements : public LogicalUnary {
-    public:
-        ZeroElements(GraphInPtr graph,
-                     Node parent) :
-                LogicalUnary("ZeroElem", graph, parent)
-        {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<ZeroElements>(graph, ancestors[0]);
-        }
-    };
-
-    Node Node::zero_elem() {
-        return apply<ZeroElements>(this);
-    }
-
-    Node zero_elem(Node node){
-        return apply<ZeroElements>(node);
-    }
-
-    Node Node::non_zero_elem() {
-        return !(this->zero_elem());
-    }
-
-    Node non_zero_elem(Node node){
-        return !(node.zero_elem());
-    }
-
-    /**
-     * Checks every element if its is NaN
-     */
-    class IsNaN : public LogicalUnary {
-    public:
-        IsNaN(GraphInPtr graph,
-              Node parent) :
-                LogicalUnary("IsNaN", graph, parent)
-        {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<IsNaN>(graph, ancestors[0]);
-        }
-    };
-
-    Node Node::is_nan(){
-        return apply<IsNaN>(this);
-    }
-
-    Node is_nan(Node node){
-        return apply<IsNaN>(node);
-    }
-
-    /**
-     * Checks every element if its is Inf
-     */
-    class IsInf : public LogicalUnary {
-    public:
-        IsInf(GraphInPtr graph,
-              Node parent) :
-                LogicalUnary("IsInf", graph, parent)
-        {};
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<IsInf>(graph, ancestors[0]);
-        }
-    };
-
-    Node Node::is_inf(){
-        return apply<IsInf>(this);
-    }
-
-    Node is_inf(Node node){
-        return apply<IsInf>(node);
-    }
-
-    /**
-     * Elementwise selects one of the two parents based on the condition
-     * Both the parents and the condition node must be of the same size.
-     */
-    class Select: public BinaryOperator{
-    public:
-        Node condition;
-        Select(GraphInPtr graph,
-               Node condition,
-               Node trueParent,
-               Node falseParent):
-                BinaryOperator("Select", graph, trueParent, falseParent),
-                condition(condition)
-        {
-            shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent});
-            if(condition.unwrap()->v_type != BOOLEAN){
-                throw InvalidArguments(name, {condition, trueParent, falseParent},
-                                       "The condition must have a value type BOOLEAN");
-            }
-            if(trueParent.unwrap()->v_type != falseParent.unwrap()->v_type){
-                throw InvalidArguments(name, {condition, trueParent, falseParent},
-                                       "The true and false statement must be of the same value type");
-            }
-            if(trueParent.is_constant()){
-                this->parent1 = parent1.broadcast(shape);
-            } else if(falseParent.is_constant()){
-                this->parent1 = parent2.broadcast(shape);
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<NotEquals>(graph, ancestors[0], ancestors[1]);
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Select>(graph, ancestors[2], ancestors[0], ancestors[1]);
-        }
+        /**  Checks if the two nodes are equal, up to a tolerance measure */
+        class ApproximatelyEquals : public LogicalBinary {
+        public:
+            double tol;
+            ApproximatelyEquals(GraphInPtr graph,
+                                Node parent1,
+                                Node parent2,
+                                double tol) :
+                    LogicalBinary("ApproxEq", graph, parent1, parent2),
+                    tol(tol) {};
 
-        NodeVec get_arguments() const {
-            return NodeVec {condition};
-        }
-
-        Node get_parent_grad(Node my_grad, size_t index){
-            Node zero = graph->constant_value(0.0);
-            zero.unwrap()->grad_level = my_grad.unwrap()->grad_level;
-            if(index == 0){
-                return condition.select(my_grad, zero);
-            } else {
-                return condition.select(zero, my_grad);
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<ApproximatelyEquals>(graph, ancestors[0], ancestors[1], tol);
             }
         };
-    };
 
-    Node Node::select(Node result_true, Node result_false){
-        return unwrap()->graph->derived_node(std::make_shared<Select>(unwrap()->graph, this, result_true, result_false));
+        /** Verifies if any of the elements is NaN */
+        class IsNaN : public LogicalUnary {
+        public:
+            IsNaN(GraphInPtr graph,
+                  Node parent) :
+                    LogicalUnary("IsNaN", graph, parent) { };
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<IsNaN>(graph, ancestors[0]);
+            }
+        };
+
+        /** Verifies if any of the elements is Inf */
+        class IsInf : public LogicalUnary {
+        public:
+            IsInf(GraphInPtr graph,
+                  Node parent) :
+                    LogicalUnary("IsInf", graph, parent) { };
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<IsInf>(graph, ancestors[0]);
+            }
+        };
+
+        /** Verifies all of the variables in the tensor are true
+         * TODO maybe add an axis parameter?
+         */
+        class All : public LogicalUnary {
+        public:
+            All(GraphInPtr graph, Node parent) :
+                    LogicalUnary("All", graph, parent) {
+                if (parent->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{parent},
+                                                          "Logical operators should be called only on b8 inputs"));
+                    this->parent = parent.cast(b8);
+                }
+            }
+
+            Shape get_shape() const {
+                return Shape{1, 1, 1, 1};
+            }
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<All>(graph, ancestors[0]);
+            }
+        };
+
+        /** Verifies if any of the variables in the tensor are true
+         * TODO maybe add an axis parameter?
+         */
+        class Any : public LogicalUnary {
+        public:
+            Any(GraphInPtr graph, Node parent) :
+                    LogicalUnary("Any", graph, parent) {
+                if (parent->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{parent},
+                                                          "Logical operators should be called only on b8 inputs"));
+                    this->parent = parent.cast(b8);
+                }
+            }
+
+            Shape get_shape() const {
+                return Shape{1, 1, 1, 1};
+            }
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Any>(graph, ancestors[0]);
+            }
+        };
+
+
+        /**
+         * Elementwise selects one of the two parents based on the condition
+         * Both the parents and the condition node must be of the same size.
+         */
+        class Select : public BinaryOperator {
+        public:
+            Node condition;
+            Select(GraphInPtr graph,
+                   Node condition,
+                   Node trueParent,
+                   Node falseParent) :
+                    BinaryOperator("Select", graph, trueParent, falseParent),
+                    condition(condition) {
+                Shape shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent});
+                if (condition->dtype != b8) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{condition, trueParent, falseParent},
+                                                          "The condition in Select should be of type b8"));
+                    this->condition = condition.cast(b8);
+                }
+                if (trueParent->dtype != falseParent->dtype) {
+                    operate_policy(graph->cast_err_policy,
+                                         logger(),
+                                         InvalidArguments(name, NodeVec{condition, trueParent, falseParent},
+                                                          "The parents in Select should be of the same data type"));
+                    dType promoted = graph->promote_type(trueParent->dtype, falseParent->dtype);
+                    if(promoted != trueParent->dtype){
+                        this->parent1 = trueParent.cast(promoted);
+                    } else {
+                        this->parent2 = falseParent.cast(promoted);
+                    }
+                }
+                if (condition.is_scalar()) {
+                    this->condition = this->condition.broadcast(shape);
+                }
+                if (trueParent.is_scalar()) {
+                    this->parent1 = this->parent1.broadcast(shape);
+                }
+                if (falseParent.is_scalar()) {
+                    this->parent1 = this->parent2.broadcast(shape);
+                }
+            };
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Select>(graph, ancestors[2], ancestors[0], ancestors[1]);
+            }
+
+            NodeVec get_arguments() const {
+                return NodeVec {condition};
+            }
+
+            Node get_parent_grad(Node my_grad, unsigned short index) {
+                Node zero = graph->constant_value(0.0);
+                zero->grad_level = my_grad.unwrap()->grad_level;
+                if (index == 0) {
+                    return condition.select(my_grad, zero);
+                } else {
+                    return condition.select(zero, my_grad);
+                }
+            };
+        };
+
+        //        /**
+//         * Checks every element if its equal to 0
+//         */
+//        class ZeroElements : public LogicalUnary {
+//        public:
+//            ZeroElements(GraphInPtr graph,
+//                         Node parent) :
+//                    LogicalUnary("ZeroElem", graph, parent) { };
+//
+//            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+//                return std::make_shared<ZeroElements>(graph, ancestors[0]);
+//            }
+//        };
+//
+//        Node Node::zero_elem() {
+//            return apply<ZeroElements>(this);
+//        }
+//
+//        Node zero_elem(Node node) {
+//            return apply<ZeroElements>(node);
+//        }
+//
+//        Node Node::non_zero_elem() {
+//            return !(this->zero_elem());
+//        }
+//
+//        Node non_zero_elem(Node node) {
+//            return !(node.zero_elem());
+//        }
     }
+    
+    namespace core{
+        Node Node::logical_not(){
+            return apply<op::Not>(this);
+        }
 
-    Node select(Node condition, Node result_true, Node result_false){
-        return  condition.select(result_true, result_false);
+        Node operator!(Node node) {
+            return apply<op::Not>(node);
+        }
+
+        Node Node::logical_and(Node node) {
+            return apply<op::And>(this, node);
+        }
+
+        Node operator&&(Node node1, Node node2) {
+            return apply<op::And>(node1, node2);
+        }
+
+        Node Node::logical_or(Node node) {
+            return apply<op::Or>(this, node);
+        }
+
+        Node operator||(Node node1, Node node2) {
+            return apply<op::Or>(node1, node2);
+        }
+
+        Node Node::gt(Node node) {
+            return apply<op::GreaterThan>(this, node);
+        }
+
+        Node operator>(Node node1, Node node2) {
+            return apply<op::GreaterThan>(node1, node2);
+        }
+
+        Node Node::ge(Node node) {
+            return apply<op::GreaterThanOrEqual>(this, node);
+        }
+
+        Node operator>=(Node node1, Node node2) {
+            return apply<op::GreaterThanOrEqual>(node1, node2);
+        }
+
+        Node Node::lt(Node node) {
+            return apply<op::LessThan>(this, node);
+        }
+
+        Node operator<(Node node1, Node node2) {
+            return apply<op::LessThan>(node1, node2);
+        }
+
+        Node Node::le(Node node) {
+            return apply<op::LessThanOrEqual>(this, node);
+        }
+
+        Node operator<=(Node node1, Node node2) {
+            return apply<op::LessThanOrEqual>(node1, node2);
+        }
+
+        Node Node::eq(Node node) {
+            return apply<op::Equals>(this, node);
+        }
+
+        Node operator==(Node node1, Node node2) {
+            return apply<op::Equals>(node1, node2);
+        }
+
+        Node Node::neq(Node node) {
+            return apply<op::NotEquals>(this, node);
+        }
+
+        Node operator!=(Node node1, Node node2) {
+            return apply<op::NotEquals>(node1, node2);
+        }
+
+        Node Node::approx_eq(Node node, double tol) {
+            GraphInPtr graph = unwrap()->graph;
+            return graph->derived_node(std::make_shared<op::ApproximatelyEquals>(graph, this, node, tol));
+        }
+
+        Node Node::approx_neq(Node node, double tol) {
+            return this->approx_eq(node, tol).logical_not();
+        }
+
+        Node Node::is_nan() {
+            return apply<op::IsNaN>(this);
+        }
+
+        Node Node::is_inf() {
+            return apply<op::IsInf>(this);
+        }
+
+        Node Node::all(){
+            return apply<op::All>(this);
+        }
+
+        Node Node::any() {
+            return apply<op::Any>(this);
+        }
+
+        Node Node::select(Node result_true, Node result_false) {
+            return unwrap()->graph->derived_node(
+                    std::make_shared<op::Select>(unwrap()->graph, this, result_true, result_false));
+        }
     }
 }
 #endif //METADIFF_OPERATORS_LOGICAL_H

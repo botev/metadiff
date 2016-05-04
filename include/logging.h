@@ -69,6 +69,5 @@ namespace metadiff{
         }
         return ptr;
     }
-
 }
 #endif //METADIFF_LOGGING_H

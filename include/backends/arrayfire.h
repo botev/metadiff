@@ -13,34 +13,42 @@ namespace metadiff{
 
         ArrayfireBackend() :
                 FunctionBackend("ArrayFire"){
+            std::cout << "0" << std::endl;
             af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
         };
 
         ArrayfireBackend(bool debug) :
                 FunctionBackend("ArrayFire", debug){
+            std::cout << "1" << std::endl;
             af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
         };
 
         ArrayfireBackend(std::string dir_path):
                 FunctionBackend("ArrayFire", dir_path){
+            std::cout << "2" << std::endl;
             af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
         };
 
         ArrayfireBackend(std::string dir_path, bool debug):
                 FunctionBackend("ArrayFire", dir_path, debug){
+            std::cout << "3" << std::endl;
             af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
         };
 
         ArrayfireBackend(std::string dir_path,
                          std::string af_path) :
                 FunctionBackend("ArrayFire", dir_path),
-                af_path(af_path) {};
+                af_path(af_path) {
+            std::cout << "4" << std::endl;
+        };
 
         ArrayfireBackend(std::string dir_path,
                          std::string af_path,
                          bool debug) :
                 FunctionBackend("ArrayFire", dir_path, debug),
-                af_path(af_path) {};
+                af_path(af_path) {
+            std::cout << "5" << std::endl;
+        };
 
 
         void compile(std::string source_dir, std::string target_dir, std::string graph_name) {
@@ -130,7 +138,7 @@ namespace metadiff{
 
             // Check all of the required inputs are provided
             for (size_t i = 0; i < graph->nodes.size(); i++) {
-                if (graph->nodes[i]->type == INPUT) {
+                if (graph->nodes[i]->type == INPUT and graph->nodes[i]->op->name != "Shared") {
                     for (size_t j = 0; j <= inputs.size(); j++) {
                         if (j == inputs.size()) {
                             throw MissingRequiredInput(targets, i);
@@ -217,7 +225,8 @@ namespace metadiff{
 
         void print_update(std::ofstream &f, std::pair<Node, Node> graph_update,
                           std::vector<std::string> &expression_table) {
-            size_t shared_id = graph_update.first.unwrap()->shared->id;
+            std::shared_ptr<SharedInput> cast_op = std::static_pointer_cast<SharedInput>(graph_update.first->op);
+            size_t shared_id =  cast_op->value->id;
             Node update = graph_update.second;
 
             if (not update.unwrap()->execution.inlined or
@@ -248,8 +257,9 @@ namespace metadiff{
                 bool all_neg = true;
                 NodeVec parents = update.unwrap()->op->get_parents();
                 for (int i = 0; i < parents.size(); i++) {
-                    if (parents[i].unwrap()->type == SHARED_INPUT) {
-                        if (parents[i].unwrap()->shared->id == shared_id) {
+                    if( parents[i]->op->name == "Shared") {
+                        std::shared_ptr<SharedInput> cast_op2 = std::static_pointer_cast<SharedInput>(parents[i]->op);
+                        if (cast_op2->value->id == shared_id) {
                             index = i;
                         }
                     } else if (parents[i].unwrap()->op->name != neg_name and
@@ -340,7 +350,7 @@ namespace metadiff{
             if (op_name == "Value") {
                 std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node_in->op);
                 if(node.is_scalar()){
-                    return std::to_string(cast_op->value);
+                    return cast_op->to_string();
                 } else {
                     // TODO
                     return "NotImplemented";
@@ -353,11 +363,11 @@ namespace metadiff{
 
             // Base operators
             if (op_name == "Input"){
-                if (node_in->type == SHARED_INPUT){
-                    return "shared_vars[" + std::to_string(node_in->shared->id) + "]->value";
-                } else {
-                    return "inputs[" + std::to_string(node_in->id) + "]";
-                }
+                return "inputs[" + std::to_string(node_in->id) + "]";
+            }
+            if (op_name == "Shared"){
+                std::shared_ptr<SharedInput> cast_op2 = std::static_pointer_cast<SharedInput>(node_in->op);
+                return "shared_vars[" + std::to_string(cast_op2->value->id) + "]->value";
             }
             if (op_name == "Alias") {
                 return expression_table[parents[0].unwrap()->id];

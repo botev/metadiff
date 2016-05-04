@@ -14,6 +14,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Werror=return-type -fope
 
 include_directories(spdlog/include)
 include_directories(include)
+
 include_directories(${ArrayFire_INCLUDE_DIRS})
 #include_directories(/opt/intel/mkl/include)
 #link_directories(/usr/local/lib)

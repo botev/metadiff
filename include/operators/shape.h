@@ -6,191 +6,201 @@
 #define METADIFF_OPERATORS_SHAPE_H
 
 namespace metadiff{
-
-    // Helper function to get all elements of a node
-    SymInt number_of_elements(Shape shape){
-        return shape[0] * shape[1] * shape[2] * shape[3];
-    };
-
-    /**
-     * This operator has one of two possible results:
-     * 1. If parent is a square matrix returns a vector of the diagonal elements
-     * 2. If parent is a vector returns a square matrix, whose diagonal is equal to the parent
-     */
-    class Diagonal: public UnaryOperator{
-    public:
-        Shape shape;
-        Diagonal(GraphInPtr graph, Node parent):
-                UnaryOperator("Diag", graph, parent){
-            if(not parent.is_matrix()){
-                throw InvalidArguments(name, {parent}, "Parent is not a matrix.");
-            }
-            if(parent.is_vector()){
-                shape = {parent.unwrap()->shape[0], parent.unwrap()->shape[0], 1, 1};
-            } else if(parent.unwrap()->shape[0] != parent.unwrap()->shape[1]){
-                throw InvalidArguments(name, {parent}, "Parent is not a matrix, but not square.");
-            } else {
-                shape = {parent.unwrap()->shape[0], 1, 1, 1};
-            }
-        };
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Diagonal>(graph, ancestors[0]);
-        }
-
-        Shape get_shape() const{
-            return shape;
-        }
-
-        Node get_parent_grad(Node my_grad, size_t index){
-            return my_grad.diag();
-        }
-    };
-
-    Node Node::diag() {
-        // TODO a.daig().diag() = a
-        return apply<Diagonal>(this);
-    }
-
-    Node diag(Node node){
-        return node.diag();
-    }
-
-    /**
-     * Reshapes the parent. The number of elements must be preserved
-     */
-    class Reshape: public UnaryOperator{
-    public:
-        Shape shape;
-        Reshape(GraphInPtr graph, Node parent, Shape shape):
-                UnaryOperator("Reshape", graph, parent),
-                shape(shape){
-            SymInt product_parent = number_of_elements(parent.unwrap()->shape);
-            SymInt product_shape = number_of_elements(this->shape);
-            if(product_parent != product_shape){
-                std::string shape_str;
-                throw InvalidArguments(name, {parent.unwrap()->id}, {parent.unwrap()->shape, this->shape},
-                                       "Total number of elements must not change.");
-            }
-        };
-
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Reshape>(graph, ancestors[0], shape);
-        }
-
-        Shape get_shape() const{
-            return shape;
-        }
-
-        Node get_parent_grad(Node my_grad, size_t index){
-            return my_grad.reshape(parent.unwrap()->shape);
-        }
-
-        bool equals(const std::shared_ptr<Operator> op) const{
-            if(name == op->name){
-                std::shared_ptr<Reshape> cast_op = std::static_pointer_cast<Reshape>(op);
-                return symbolic_equals(parent, cast_op->parent) and shape == cast_op->shape;
-            }
-            return false;
-        }
-    };
-
-    Node Node::reshape(Shape shape){
-        std::shared_ptr<NodeInternal> ptr = unwrap();
-        return ptr->graph->derived_node(std::make_shared<Reshape>(ptr->graph, this, shape));
-    }
-
-    Node reshape(Node node, Shape shape){
-        return node.reshape(shape);
-    }
-
-    Node Node::flatten(size_t ndim) {
-        std::shared_ptr<NodeInternal> ptr = unwrap();
-        if(ndim == 0 or ndim > 4){
-            throw InvalidArguments(ptr->name, ptr->op->get_parents(), "ndim = " + std::to_string(ndim)+" is outside [1,4]");
-        }
-        Shape shape = ptr->shape;
-        for(int i=3;i>=ndim;i--){
-            shape[i-1] = shape[i] * shape[i-1];
-            shape[i] = 1;
-        }
-        return reshape(shape);
-    }
-
-    Node flatten(Node node, size_t ndim = 1){
-        return node.flatten(ndim);
-    }
-
-    /**
-     * Similar to Theano dimshuffle, this operator changes the axis ordering of the tensor
-     */
-    class Reorder: public UnaryOperator{
-    public:
-        std::array<size_t ,4> order;
-        Reorder(GraphInPtr graph, Node parent, std::array<size_t, 4> order):
-                UnaryOperator("Reorder", graph, parent),
-                order(order){
-            bool check[4] {false, false, false, false};
-            for(int i=0;i<4;i++){
-                if(order[i] > 4){
-                    throw InvalidArguments(name, {this->parent},
-                                           "The ordering must contain elements in the range [0,3]");
+    namespace op {
+        using namespace core;
+        using namespace exceptions;
+        
+        /**
+         * 1. If parent is a square matrix returns a vector of the diagonal elements
+         * 2. If parent is a vector returns a square matrix, whose diagonal is equal to the parent
+         */
+        class Diagonal : public UnaryOperator {
+        public:
+            Shape shape;
+            Diagonal(GraphInPtr graph, Node parent) :
+                    UnaryOperator("Diag", graph, parent) {
+                if (not parent.is_matrix()) {
+                    throw InvalidArguments(name, {parent}, "Parent is not a matrix or a vector.");
                 }
-                if(check[order[i]]){
-                    throw InvalidArguments(name, {this->parent},
-                                           "The ordering must not have repeating elements");
+                if (parent.is_vector()) {
+                    shape = {parent->shape[0], parent->shape[0], 1, 1};
+                } else if (parent->shape[0] != parent->shape[1]) {
+                    throw InvalidArguments(name, {parent}, "Parent is not a square matrix.");
+                } else {
+                    shape = {parent->shape[0], 1, 1, 1};
                 }
+            };
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Diagonal>(graph, ancestors[0]);
+            }
+
+            Shape get_shape() const {
+                return shape;
+            }
+
+            Node get_parent_grad(Node my_grad, unsigned short index) {
+                return my_grad.diag();
             }
         };
 
-        std::shared_ptr<Operator> copy_to(GraphInPtr graph, std::vector<Node> ancestors) const{
-            return std::make_shared<Reorder>(graph, ancestors[0], order);
-        }
+        /** Reshapes the input to a specified shape */
+        class Reshape : public UnaryOperator {
+        public:
+            Shape shape;
+            Reshape(GraphInPtr graph, Node parent, Shape shape) :
+                    UnaryOperator("Reshape", graph, parent),
+                    shape(shape) {
+                SymInt product_parent = number_of_elements(parent->shape);
+                SymInt product_shape = number_of_elements(shape);
+                if (product_parent != product_shape) {
+                    throw InvalidArguments(name, {parent->id}, {parent->shape, shape},
+                                           "Total number of elements must not change.");
+                }
+            };
 
-        Shape get_shape() const{
-            return {parent.unwrap()->shape[order[0]], parent.unwrap()->shape[order[1]],
-                    parent.unwrap()->shape[order[2]], parent.unwrap()->shape[order[3]]};
-        }
-
-        static std::array<size_t ,4> reverse_order(std::array<size_t ,4>& order){
-            std::array<size_t ,4> reversed;
-            // 2, 0, 1, 3
-            // 1, 2, 0, 3
-            for(size_t i=0;i<4;i++){
-                reversed[order[i]] = i;
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Reshape>(graph, ancestors[0], shape);
             }
-            return reversed;
-        }
 
-        Node get_parent_grad(Node my_grad, size_t index){
-            return my_grad.reorder(reverse_order(order));
-        }
-
-        bool equals(const std::shared_ptr<Operator> op) const{
-            if(name == op->name){
-                std::shared_ptr<Reorder> cast_op = std::static_pointer_cast<Reorder>(op);
-                return symbolic_equals(parent, cast_op->parent) and order == cast_op->order;
+            Shape get_shape() const {
+                return shape;
             }
-            return false;
+
+            Node get_parent_grad(Node my_grad, unsigned short index) {
+                return my_grad.reshape(parent->shape);
+            }
+
+            bool equals(const std::shared_ptr<Operator> op) const {
+                if (name == op->name) {
+                    std::shared_ptr<Reshape> cast_op = std::static_pointer_cast<Reshape>(op);
+                    return symbolic_equals(parent, cast_op->parent) and shape == cast_op->shape;
+                }
+                return false;
+            }
+        };
+
+
+        /**
+         * Reorders the axis of tensor
+         */
+        class Reorder : public UnaryOperator {
+        public:
+            Axes order;
+            Reorder(GraphInPtr graph,
+                    Node parent,
+                    Axes order) :
+                    UnaryOperator("Reorder", graph, parent),
+                    order(order) {
+                if(order.size() > 4){
+                    throw InvalidArguments(name,
+                                                       NodeVec{parent},
+                                                       "The ordering must contain no more than 4 elements");
+                } else if(parent.is_tensor4_strict() and order.size() < 4){
+                    throw InvalidArguments(name,
+                                                       NodeVec{parent},
+                                                       "The ordering for a 4 dimensional tensor should contain exactly 4 elements");
+                } else if(parent.is_tensor3_strict() and order.size() < 3){
+                    throw InvalidArguments(name,
+                                                       NodeVec{parent},
+                                                       "The ordering for a 3 dimensional tensor should contain at least 3 elements");
+                } else if(parent.is_matrix_strict() and order.size() < 2){
+                    throw InvalidArguments(name,
+                                                       NodeVec{parent},
+                                                       "The ordering for a matrix should contain at least 2 elements");
+                } else if(order.size() == 0){
+                    throw InvalidArguments(name,
+                                                       NodeVec{parent},
+                                                       "The ordering must contain at least 1 element");
+                }
+                std::vector<bool> checks;
+                for(int i=0; i<order.size(); i++){
+                    checks.push_back(false);
+                }
+                for (int i = 0; i < order.size(); i++) {
+                    if (0 > order[i] or order[i] > 4) {
+                        throw InvalidArguments(name, {this->parent},
+                                                           "The ordering must contain elements in the range [0,3]");
+                    }
+                    if (checks[order[i]]) {
+                        throw InvalidArguments(name, {this->parent},
+                                                           "The ordering must not have repeating elements");
+                    }
+                    checks[i] = true;
+                }
+            };
+
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
+                return std::make_shared<Reorder>(graph, ancestors[0], order);
+            }
+
+            Shape get_shape() const {
+                Shape shape = {1, 1, 1, 1};
+                for(int i=0; i<4; i++){
+                    if(i < order.size()){
+                        shape[i] = parent->shape[order[i]];
+                    }
+                }
+                return shape;
+            }
+
+            static Axes reverse_order(Axes &order) {
+                Axes reversed;
+                // 2, 0, 1, 3
+                // 1, 2, 0, 3
+                for (unsigned short i = 0; i < 4; i++) {
+                    reversed[order[i]] = i;
+                }
+                return reversed;
+            }
+
+            Node get_parent_grad(Node my_grad, unsigned short index) {
+                return my_grad.reorder(reverse_order(order));
+            }
+
+            bool equals(const std::shared_ptr<Operator> op) const {
+                if (name == op->name) {
+                    std::shared_ptr<Reorder> cast_op = std::static_pointer_cast<Reorder>(op);
+                    return symbolic_equals(parent, cast_op->parent) and order == cast_op->order;
+                }
+                return false;
+            }
+        };
+    }
+
+    namespace core{
+        Node Node::diag() {
+            // TODO a.diag().diag() = a
+            return apply<op::Diagonal>(this);
         }
-    };
 
-    Node Node::reorder(std::array<size_t, 4> order){
-        std::shared_ptr<NodeInternal> ptr = unwrap();
-        return ptr->graph->derived_node(std::make_shared<Reorder>(ptr->graph, this, order));
-    }
+        Node Node::reshape(Shape shape) {
+            GraphInPtr graph = unwrap()->graph;
+            return graph->derived_node(std::make_shared<op::Reshape>(graph, this, shape));
+        }
 
+        Node Node::flatten(unsigned short dims) {
+            std::shared_ptr<NodeInternal> ptr = unwrap();
+            if (dims == 0 or dims > 4) {
+                throw exceptions::InvalidArguments(ptr->name, ptr->op->get_parents(),
+                                       "dims = " + std::to_string(dims) + " is outside [1,4]");
+            }
+            Shape shape = ptr->shape;
+            for (int i = 3; i >= dims; i--) {
+                shape[i - 1] = shape[i] * shape[i - 1];
+                shape[i] = 1;
+            }
+            return reshape(shape);
+        }
 
-    Node reorder(Node node, std::array<size_t, 4> order){
-        return node.reorder(order);
-    }
+        Node Node::reorder(Axes order) {
+            GraphInPtr graph = unwrap()->graph;
+            return graph->derived_node(std::make_shared<op::Reorder>(graph, this, order));
+        }
 
-    Node Node::reorder(size_t dim0, size_t dim1, size_t dim2, size_t dim3){
-        return reorder({dim0, dim1, dim2, dim3});
-    }
-
-    Node reorder(Node node, size_t dim0, size_t dim1, size_t dim2=2, size_t dim3=3){
-        return node.reorder({dim0, dim1, dim2, dim3});
+        Node Node::reorder(short dim0, short dim1, short dim2, short dim3) {
+            return reorder(Axes{dim0, dim1, dim2, dim3});
+        }
     }
 }
 #endif //METADIFF_OPERATORS_SHAPE_H
