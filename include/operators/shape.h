@@ -9,7 +9,7 @@ namespace metadiff{
     namespace op {
         using namespace core;
         using namespace exceptions;
-        
+
         /**
          * 1. If parent is a square matrix returns a vector of the diagonal elements
          * 2. If parent is a vector returns a square matrix, whose diagonal is equal to the parent
@@ -20,12 +20,16 @@ namespace metadiff{
             Diagonal(GraphInPtr graph, Node parent) :
                     UnaryOperator("Diag", graph, parent) {
                 if (not parent.is_matrix()) {
-                    throw InvalidArguments(name, {parent}, "Parent is not a matrix or a vector.");
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Parent is not a matrix or a vector.");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
                 if (parent.is_vector()) {
                     shape = {parent->shape[0], parent->shape[0], 1, 1};
                 } else if (parent->shape[0] != parent->shape[1]) {
-                    throw InvalidArguments(name, {parent}, "Parent is not a square matrix.");
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Parent is not a square matrix.");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 } else {
                     shape = {parent->shape[0], 1, 1, 1};
                 }
@@ -54,8 +58,9 @@ namespace metadiff{
                 SymInt product_parent = number_of_elements(parent->shape);
                 SymInt product_shape = number_of_elements(shape);
                 if (product_parent != product_shape) {
-                    throw InvalidArguments(name, {parent->id}, {parent->shape, shape},
-                                           "Total number of elements must not change.");
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Total number of elements must not change.");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             };
 
@@ -92,26 +97,26 @@ namespace metadiff{
                     Axes order) :
                     UnaryOperator("Reorder", graph, parent),
                     order(order) {
+                InvalidArguments err = InvalidArguments(NodeVec{parent}, name, "");
                 if(order.size() > 4){
-                    throw InvalidArguments(name,
-                                                       NodeVec{parent},
-                                                       "The ordering must contain no more than 4 elements");
+                    err = InvalidArguments(NodeVec{parent}, name,
+                                           "The ordering must contain no more than 4 elements");
                 } else if(parent.is_tensor4_strict() and order.size() < 4){
-                    throw InvalidArguments(name,
-                                                       NodeVec{parent},
-                                                       "The ordering for a 4 dimensional tensor should contain exactly 4 elements");
+                    throw InvalidArguments(NodeVec{parent}, name,
+                                           "The ordering for a 4 dimensional tensor should contain exactly 4 elements");
                 } else if(parent.is_tensor3_strict() and order.size() < 3){
-                    throw InvalidArguments(name,
-                                                       NodeVec{parent},
-                                                       "The ordering for a 3 dimensional tensor should contain at least 3 elements");
+                    throw InvalidArguments(NodeVec{parent}, name,
+                                           "The ordering for a 3 dimensional tensor should contain at least 3 elements");
                 } else if(parent.is_matrix_strict() and order.size() < 2){
-                    throw InvalidArguments(name,
-                                                       NodeVec{parent},
-                                                       "The ordering for a matrix should contain at least 2 elements");
+                    throw InvalidArguments(NodeVec{parent}, name,
+                                           "The ordering for a matrix should contain at least 2 elements");
                 } else if(order.size() == 0){
-                    throw InvalidArguments(name,
-                                                       NodeVec{parent},
-                                                       "The ordering must contain at least 1 element");
+                    throw InvalidArguments(NodeVec{parent}, name,
+                                           "The ordering must contain at least 1 element");
+                }
+                if (err.err.compare("") != 0) {
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
                 std::vector<bool> checks;
                 for(int i=0; i<order.size(); i++){
@@ -119,12 +124,14 @@ namespace metadiff{
                 }
                 for (int i = 0; i < order.size(); i++) {
                     if (0 > order[i] or order[i] > 4) {
-                        throw InvalidArguments(name, {this->parent},
-                                                           "The ordering must contain elements in the range [0,3]");
+                        auto err = InvalidArguments(NodeVec{this->parent}, name, "The ordering must contain elements in the range [0,3]");
+                        logger()->error() << name << "] " << err.msg;
+                        throw err;
                     }
                     if (checks[order[i]]) {
-                        throw InvalidArguments(name, {this->parent},
-                                                           "The ordering must not have repeating elements");
+                        auto err = InvalidArguments(NodeVec{this->parent}, name, "The ordering must not have repeating elements");
+                        logger()->error() << name << "] " << err.msg;
+                        throw err;
                     }
                     checks[i] = true;
                 }
@@ -182,8 +189,9 @@ namespace metadiff{
         Node Node::flatten(unsigned short dims) {
             std::shared_ptr<NodeInternal> ptr = unwrap();
             if (dims == 0 or dims > 4) {
-                throw exceptions::InvalidArguments(ptr->name, ptr->op->get_parents(),
-                                       "dims = " + std::to_string(dims) + " is outside [1,4]");
+                auto err = InvalidArguments(ptr->op->get_parents(), "Flatten", "dims = " + std::to_string(dims) + " is outside [1,4]");
+                ptr->op->logger()->error() << "Flatten" << "] " << err.msg;
+                throw err;
             }
             Shape shape = ptr->shape;
             for (int i = 3; i >= dims; i--) {

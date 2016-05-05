@@ -18,7 +18,7 @@ namespace metadiff {
                 if (parent->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{parent},
+                                         InvalidArguments(NodeVec{parent}, name,
                                                           "Logical operators should be called only on b8 inputs"));
                     this->parent = parent.cast(b8);
                 }
@@ -39,14 +39,14 @@ namespace metadiff {
                 if (parent1->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                         InvalidArguments(NodeVec{parent1, parent2}, name,
                                                           "Logical operators should be called only on b8 inputs"));
                     this->parent1 = parent1.cast(b8);
                 }
                 if (parent2->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                         InvalidArguments(NodeVec{parent1, parent2}, name,
                                                           "Logical operators should be called only on b8 inputs"));
                     this->parent2 = parent2.cast(b8);
                 }
@@ -67,14 +67,14 @@ namespace metadiff {
                 if (parent1->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                         InvalidArguments(NodeVec{parent1, parent2}, name,
                                                           "Logical operators should be called only on b8 inputs"));
                     this->parent1 = parent1.cast(b8);
                 }
                 if (parent2->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{parent1, parent2},
+                                         InvalidArguments(NodeVec{parent1, parent2}, name,
                                                           "Logical operators should be called only on b8 inputs"));
                     this->parent2 = parent2.cast(b8);
                 }
@@ -213,7 +213,7 @@ namespace metadiff {
                 if (parent->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{parent},
+                                         InvalidArguments(NodeVec{parent}, name,
                                                           "Logical operators should be called only on b8 inputs"));
                     this->parent = parent.cast(b8);
                 }
@@ -238,7 +238,7 @@ namespace metadiff {
                 if (parent->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{parent},
+                                         InvalidArguments(NodeVec{parent}, name,
                                                           "Logical operators should be called only on b8 inputs"));
                     this->parent = parent.cast(b8);
                 }
@@ -267,18 +267,18 @@ namespace metadiff {
                    Node falseParent) :
                     BinaryOperator("Select", graph, trueParent, falseParent),
                     condition(condition) {
-                Shape shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent});
+                Shape shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent}, logger());
                 if (condition->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{condition, trueParent, falseParent},
+                                         InvalidArguments(NodeVec{condition, trueParent, falseParent}, name,
                                                           "The condition in Select should be of type b8"));
                     this->condition = condition.cast(b8);
                 }
                 if (trueParent->dtype != falseParent->dtype) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(name, NodeVec{condition, trueParent, falseParent},
+                                         InvalidArguments(NodeVec{condition, trueParent, falseParent}, name, 
                                                           "The parents in Select should be of the same data type"));
                     dType promoted = graph->promote_type(trueParent->dtype, falseParent->dtype);
                     if(promoted != trueParent->dtype){

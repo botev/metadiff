@@ -109,7 +109,9 @@ namespace metadiff{
             };
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
-                throw WrongGradient(name, {}, {});
+                auto err = WrongGradient(NodeVec{owner, my_grad}, name);
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
         };
     };

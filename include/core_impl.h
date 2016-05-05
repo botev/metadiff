@@ -7,19 +7,20 @@
 
 namespace metadiff{
     namespace core {
+        using namespace exceptions;
 
         void operate_policy(errorPolicy policy,
                             std::shared_ptr<spdlog::logger> const logger,
-                            std::exception const & exception){
+                            GraphError const & err){
             switch (policy){
                 case QUIET: return;
                 case WARN: {
-                    logger->warn(exception.what());
+                    logger->warn(err.msg);
                     return;
                 }
                 default: {
-                    logger->error(exception.what());
-                    throw exception;
+                    logger->error(err.msg);
+                    throw err;
                 }
             }
         }
@@ -289,9 +290,9 @@ namespace metadiff{
                 }
             }
             if (constant) {
-                exceptions::WrongGradient e = exceptions::WrongGradient(name, {owner, my_grad});
-                logger()->error() << name << "] " << e.msg;
-                throw e;
+                auto err = WrongGradient(NodeVec{owner, my_grad}, name);
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
 
             // Compute and send gradients only to non constant nodes
@@ -518,9 +519,9 @@ namespace metadiff{
             // Stores the current group in order to recreate it
             Group old_group = current_group;
             if (not objective.is_scalar()) {
-                exceptions::UnsupportedGradient e = exceptions::UnsupportedGradient();
-                logger()->error() << name << "] " << e.what();
-                throw e;
+                auto err = UnsupportedGradient(objective);
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
 
             // This vector will contain at each index the gradient message to the corresponding node
@@ -705,11 +706,10 @@ namespace metadiff{
         void GraphInternal::update_node(Node shared, Node update) {
             // Check the first node is a shared variable
             if (shared->op->name != "Shared") {
-                exceptions::InvalidArguments e = exceptions::InvalidArguments("Update",
-                                                                              {shared, update},
-                                                                              "First argument can be only a SHARED_VARIABLE");
-                logger()->error() << name << "] " << e.msg;
-                throw e;
+                auto err = InvalidArguments({shared, update}, "Update",
+                                            "First argument can be only a SHARED_VARIABLE");
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
             auto shared_shape = shared->shape;
             auto update_shape = update->shape;
@@ -717,18 +717,18 @@ namespace metadiff{
             // Check that the shapes are correct
             for (int i = 0; i < 4; i++) {
                 if (shared_shape[i] != update_shape[i]) {
-                    exceptions::IncompatibleShapes e = exceptions::IncompatibleShapes("Update", {shared, update});
-                    logger()->error() << name << "] " << e.msg;
-                    throw e;
+                    auto err = IncompatibleShapes(NodeVec{shared, update}, "Update");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 
             // Check that the value types are correct
             if (shared->dtype != update->dtype) {
-                exceptions::InvalidArguments e = exceptions::InvalidArguments("Update", {shared, update},
-                                                      "Shared variable and update should have the same value type");
-                logger()->error() << name << "] " << e.msg;
-                throw e;
+                auto err = InvalidArguments(NodeVec{shared, update}, "Update",
+                                             "The Shared variable and the update should have the same dtype");
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
             // Add it to the updates
             updates.push_back(std::pair<Node, Node>(shared, update));
@@ -810,8 +810,9 @@ namespace metadiff{
             } else if(max_float == f32){
                 return constant_value((float) M_PI);
             } else {
-                logger()->error("'pi' is not supported for max_float=" + to_string(max_float));
-                throw 23;
+                auto err = OtherError(NodeVec{}, "'Pi' is not supported for max_float=" + to_string(max_float));
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
         }
 
@@ -821,8 +822,9 @@ namespace metadiff{
             } else if(max_float == f32){
                 return constant_value((float) M_E);
             } else {
-                logger()->error("'e' is not supported for max_float=" + to_string(max_float));
-                throw 23;
+                auto err = OtherError(NodeVec{}, "'e' is not supported for max_float=" + to_string(max_float));
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
         }
 
@@ -832,8 +834,9 @@ namespace metadiff{
             } else if(max_float == f32){
                 return constant_value((float) M_LN2);
             } else {
-                logger()->error("Ln(2) is not supported for max_float=" + to_string(max_float));
-                throw 23;
+                auto err = OtherError(NodeVec{}, "'Ln(2)' is not supported for max_float=" + to_string(max_float));
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
         }
 
@@ -843,8 +846,9 @@ namespace metadiff{
             } else if(max_float == f32){
                 return constant_value((float) M_LN10);
             } else {
-                logger()->error("Ln(10) is not supported for max_float=" + to_string(max_float));
-                throw 23;
+                auto err = OtherError(NodeVec{}, "'Ln(10)' is not supported for max_float=" + to_string(max_float));
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
         }
 
@@ -927,7 +931,9 @@ namespace metadiff{
 
         Node GraphInternal::tensor3_as(Node node, std::string name) {
             if (not node.is_tensor3()) {
-                throw "Node with id '" + std::to_string(node->id) + "' is not a tensor3.";
+                auto err = InvalidArguments(NodeVec{node}, "tensor3_as", "The variables is not a tensor3");
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
             return tensor3(nodes[node->id]->dtype,
                            nodes[node->id]->shape[0],
@@ -965,7 +971,9 @@ namespace metadiff{
 
         Node GraphInternal::matrix_as(Node node, std::string name) {
             if (not node.is_matrix()) {
-                throw "Node with id '" + std::to_string(node->id) + "' is not a matrix.";
+                auto err = InvalidArguments(NodeVec{node}, "matrix_as", "The variables is not a matrix");
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
             return matrix(nodes[node->id]->dtype,
                           nodes[node->id]->shape[0],
@@ -997,7 +1005,9 @@ namespace metadiff{
         Node GraphInternal::vector_as(Node node,
                                       std::string name) {
             if (not node.is_vector()) {
-                throw "Node with id '" + std::to_string(node->id) + "' is not a vector.";
+                auto err = InvalidArguments(NodeVec{node}, "vector_as", "The variables is not a vector");
+                logger()->error() << name << "] " << err.msg;
+                throw err;
             }
             return vector(nodes[node->id]->dtype,
                           nodes[node->id]->shape[0],

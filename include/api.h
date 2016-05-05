@@ -241,7 +241,9 @@ namespace metadiff{
             return node.logdet();
         }
 
-        // Multi node operators
+        // Index operators
+
+        // Multi-node operators
 
         Node max(Node node, short axis = AUTO_INFER_AXIS){
             return node.max(axis);

@@ -71,7 +71,9 @@ namespace metadiff {
                     to_shape(to_shape) {
                 for (int i = 0; i < 4; i++) {
                     if (parent->shape[i] != 1 and parent->shape[i] != to_shape[i]) {
-                        throw exceptions::IncompatibleShapes(name, {parent->id}, {parent->shape, to_shape});
+                        auto err = IncompatibleShapes(NodeVec{parent}, name);
+                        logger()->error() << name << "] " << err.msg;
+                        throw err;
                     }
                 }
             }
@@ -130,7 +132,9 @@ namespace metadiff {
                     if (axes.size() == 0) {
                         axes_str = "NULL";
                     }
-                    throw exceptions::InvalidArguments(name, {parent}, "Invalid axes: " + axes_str);
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Invalid axes: " + axes_str);
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 

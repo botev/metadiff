@@ -26,8 +26,9 @@ namespace metadiff{
                     UnaryOperator(name, graph, parent),
                 size(size){
                 if(size < 1){
-                    throw InvalidArguments(name, {parent},
-                                           "The size should be at least 1");
+                    auto err = InvalidArguments(NodeVec{parent}, name, "The size should be at least 1");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 
@@ -69,11 +70,14 @@ namespace metadiff{
                     index(index) {
                 std::shared_ptr<MultiNode> multi_op = std::dynamic_pointer_cast<MultiNode>(parent.unwrap()->op);
                 if (not multi_op) {
-                    throw InvalidArguments(name, {parent},
-                                           "Parent must be a result of an operator of type 'MultiNode'.");
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Parent must be a result of an operator of type 'MultiNode'.");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
                 if (index >= multi_op->size) {
-                    throw InvalidArguments(name, {parent}, "Provided index is too big: " + std::to_string(index));
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Provided index is too big: " + std::to_string(index));
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 
@@ -132,7 +136,9 @@ namespace metadiff{
                     MultiNode("MaxAndArgMax", graph, parent, 2),
                     axis(axis) {
                 if (parent->dtype == dType::b8) {
-                    throw InvalidArguments(name, {parent}, "Parent can not be of type b8");
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Parent can not be of type b8");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 
@@ -177,7 +183,9 @@ namespace metadiff{
 //                                                                           owner.unwrap()->shape[axis]));
                     return graph->constant_value(22.0);
                 } else {
-                    throw WrongGradient(name, {owner, my_grad});
+                    auto err = WrongGradient(NodeVec{owner, my_grad}, name);
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 
@@ -197,7 +205,9 @@ namespace metadiff{
                     MultiNode("SortAndArgSort", graph, parent, 2),
                     axis(axis) {
                 if (parent->dtype == dType::b8) {
-                    throw InvalidArguments(name, {parent}, "Parent can not be of type b8");
+                    auto err = InvalidArguments(NodeVec{parent}, name, "Parent can not be of type b8");
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 
@@ -242,7 +252,9 @@ namespace metadiff{
 //                                                                           owner.unwrap()->shape[axis]));
                     return graph->constant_value(22.0);
                 } else {
-                    throw WrongGradient(name, {owner, my_grad});
+                    auto err = WrongGradient(NodeVec{owner, my_grad}, name);
+                    logger()->error() << name << "] " << err.msg;
+                    throw err;
                 }
             }
 

@@ -565,9 +565,14 @@ namespace metadiff {
 
         /** Abstract class for operators */
         class Operator {
-        protected:
+        public:
             std::shared_ptr<spdlog::logger> logger() const {
                 return metadiff::logger("operator::" + this->name);
+            }
+
+            void throw_error(std::exception const & err){
+                logger()->error() << name << "] " << err.what();
+                throw err;
             }
         public:
             /** Pointer to the owning GraphInternal */
@@ -711,7 +716,6 @@ namespace metadiff {
             std::shared_ptr<spdlog::logger> logger() const {
                 return metadiff::logger("graph");
             }
-
         public:
             /** The name of the graph */
             std::string name;

@@ -4,206 +4,102 @@
 
 #ifndef METADIFF_EXCEPTIONS_H
 #define METADIFF_EXCEPTIONS_H
+
+#include "iomanip"
 namespace metadiff{
     namespace exceptions {
-        class UnsupportedGradient : public std::exception {
-        public:
-            const char *what() const throw() {
-                return "\nThe gradient operation supports only scalar objectives";
-            }
-        };
+        using namespace core;
 
-        class GraphError : public std::exception {
-        protected:
-            std::string get_ids_and_shape_msg() const {
-                std::string id_msg;
-                std::string shape_msg;
-                for (auto i = 0; i < input_ids.size(); i++) {
-                    id_msg += std::to_string(input_ids[i]);
-                    shape_msg += "[";
-                    for (auto j = 0; j < 4; j++) {
-                        shape_msg += input_shapes[i][j].to_string();
-                        if (j < 3) {
-                            shape_msg += ", ";
-                        }
-                    }
-                    shape_msg += "]";
-                    if (i < input_ids.size() - 1) {
-                        id_msg += ", ";
-                        shape_msg += ", ";
-                    }
-                }
-                return "Input ids: " + id_msg + "\nInput shapes: " + shape_msg + "\n";
-            }
-
+        class GraphError: public std::exception {
         public:
-            std::string op_name;
-            std::vector<size_t> input_ids;
-            std::vector<core::Shape> input_shapes;
+            NodeVec nodes;
             std::string msg;
-
-            GraphError(std::string op_name,
-                       std::vector<size_t> input_ids,
-                       std::vector<core::Shape> input_shapes) :
-                    op_name(op_name),
-                    input_ids(input_ids),
-                    input_shapes(input_shapes) { };
-
-            GraphError(std::string name, core::NodeVec inputs) :
-                    op_name(op_name) {
-                for (int i = 0; i < inputs.size(); i++) {
-                    input_ids.push_back(inputs[i].unwrap()->id);
-                    input_shapes.push_back(inputs[i].unwrap()->shape);
+            std::string nodes_description(){
+                std::stringstream msg;
+                msg << "Nodes:\n";
+                for(size_t i=0;i<nodes.size(); i++){
+                    msg << "Id:"
+                    << std::setw(5) << nodes[i]->id
+                    << " | Shape: ("
+                    << std::setw(5) << nodes[i]->shape[0] << ","
+                    << std::setw(5) << nodes[i]->shape[1] << ","
+                    << std::setw(5) << nodes[i]->shape[2] << ","
+                    << std::setw(5) << nodes[i]->shape[3] << ")"
+                    << " | dtype: " << nodes[i]->dtype
+                    << " | node_type: " << nodes[i]->node_type
+                    << " | Op name: " << nodes[i]->op->name;
                 }
-            };
+                return msg.str();
+            }
+
+            void set_message(std::string msg){
+
+            }
+            GraphError(NodeVec nodes):
+                    nodes(nodes){};
 
             const char *what() const throw() {
                 return msg.c_str();
             }
         };
 
-        class ImplicitBroadcast : public GraphError {
-        private:
-            std::string generate_message() const {
-                std::string id_msg;
-                std::string shape_msg;
-                for (size_t i = 0; i < input_ids.size(); i++) {
-                    id_msg += std::to_string(input_ids[i]);
-                    shape_msg += "[";
-                    for (size_t j = 0; j < 4; j++) {
-                        shape_msg += input_shapes[i][j].to_string();
-                        if (j < 3) {
-                            shape_msg += ", ";
-                        }
-                    }
-                    shape_msg += "]";
-                    if (i < input_ids.size() - 1) {
-                        id_msg += ", ";
-                        shape_msg += ", ";
-                    }
-                }
-                return "\nImplicit broadcast in operator '" + op_name + "'\n" +
-                       get_ids_and_shape_msg();
-            }
-
+        class UnsupportedGradient : public GraphError {
         public:
-            ImplicitBroadcast(std::string name,
-                              std::vector<size_t> input_ids,
-                              std::vector<core::Shape> input_shapes) :
-                    GraphError(name, input_ids, input_shapes) {
-                msg = generate_message();
+            UnsupportedGradient(Node node):
+                    GraphError(NodeVec{node}) {
+                this->msg = "\nError: Taking gradient is only possible with respect to scalar objectives.\n" +
+                            nodes_description() + "\n";
             }
-
-            ImplicitBroadcast(std::string name,
-                              core::NodeVec inputs) :
-                    GraphError(name, inputs) {
-                msg = generate_message();
-            }
-        };
-
-        class OperatorError : public GraphError {
-        private:
-            std::string generate_message() const {
-                return "\nOperator error in '" + op_name + "'\n" +
-                       "Error message: " + err_string + "\n" +
-                       get_ids_and_shape_msg();
-            }
-
-        public:
-            std::string err_string;
-
-            OperatorError(std::string op_name,
-                          std::vector<size_t> input_ids,
-                          std::vector<core::Shape> input_shapes,
-                          std::string err_string) :
-                    GraphError(op_name, input_ids, input_shapes),
-                    err_string(err_string) {
-                msg = generate_message();
-            };
-
-            OperatorError(std::string op_name,
-                          core::NodeVec inputs,
-                          std::string err_string) :
-                    GraphError(op_name, inputs),
-                    err_string(err_string) {
-                msg = generate_message();
-            };
-        };
-
-
-        class IncompatibleShapes : public GraphError {
-        private:
-            std::string generate_message() const {
-                return "\nIncompatible dimensions in operator '" + op_name + "'\n" +
-                       get_ids_and_shape_msg();
-            }
-
-        public:
-            IncompatibleShapes(std::string name,
-                               std::vector<size_t> input_ids,
-                               std::vector<core::Shape> input_shapes) :
-                    GraphError(name, input_ids, input_shapes) {
-                msg = generate_message();
-            }
-
-            IncompatibleShapes(std::string name,
-                               core::NodeVec inputs) :
-                    GraphError(name, inputs) {
-                msg = generate_message();
-            }
-        };
-
-        class InvalidArguments : public GraphError {
-        private:
-            std::string generate_message() const {
-                return "\nInvalid arguments in operator '" + op_name + "'\n" +
-                       "Arguments error: " + err_string + "\n" +
-                       get_ids_and_shape_msg();
-            }
-
-        public:
-            std::string err_string;
-
-            InvalidArguments(std::string name,
-                             std::vector<size_t> input_ids,
-                             std::vector<core::Shape> input_shapes,
-                             std::string err_string) :
-                    GraphError(name, input_ids, input_shapes),
-                    err_string(err_string) {
-                msg = generate_message();
-            };
-
-            InvalidArguments(std::string name,
-                             core::NodeVec inputs,
-                             std::string err_string) :
-                    GraphError(name, inputs),
-                    err_string(err_string) {
-                msg = generate_message();
-            };
         };
 
         class WrongGradient : public GraphError {
-        private:
-            std::string generate_message() const {
-                return "\nA gradient message to node " + std::to_string(input_ids[0]) +
-                       " was sent, but all its parents are constant\n" +
-                       "Node operator: '" + op_name + "'\n" +
-                       "Message id: " + std::to_string(input_ids[1]) + "\n";
-            }
-
         public:
-            WrongGradient(std::string op_name,
-                          std::vector<size_t> input_ids,
-                          std::vector<core::Shape> input_shapes) :
-                    GraphError(op_name, input_ids, input_shapes) {
-                msg = generate_message();
-            };
+            WrongGradient(NodeVec inputs, std::string op_name):
+                    GraphError(inputs) {
+                this->msg = "\nError: The gradient node with id " + std::to_string(inputs[1]->id) +
+                            " was sent to node with id " + std::to_string(inputs[0]->id) +
+                            " and operator " + inputs[0]->op->name + " , but all its parents are constant.\n" +
+                            nodes_description() + "\n";
+            }
+        };
 
-            WrongGradient(std::string op_name,
-                          core::NodeVec inputs) :
-                    GraphError(op_name, inputs) {
-                msg = generate_message();
-            };
+        class OtherError: public GraphError{
+        public:
+            OtherError(NodeVec inputs, std::string msg):
+            GraphError(inputs) {
+                    this->msg = "\nError: " + msg + "\n" +
+                                nodes_description() + "\n";
+            }
+        };
+
+        class OperatorError : public GraphError{
+        public:
+            std::string op_name;
+            std::string err;
+            OperatorError(NodeVec inputs, std::string op_name, std::string err):
+                    GraphError(inputs), op_name(op_name), err(err) {
+                this->msg = "\nError in operator " + op_name + "\n" +
+                            "Description: " + err + "\n" +
+                            nodes_description() + "\n";
+            }
+        };
+
+        class ImplicitBroadcast : public OperatorError {
+        public:
+            ImplicitBroadcast(NodeVec inputs, std::string op_name) :
+                    OperatorError(inputs, op_name, "Performing implicit broadcast.") {}
+        };
+
+        class IncompatibleShapes : public OperatorError {
+        public:
+            IncompatibleShapes(NodeVec inputs, std::string op_name):
+                    OperatorError(inputs, op_name, "Incompatible shapes of inputs") {}
+        };
+
+        class InvalidArguments : public OperatorError {
+        public:
+            InvalidArguments(NodeVec inputs, std::string op_name, std::string err):
+                    OperatorError(inputs, op_name, err) {}
         };
 
         class MissingRequiredInput : public std::exception {
@@ -215,7 +111,7 @@ namespace metadiff{
                     target_ids(target_ids),
                     input_id(input_id) { }
 
-            MissingRequiredInput(core::NodeVec targets, size_t input_id) :
+            MissingRequiredInput(NodeVec targets, size_t input_id) :
                     input_id(input_id) {
                 for (int i = 0; i < targets.size(); i++) {
                     this->target_ids.push_back(targets[i].unwrap()->id);
