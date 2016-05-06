@@ -15,11 +15,11 @@ namespace metadiff{
             switch (policy){
                 case QUIET: return;
                 case WARN: {
-                    logger->warn(err.msg);
+                    logger->warn() << err.msg;
                     return;
                 }
                 default: {
-                    logger->error(err.msg);
+                    logger->error() << err.msg;
                     throw err;
                 }
             }
@@ -98,9 +98,13 @@ namespace metadiff{
             }
         }
 
+        std::shared_ptr<spdlog::logger> Node::logger() const {
+            return logging::logger(unwrap()->graph->name + "::node::" + std::to_string(unwrap()->id));
+        }
+
         std::shared_ptr<NodeInternal> Node::unwrap() const {
             if (ptr.expired()) {
-                logger()->error("Trying to access a Node whose pointer has expired");
+                logging::logger("XXX::node::XXX")->error() << "Trying to access a Node whose pointer has expired";
                 exit(1);
             }
             return ptr.lock();
@@ -111,8 +115,7 @@ namespace metadiff{
         }
 
         void Node::copy_to(const GraphInPtr graph, NodeVec ancestors) const {
-            logger()->trace() << unwrap()->id << "] Copying node " << unwrap()->id <<
-            " to node " << graph->nodes.size();
+            logger()->trace() << "Copying to node " << graph->name << "#" <<  graph->nodes.size();
             std::shared_ptr<NodeInternal> ptr = unwrap();
             std::shared_ptr<NodeInternal> node = std::make_shared<NodeInternal>(graph, ptr->device);
             node->id = graph->nodes.size();
@@ -238,7 +241,7 @@ namespace metadiff{
 
         void Operator::send_grad_message(size_t target, Node msg,
                                          std::vector<Node> &messages) const {
-            logger()->debug() << name << "] Sending gradient message with id "
+            logger()->debug() << "Sending gradient message with id "
             << msg->id << " from " <<  owner->id << " to " << target;
 
             if (not messages[target].ptr.expired()) {
@@ -255,7 +258,7 @@ namespace metadiff{
             if (messages[owner->id].ptr.expired()) {
                 return;
             }
-            logger()->debug() << name << "] Generating gradients for " << owner->id;
+            logger()->debug() << "Generating gradients for " << owner->id;
 
             // Sets the current group to _root/gradient0/parent_group
             Group current_group = graph->current_group;
@@ -291,7 +294,7 @@ namespace metadiff{
             }
             if (constant) {
                 auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
 
@@ -336,7 +339,7 @@ namespace metadiff{
         }
 
         NodeVec GraphInternal::copy(GraphInPtr new_graph, std::vector<bool> mask) const {
-            logger()->trace() << name << "] Copying graph " << name;
+            logger()->trace() << "Copying graph " << name;
             new_graph->name = name + "_copy";
             new_graph->default_device = default_device;
             new_graph->max_float = max_float;
@@ -402,12 +405,12 @@ namespace metadiff{
 //                lengths.clear();
 //            }
 //        }
-            logger()->trace() << name << "] Copy completed";
+            logger()->trace() << "Copy completed";
             return mapping;
         }
 
         std::vector<bool> GraphInternal::get_descendants_mask(NodeVec marked) const {
-            logger()->trace() << name << "] Generating descendants mask";
+            logger()->trace() << "Generating descendants mask";
             auto n = nodes.size();
             std::vector<bool> descendants_mask(n, false);
 
@@ -429,7 +432,7 @@ namespace metadiff{
         };
 
         std::vector<bool> GraphInternal::get_ancestors_mask(NodeVec marked) const {
-            logger()->trace() << name << "] Generating ancestors mask";
+            logger()->trace() << "Generating ancestors mask";
             auto n = nodes.size();
             std::vector<bool> ancestors_mask(n, false);
 
@@ -459,7 +462,7 @@ namespace metadiff{
                 for (int i = 0; i < candidates.size(); i++) {
                     std::shared_ptr<Operator> candidate_op = candidates[i]->op;
                     if (candidate_op->equals(op) or op->equals(candidate_op)) {
-                        logger()->debug() << name << "] Found node with id " << candidates[i]->id
+                        logger()->debug() << "Found node with id " << candidates[i]->id
                         << " to operator " << op->name;
                         return candidates[i];
                     }
@@ -502,7 +505,7 @@ namespace metadiff{
 
         void GraphInternal::add_temporary_updates(const Updates &temp_updates) {
             for (int i = 0; i < temp_updates.size(); i++) {
-                logger()->trace() << name << "] Adding a temporary update " << temp_updates[i].first->id
+                logger()->trace() << "Adding a temporary update " << temp_updates[i].first->id
                 << " := " << temp_updates[i].second->id;
                 temporary_updates.push_back(temp_updates[i]);
             }
@@ -510,17 +513,17 @@ namespace metadiff{
 
         void GraphInternal::clear_temporary_updates() {
             // Potentially might need to sort temporary_updates
-            logger()->trace() << name << "] Clearing temporary updates";
+            logger()->trace() << "Clearing temporary updates";
             temporary_updates.clear();
         }
 
         std::vector<Node> GraphInternal::gradient(Node objective, std::vector<Node> params) {
-            logger()->trace() << name << "] Getting gradients of " << objective->id;
+            logger()->trace() << "Getting gradients of " << objective->id;
             // Stores the current group in order to recreate it
             Group old_group = current_group;
             if (not objective.is_scalar()) {
                 auto err = UnsupportedGradient(objective);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
 
@@ -576,7 +579,7 @@ namespace metadiff{
         // Copies the graph and optimizes it, populating the execution data
         Graph GraphInternal::optimize(NodeVec &targets, Updates &updates, NodeVec &inputs,
                                       NodeVec &new_targets, Updates &new_updates, NodeVec &new_inputs) {
-            logger()->debug() << name << "] Running optimization of graph " << name;
+            logger()->debug() << "Running optimization of graph " << name;
             // Copy only the relevant part of the graph
             Graph copy = create_graph();
             add_temporary_updates(updates);
@@ -679,6 +682,10 @@ namespace metadiff{
             Node same_node = find_same_node(op);
             if (same_node.ptr.expired()) {
 //            std::cout << "Creating new derived node for operator " << op->name << std::endl;
+//                if(op->name == "Tanh"){
+//                    std::cout << op->get_shape() << " " << op->get_parents()[0]->op->name <<
+//                    op->get_parents()[0]->shape << std::endl;
+//                }
                 auto result = std::make_shared<NodeInternal>(
                         shared_from_this().get(),
                         default_device,
@@ -708,7 +715,7 @@ namespace metadiff{
             if (shared->op->name != "Shared") {
                 auto err = InvalidArguments({shared, update}, "Update",
                                             "First argument can be only a SHARED_VARIABLE");
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
             auto shared_shape = shared->shape;
@@ -718,7 +725,7 @@ namespace metadiff{
             for (int i = 0; i < 4; i++) {
                 if (shared_shape[i] != update_shape[i]) {
                     auto err = IncompatibleShapes(NodeVec{shared, update}, "Update");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -727,7 +734,7 @@ namespace metadiff{
             if (shared->dtype != update->dtype) {
                 auto err = InvalidArguments(NodeVec{shared, update}, "Update",
                                             "The Shared variable and the update should have the same dtype");
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
             // Add it to the updates
@@ -811,7 +818,7 @@ namespace metadiff{
                 return constant_value((float) M_PI);
             } else {
                 auto err = OtherError(NodeVec{}, "'Pi' is not supported for max_float=" + to_string(max_float));
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
         }
@@ -823,7 +830,7 @@ namespace metadiff{
                 return constant_value((float) M_E);
             } else {
                 auto err = OtherError(NodeVec{}, "'e' is not supported for max_float=" + to_string(max_float));
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
         }
@@ -835,7 +842,7 @@ namespace metadiff{
                 return constant_value((float) M_LN2);
             } else {
                 auto err = OtherError(NodeVec{}, "'Ln(2)' is not supported for max_float=" + to_string(max_float));
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
         }
@@ -847,7 +854,7 @@ namespace metadiff{
                 return constant_value((float) M_LN10);
             } else {
                 auto err = OtherError(NodeVec{}, "'Ln(10)' is not supported for max_float=" + to_string(max_float));
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
         }
@@ -932,7 +939,7 @@ namespace metadiff{
         Node GraphInternal::tensor3_as(Node node, std::string name) {
             if (not node.is_tensor3()) {
                 auto err = InvalidArguments(NodeVec{node}, "tensor3_as", "The variables is not a tensor3");
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
             return tensor3(nodes[node->id]->dtype,
@@ -972,7 +979,7 @@ namespace metadiff{
         Node GraphInternal::matrix_as(Node node, std::string name) {
             if (not node.is_matrix()) {
                 auto err = InvalidArguments(NodeVec{node}, "matrix_as", "The variables is not a matrix");
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
             return matrix(nodes[node->id]->dtype,
@@ -1006,7 +1013,7 @@ namespace metadiff{
                                       std::string name) {
             if (not node.is_vector()) {
                 auto err = InvalidArguments(NodeVec{node}, "vector_as", "The variables is not a vector");
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
             return vector(nodes[node->id]->dtype,

@@ -150,11 +150,6 @@ namespace metadiff {
                     RAISE = 2
         };
 
-        /** Given an error executes the errorPolicy */
-        void operate_policy(errorPolicy policy,
-                            std::shared_ptr<spdlog::logger> const logger,
-                            std::exception const & exception);
-
         /**
          * Currently we support only two device types
          */
@@ -369,10 +364,7 @@ namespace metadiff {
         /** The class is an API wrapper around a NodeInternal */
         class Node {
         private:
-            std::shared_ptr<spdlog::logger> logger() const {
-                return logging::logger("node");
-            }
-
+            std::shared_ptr<spdlog::logger> logger() const;
         public:
             std::weak_ptr<NodeInternal> ptr;
 
@@ -711,7 +703,7 @@ namespace metadiff {
         class GraphInternal : public std::enable_shared_from_this<GraphInternal> {
         private:
             std::shared_ptr<spdlog::logger> logger() const {
-                return logging::logger("graph");
+                return logging::logger("graph::" + name);
             }
         public:
             /** The name of the graph */
@@ -844,15 +836,15 @@ namespace metadiff {
 
             /** Creates a four dimensional #INPUT variable */
             Node tensor4(dType v_type,
-                              std::array<SymInt, 4> shape,
-                              std::string name = "InputTensor");
+                         std::array<SymInt, 4> shape,
+                         std::string name = "InputTensor");
 
             /** Creates a four dimensional #INPUT variable */
             Node tensor4(dType v_type,
-                              SymInt shape0,
-                              SymInt shape1,
-                              SymInt shape2,
-                              SymInt shape3,
+                         SymInt shape0,
+                         SymInt shape1,
+                         SymInt shape2,
+                         SymInt shape3,
                          std::string name = "InputTensor");
 
             /** Creates a four dimensional #INPUT variable */
@@ -870,9 +862,9 @@ namespace metadiff {
 
             /** Creates a three dimensional #INPUT variable */
             Node tensor3(dType v_type,
-                              SymInt shape0,
-                              SymInt shape1,
-                              SymInt shape2,
+                         SymInt shape0,
+                         SymInt shape1,
+                         SymInt shape2,
                          std::string name = "InputTensor3");
 
             /** Creates a three dimensional #INPUT variable */
@@ -890,8 +882,8 @@ namespace metadiff {
 
             /** Creates an #INPUT matrix  */
             Node matrix(dType v_type,
-                             SymInt shape0,
-                             SymInt shape1,
+                        SymInt shape0,
+                        SymInt shape1,
                         std::string name = "InputMatrix");
 
             /** Creates an #INPUT matrix  */
@@ -904,12 +896,12 @@ namespace metadiff {
 
             /** Creates a square #INPUT matrix  */
             Node square_matrix(dType v_type,
-                                    SymInt shape,
+                               SymInt shape,
                                std::string name = "InputMatrix");
 
             /** Creates an #INPUT vector  */
             Node vector(dType v_type,
-                             SymInt shape,
+                        SymInt shape,
                         std::string name = "InputVector");
 
             /** Creates an #INPUT vector  */
@@ -1151,6 +1143,16 @@ namespace metadiff {
             return to_string(device.type) + "[" + std::to_string(device.id) + "]";
         }
 
+        std::string to_string(Shape const & shape){
+            std::stringstream msg;
+            msg << "Shape("
+            << std::setw(4) << shape[0] << ","
+            << std::setw(4) << shape[1] << ","
+            << std::setw(4) << shape[2] << ","
+            << std::setw(4) << shape[3] << ")";
+            return msg.str();
+        }
+
         std::ostream &operator<<(std::ostream &f, nodeType node_type) {
             f << to_string(node_type);
             return f;
@@ -1183,6 +1185,11 @@ namespace metadiff {
 
         std::ostream &operator<<(std::ostream &f, Device const &device) {
             f << to_string(device);
+            return f;
+        }
+
+        std::ostream &operator<<(std::ostream &f, Shape const & shape){
+            f << "(" << shape[0] << "," << shape[1] << "," << shape[2] << "," << shape[3] << ")";
             return f;
         }
     }

@@ -62,18 +62,18 @@ namespace metadiff{
                     NaryOperator("MatrixMul", graph, parents) {
                 if (not parents[0].is_matrix()) {
                     auto err = InvalidArguments(parents, name, "Parent 0 is not a matrix.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
                 for (int i = 1; i < parents.size(); i++) {
                     if (not parents[i].is_matrix()) {
                         auto err = InvalidArguments(parents, name, "Parent " + std::to_string(i) + " is not a matrix.");
-                        logger()->error() << name << "] " << err.msg;
+                        logger()->error() << err.msg;
                         throw err;
                     }
                     if (parents[i - 1]->shape[1] != parents[i]->shape[0]) {
                         auto err = IncompatibleShapes(parents, name);
-                        logger()->error() << name << "] " << err.msg;
+                        logger()->error() << err.msg;
                         throw err;
                     }
                 }
@@ -147,7 +147,7 @@ namespace metadiff{
                     UnaryOperator("MatrixInv", graph, parent) {
                 if (parent->shape[0] != parent->shape[1] or parent->shape[2] != 1 or parent->shape[2] != 1) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent must be a square matrix.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -169,12 +169,12 @@ namespace metadiff{
                     UnaryOperator("Det", graph, parent) {
                 if (parent->shape[0] != parent->shape[1] or parent->shape[2] != 1 or parent->shape[2] != 1) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent must be a square matrix.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
                 if (parent->dtype == dType::b8) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent can not be a b8");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -200,12 +200,12 @@ namespace metadiff{
                     UnaryOperator("LogDet", graph, parent) {
                 if (parent->shape[0] != parent->shape[1] or parent->shape[2] != 1 or parent->shape[2] != 1) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent must be a square matrix.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
                 if (parent->dtype == dType::b8) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent can not be a b8");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -235,12 +235,12 @@ namespace metadiff{
                     UnaryOperator("Trace", graph, parent) {
                 if (parent->shape[0] != parent->shape[1] or parent->shape[2] != 1 or parent->shape[2] != 1) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent must be a square matrix.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
                 if (parent->dtype == dType::b8) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent can not be a b8");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }

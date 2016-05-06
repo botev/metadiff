@@ -258,16 +258,15 @@ namespace metadiff {
          * Elementwise selects one of the two parents based on the condition
          * Both the parents and the condition node must be of the same size.
          */
-        class Select : public BinaryOperator {
+        class Select : public ElementwiseBinary {
         public:
             Node condition;
             Select(GraphInPtr graph,
                    Node condition,
                    Node trueParent,
                    Node falseParent) :
-                    BinaryOperator("Select", graph, trueParent, falseParent),
+                    ElementwiseBinary("Select", graph, trueParent, falseParent),
                     condition(condition) {
-                Shape shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent}, logger());
                 if (condition->dtype != b8) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
@@ -275,10 +274,10 @@ namespace metadiff {
                                                           "The condition in Select should be of type b8"));
                     this->condition = condition.cast(b8);
                 }
-                if (trueParent->dtype != falseParent->dtype) {
+                if (parent1->dtype != parent2->dtype) {
                     operate_policy(graph->cast_err_policy,
                                          logger(),
-                                         InvalidArguments(NodeVec{condition, trueParent, falseParent}, name, 
+                                         InvalidArguments(NodeVec{condition, trueParent, falseParent}, name,
                                                           "The parents in Select should be of the same data type"));
                     dType promoted = graph->promote_type(trueParent->dtype, falseParent->dtype);
                     if(promoted != trueParent->dtype){
@@ -287,6 +286,7 @@ namespace metadiff {
                         this->parent2 = falseParent.cast(promoted);
                     }
                 }
+                shape = verify_elementwise_shapes(name, NodeVec{condition, trueParent, falseParent}, logger());
                 if (condition.is_scalar()) {
                     this->condition = this->condition.broadcast(shape);
                 }

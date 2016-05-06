@@ -126,7 +126,7 @@ namespace metadiff{
                         for (size_t j = 0; j <= inputs.size(); j++) {
                             if (j == inputs.size()) {
                                 auto err = MissingRequiredInput(targets, inputs, graph->nodes[i]);
-                                logger()->error() << name << "] " << err.msg;
+                                logger()->error() << err.msg;
                                 throw err;
                             }
                             if (inputs[j]->id == i) {

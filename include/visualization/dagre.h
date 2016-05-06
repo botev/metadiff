@@ -324,8 +324,8 @@ namespace metadiff {
                     "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Max Float type: " << graph->max_float << "</h5>\n"
                     "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Max Int type: " << graph->max_int << "</h5>\n"
                     "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Broadcast policy: " << graph->broadcast_err_policy << "</h5>\n\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Type promotion policy: " << graph->type_promotion_err_policy << "</h5>\n\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Cast policy: " << graph->cast_err_policy << "</h5>\n\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Broadcast policy: " << graph->broadcast_err_policy << "</h5>\n\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Broadcast policy: " << graph->broadcast_err_policy << "</h5>\n\n"
                     "<svg width=\"1500\" height=\"900\"></svg>\n"
                     "\n"
                     "<script id=\"js\">\n";

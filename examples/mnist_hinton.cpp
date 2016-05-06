@@ -3,8 +3,6 @@
 #include <sys/stat.h>
 #include "metadiff.h"
 #include "mnist.h"
-#include "iomanip"
-#include <unistd.h>
 
 
 namespace md = metadiff::api;
@@ -125,12 +123,11 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
 
 int main(int argc, char **argv)
 {
-    std::cout << "DADADA2" << std::endl;
     spdlog::set_pattern("*** [%H:%M:%S %z] [thread %t] %v ***");
     md::metadiff_sink->add_sink(std::make_shared<spdlog::sinks::stdout_sink_st>());
 
-    int batch_size_grid[3] = {1000, 5000, 10000};
-    int factor_grid[3] = {1, 5, 10};
+    int batch_size_grid[3] = {1000, 2000, 5000};
+    int factor_grid[3] = {1, 2, 5};
     // Default to CPU
     af_backend backend = AF_BACKEND_CPU;
     // Default repeats
@@ -174,8 +171,6 @@ int main(int argc, char **argv)
         }
     }
 
-    std::cout << "DADADA" << std::endl;
-
     // Set backend
     af::setBackend(backend);
     af::array run_times = af::constant(0.0, 3, 3, repeats);
@@ -187,8 +182,8 @@ int main(int argc, char **argv)
                 std::cout << "Running for batch size " << batch_size_grid[i]
                 << " and factor " << factor_grid[j] << std::endl;
                 std::pair<double, double> result = run_md(batch_size_grid[i], factor_grid[j], burnout, epochs);
-//                run_times(i, j, r) = result.first;
-//                compile_times(i, j, r) = result.second;
+                run_times(i, j, r) = result.first;
+                compile_times(i, j, r) = result.second;
                 std::cout << "Run: " << result.first << ", " << result.second << std::endl;
                 af::deviceGC();
                 usleep(5);

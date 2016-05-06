@@ -5,23 +5,15 @@
 #ifndef METADIFF_EXCEPTIONS_H
 #define METADIFF_EXCEPTIONS_H
 
-#include "iomanip"
 namespace metadiff{
     namespace exceptions {
         using namespace core;
 
+        /** Format is Id | node_type | Shape | dtype | Op name */
         void print_node(std::stringstream & stream, Node node){
-            stream << "Id:"
-            << std::setw(5) << node->id
-            << " | Name: " << node->name
-            << " | Shape: ("
-            << std::setw(5) << node->shape[0] << ","
-            << std::setw(5) << node->shape[1] << ","
-            << std::setw(5) << node->shape[2] << ","
-            << std::setw(5) << node->shape[3] << ")"
-            << " | dtype: " << node->dtype
-            << " | node_type: " << node->node_type
-            << " | Op name: " << node->op->name << "\n";
+            stream << "|" << std::setw(4) << node->id << " | " << node->node_type << "| "
+            << node->shape << " | " << node->dtype << " | "
+            << node->op->name;
         }
 
         class GraphError: public std::exception {
@@ -33,6 +25,9 @@ namespace metadiff{
                 msg << "Nodes:\n";
                 for(size_t i=0;i<nodes.size(); i++){
                     print_node(msg, nodes[i]);
+                    if(i < nodes.size() - 1){
+                        msg << std::endl;
+                    }
                 }
                 return msg.str();
             }
@@ -49,8 +44,8 @@ namespace metadiff{
         public:
             UnsupportedGradient(Node node):
                     GraphError(NodeVec{node}) {
-                this->msg = "\nError: Taking gradient is only possible with respect to scalar objectives.\n" +
-                            nodes_description() + "\n";
+                this->msg = "Error: Taking gradient is only possible with respect to scalar objectives. " +
+                            nodes_description();
             }
         };
 
@@ -58,10 +53,10 @@ namespace metadiff{
         public:
             WrongGradient(NodeVec inputs, std::string op_name):
                     GraphError(inputs) {
-                this->msg = "\nError: The gradient node with id " + std::to_string(inputs[1]->id) +
+                this->msg = "Error: The gradient node with id " + std::to_string(inputs[1]->id) +
                             " was sent to node with id " + std::to_string(inputs[0]->id) +
-                            " and operator " + inputs[0]->op->name + " , but all its parents are constant.\n" +
-                            nodes_description() + "\n";
+                            " and operator " + inputs[0]->op->name + " , but all its parents are constant. " +
+                            nodes_description();
             }
         };
 
@@ -69,8 +64,7 @@ namespace metadiff{
         public:
             OtherError(NodeVec inputs, std::string msg):
             GraphError(inputs) {
-                    this->msg = "\nError: " + msg + "\n" +
-                                nodes_description() + "\n";
+                    this->msg = "Error: " + msg + " " + nodes_description();
             }
         };
 
@@ -80,9 +74,7 @@ namespace metadiff{
             std::string err;
             OperatorError(NodeVec inputs, std::string op_name, std::string err):
                     GraphError(inputs), op_name(op_name), err(err) {
-                this->msg = "\nError in operator " + op_name + "\n" +
-                            "Description: " + err + "\n" +
-                            nodes_description() + "\n";
+                this->msg = err + " " + nodes_description();
             }
         };
 
@@ -118,13 +110,17 @@ namespace metadiff{
                 msg << "Error: Missing required input when trying to compile a function.\n"
                  << "Missing node:\n";
                 print_node(msg, missing);
-                msg << "Target nodes:\n";
+                msg << "\nTarget nodes:\n";
                 for(size_t i=0;i<targets.size();i++){
                     print_node(msg, targets[i]);
+                    msg << std::endl;
                 }
                 msg << "Provided inputs:\n";
                 for(size_t i=0;i<inputs.size();i++){
                     print_node(msg, inputs[i]);
+                    if(i < inputs.size() - 1){
+                        msg << std::endl;
+                    }
                 }
                 this->msg = msg.str();
             }
@@ -145,6 +141,13 @@ namespace metadiff{
                 return msg.c_str();
             }
         };
+    }
+
+    namespace core{
+        /** Given an error executes the errorPolicy */
+        void operate_policy(errorPolicy policy,
+                            std::shared_ptr<spdlog::logger> const logger,
+                            exceptions::GraphError const & err);
     }
 }
 

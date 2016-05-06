@@ -44,7 +44,7 @@ namespace metadiff{
                     logger()->debug() << name << "] Directory " + path + " already exists";
                 } else {
                     auto e = CompilationFailed("Directory " + path + " is a file");
-                    logger()->error() << name << "] " << e.msg;
+                    logger()->error() << e.msg;
                     throw e;
                 }
             }
@@ -121,13 +121,13 @@ namespace metadiff{
                 dll_handle = dlopen((dll_path).c_str(), RTLD_LAZY);
                 if (!dll_handle) {
                     CompilationFailed e = CompilationFailed("Error when opening DLL:" + std::string(dlerror()));
-                    logger()->error() << name << "] " << e.msg;
+                    logger()->error() << e.msg;
                     throw e;
                 }
                 auto func_handle = (func_ptr) dlsym(dll_handle, symbol_name.c_str());
                 if ((error_msg = dlerror()) != NULL) {
                     CompilationFailed e = CompilationFailed("Error when finding symbol:" + std::string(error_msg));
-                    logger()->error() << name << "] " << e.msg;
+                    logger()->error() << e.msg;
                     throw e;
                 }
                 return EvaluationFunction(func_handle);

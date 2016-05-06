@@ -21,14 +21,14 @@ namespace metadiff{
                     UnaryOperator("Diag", graph, parent) {
                 if (not parent.is_matrix()) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent is not a matrix or a vector.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
                 if (parent.is_vector()) {
                     shape = {parent->shape[0], parent->shape[0], 1, 1};
                 } else if (parent->shape[0] != parent->shape[1]) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent is not a square matrix.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 } else {
                     shape = {parent->shape[0], 1, 1, 1};
@@ -59,7 +59,7 @@ namespace metadiff{
                 SymInt product_shape = number_of_elements(shape);
                 if (product_parent != product_shape) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Total number of elements must not change.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             };
@@ -115,7 +115,7 @@ namespace metadiff{
                                            "The ordering must contain at least 1 element");
                 }
                 if (err.err.compare("") != 0) {
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
                 std::vector<bool> checks;
@@ -125,12 +125,12 @@ namespace metadiff{
                 for (int i = 0; i < order.size(); i++) {
                     if (0 > order[i] or order[i] > 4) {
                         auto err = InvalidArguments(NodeVec{this->parent}, name, "The ordering must contain elements in the range [0,3]");
-                        logger()->error() << name << "] " << err.msg;
+                        logger()->error() << err.msg;
                         throw err;
                     }
                     if (checks[order[i]]) {
                         auto err = InvalidArguments(NodeVec{this->parent}, name, "The ordering must not have repeating elements");
-                        logger()->error() << name << "] " << err.msg;
+                        logger()->error() << err.msg;
                         throw err;
                     }
                     checks[i] = true;

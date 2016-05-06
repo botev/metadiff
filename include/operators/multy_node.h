@@ -27,7 +27,7 @@ namespace metadiff{
                 size(size){
                 if(size < 1){
                     auto err = InvalidArguments(NodeVec{parent}, name, "The size should be at least 1");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -71,12 +71,12 @@ namespace metadiff{
                 std::shared_ptr<MultiNode> multi_op = std::dynamic_pointer_cast<MultiNode>(parent->op);
                 if (not multi_op) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent must be a result of an operator of type 'MultiNode'.");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
                 if (index >= multi_op->size) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Provided index is too big: " + std::to_string(index));
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -137,7 +137,7 @@ namespace metadiff{
                     axis(axis) {
                 if (parent->dtype == dType::b8) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent can not be of type b8");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -184,7 +184,7 @@ namespace metadiff{
                     return graph->constant_value(22.0);
                 } else {
                     auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -206,7 +206,7 @@ namespace metadiff{
                     axis(axis) {
                 if (parent->dtype == dType::b8) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent can not be of type b8");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }
@@ -253,7 +253,7 @@ namespace metadiff{
                     return graph->constant_value(22.0);
                 } else {
                     auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }

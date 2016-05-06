@@ -71,10 +71,12 @@ namespace metadiff {
                       Shape to_shape) :
                     UnaryOperator("Broadcast", graph, parent),
                     to_shape(to_shape) {
+//                std::cout << "Broadcasting " << parent->id << " to shape " << to_shape << std::endl;
                 for (int i = 0; i < 4; i++) {
                     if (parent->shape[i] != 1 and parent->shape[i] != to_shape[i]) {
-                        auto err = IncompatibleShapes(NodeVec{parent}, name);
-                        logger()->error() << name << "] " << err.msg;
+                        auto err = InvalidArguments(NodeVec{parent}, name, "Can not broadcast to shape " +
+                        core::to_string(to_shape));
+                        logger()->error() << err.msg;
                         throw err;
                     }
                 }
@@ -135,7 +137,7 @@ namespace metadiff {
                         axes_str = "NULL";
                     }
                     auto err = InvalidArguments(NodeVec{parent}, name, "Invalid axes: " + axes_str);
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             }

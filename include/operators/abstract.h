@@ -51,11 +51,11 @@ namespace metadiff {
                     for (int j = 0; j < 4; j++) {
                         if (node_shape[j] == 1 and max_shape[j] != 1) {
                             auto err = IncompatibleShapes(node_ptrs, name);
-                            logger->error() << name << "] " << err.msg;
+                            logger->error() << err.msg;
                             throw err;
                         } else if (node_shape[j] != 1 and max_shape[j] != 1 and node_shape[j] != max_shape[j]) {
                             auto err = IncompatibleShapes(node_ptrs, name);
-                            logger->error() << name << "] " << err.msg;
+                            logger->error() << err.msg;
                             throw err;
                         }
                     }
@@ -186,7 +186,7 @@ namespace metadiff {
                     parents(parents) {
                 if (parents.size() < 2) {
                     auto err = InvalidArguments(parents, name, "All NaryOperators require at least 2 parents");
-                    logger()->error() << name << "] " << err.msg;
+                    logger()->error() << err.msg;
                     throw err;
                 }
             };
@@ -283,7 +283,7 @@ namespace metadiff {
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
                 auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
 
@@ -305,7 +305,7 @@ namespace metadiff {
                               Node parent2) :
                     BinaryOperator(name, graph, parent1, parent2) {
                 NodeVec parents = get_parents();
-                Shape shape = verify_elementwise_shapes(name, NodeVec{parents}, logger());
+                shape = verify_elementwise_shapes(name, NodeVec{parents}, logger());
                 if (parent1->shape != shape and not parent1.is_scalar()) {
                     operate_policy(graph->broadcast_err_policy, logger(),
                                          ImplicitBroadcast(NodeVec{parent1, parent2}, name));
@@ -327,7 +327,7 @@ namespace metadiff {
                             NodeVec parents) :
                     NaryOperator(name, graph, parents) {
                 this->parents.clear();
-                Shape shape = verify_elementwise_shapes(name, parents, logger());
+                shape = verify_elementwise_shapes(name, parents, logger());
                 for (int i = 0; i < parents.size(); i++) {
                     if (parents[i]->shape != shape and not parents[i].is_scalar()) {
                         operate_policy(graph->broadcast_err_policy, logger(),
@@ -358,7 +358,7 @@ namespace metadiff {
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
                 auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
         };
@@ -382,7 +382,7 @@ namespace metadiff {
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
                 auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
         };

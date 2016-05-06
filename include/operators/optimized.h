@@ -52,6 +52,17 @@ namespace metadiff {
                 if (index == 0) {
                     return Node::mul(my_grad, softplus_mx - softplus_x);
                 } else {
+//                    std::cout << my_grad->shape << std::endl
+//                    << my_grad->op->name << std::endl
+//                    << my_grad->op->get_shape() << std::endl
+//                    << my_grad->op->get_parents()[0]->op->name << std::endl
+//                    << my_grad->op->get_parents()[0]->shape << std::endl;
+//                    auto a = - parent1;
+//                    std::cout << a->shape << std::endl;
+//                    auto b = parent2.sigmoid();
+//                    std::cout << b->shape << std::endl;
+//                    auto c = a + b;
+//                    std::cout << c->shape << std::endl;
                     return Node::mul(my_grad, parent2.sigmoid() - parent1);
                 }
             }

@@ -49,7 +49,7 @@ namespace metadiff {
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
                 auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
 
@@ -98,7 +98,7 @@ namespace metadiff {
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
                 auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
 
@@ -146,7 +146,7 @@ namespace metadiff {
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
                 auto err = WrongGradient(NodeVec{owner, my_grad}, name);
-                logger()->error() << name << "] " << err.msg;
+                logger()->error() << err.msg;
                 throw err;
             }
 

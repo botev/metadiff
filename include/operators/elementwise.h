@@ -205,7 +205,7 @@ namespace metadiff {
             }
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
-                Node derivative = graph->constant_value(1.0).add(NodeVec{owner.square().neg()});
+                Node derivative = Node::add(NodeVec{graph->constant_value(1.0), owner.square().neg()});
                 return Node::mul(NodeVec{my_grad, derivative});
             }
         };
