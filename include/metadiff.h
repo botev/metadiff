@@ -25,12 +25,12 @@
 #include "symbolic.h"
 #include "interface.h"
 #include "core.h"
-#include "api.h"
 #include "exceptions.h"
 #include "core_impl.h"
 #include "operators.h"
 #include "visual.h"
 #include "backends.h"
+#include "api.h"
 
 
 #endif //METADIFF_METADIFF_H

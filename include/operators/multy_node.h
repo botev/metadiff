@@ -68,7 +68,7 @@ namespace metadiff{
                     Operator("MultyNodeIndex", graph),
                     parent(parent),
                     index(index) {
-                std::shared_ptr<MultiNode> multi_op = std::dynamic_pointer_cast<MultiNode>(parent.unwrap()->op);
+                std::shared_ptr<MultiNode> multi_op = std::dynamic_pointer_cast<MultiNode>(parent->op);
                 if (not multi_op) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent must be a result of an operator of type 'MultiNode'.");
                     logger()->error() << name << "] " << err.msg;
@@ -86,21 +86,21 @@ namespace metadiff{
             }
 
             Shape get_shape() const {
-                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent.unwrap()->op);
+                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent->op);
                 return multi_op->get_shape(index);
             }
 
             dType get_dtype() const {
-                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent.unwrap()->op);
+                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent->op);
                 return multi_op->get_dtype(index);
             }
 
             nodeType get_node_type() const {
-                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent.unwrap()->op);
+                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent->op);
                 return multi_op->get_node_type(index);
             };
 
-            size_t get_gradient_level() const {
+            unsigned short get_grad_level() const {
                 return parent->grad_level;
             }
 
@@ -114,13 +114,13 @@ namespace metadiff{
 
             /** The MultiNode class is responsible for fetching correctly the child gradients */
             Node get_parent_grad(Node my_grad, unsigned short index) {
-                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent.unwrap()->op);
+                std::shared_ptr<MultiNode> multi_op = std::static_pointer_cast<MultiNode>(parent->op);
                 return multi_op->child_to_my_grad(my_grad, this->index);
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr<MultiNodeIndex> cast_op = std::static_pointer_cast<MultiNodeIndex>(op);
+                    auto cast_op = std::static_pointer_cast<const MultiNodeIndex>(op);
                     return symbolic_equals(parent, cast_op->parent) and index == cast_op->index;
                 }
                 return false;
@@ -142,13 +142,13 @@ namespace metadiff{
                 }
             }
 
-            Shape get_shape(unsigned short index){
+            Shape get_shape(unsigned short index) const{
                 Shape shape = parent->shape;
                 shape[axis] = 1;
                 return shape;
             }
 
-            dType get_dtype(unsigned short index){
+            dType get_dtype(unsigned short index) const{
                 if(index == 0){
                     return parent->dtype;
                 } else {
@@ -156,7 +156,7 @@ namespace metadiff{
                 }
             }
 
-            nodeType get_node_type(unsigned short index){
+            nodeType get_node_type(unsigned short index) const{
                 if(parent->node_type == INPUT or parent->node_type == INPUT_DERIVED){
                     if(index == 0){
                         return INPUT_DERIVED;
@@ -180,7 +180,7 @@ namespace metadiff{
 //                    return graph->derived_node(std::make_shared<IndexGrad>(graph,
 //                                                                           my_grad,
 //                                                                           owner.argmax(axis), axis,
-//                                                                           owner.unwrap()->shape[axis]));
+//                                                                           owner->shape[axis]));
                     return graph->constant_value(22.0);
                 } else {
                     auto err = WrongGradient(NodeVec{owner, my_grad}, name);
@@ -211,13 +211,13 @@ namespace metadiff{
                 }
             }
 
-            Shape get_shape(unsigned short index){
+            Shape get_shape(unsigned short index) const{
                 Shape shape = parent->shape;
                 shape[axis] = 1;
                 return shape;
             }
 
-            dType get_dtype(unsigned short index){
+            dType get_dtype(unsigned short index) const{
                 if(index == 0){
                     return parent->dtype;
                 } else {
@@ -225,7 +225,7 @@ namespace metadiff{
                 }
             }
 
-            nodeType get_node_type(unsigned short index){
+            nodeType get_node_type(unsigned short index) const{
                 if(parent->node_type == INPUT or parent->node_type == INPUT_DERIVED){
                     if(index == 0){
                         return INPUT_DERIVED;
@@ -249,7 +249,7 @@ namespace metadiff{
 //                    return graph->derived_node(std::make_shared<IndexGrad>(graph,
 //                                                                           my_grad,
 //                                                                           owner.argmax(axis), axis,
-//                                                                           owner.unwrap()->shape[axis]));
+//                                                                           owner->shape[axis]));
                     return graph->constant_value(22.0);
                 } else {
                     auto err = WrongGradient(NodeVec{owner, my_grad}, name);

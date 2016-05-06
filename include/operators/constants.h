@@ -26,7 +26,7 @@ namespace metadiff{
                 return std::make_shared<ConstantInput>(graph, value);
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 return false;
             }
         };
@@ -38,7 +38,7 @@ namespace metadiff{
             double value;
 
             ConstantValue(GraphInPtr graph, double value, Shape shape, dType dtype) :
-                    ConstantOperator("Value", graph, shape, dtype),
+                    ConstantOperator("ConstValue", graph, shape, dtype),
                     value(value) { };
 
 
@@ -46,9 +46,9 @@ namespace metadiff{
                 return std::make_shared<ConstantValue>(graph, value, shape, dtype);
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (ConstantOperator::equals(op)) {
-                    std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(op);
+                    auto cast_op = std::static_pointer_cast<const ConstantValue>(op);
                     return value == cast_op->value;
                 } else {
                     return false;
@@ -82,9 +82,9 @@ namespace metadiff{
                 return std::make_shared<Sequence>(graph, start, end, dtype);
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (ConstantOperator::equals(op)) {
-                    std::shared_ptr<Sequence> cast_op = std::static_pointer_cast<Sequence>(op);
+                    auto cast_op = std::static_pointer_cast<const Sequence>(op);
                     return start == cast_op->start and end == cast_op->end;
                 } else {
                     return false;
@@ -124,31 +124,31 @@ namespace metadiff{
         }
 
         Node GraphInternal::constant_value(double value, Shape shape) {
-            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, max_float);
+            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, max_float);
             return derived_node(op);
         }
 
         Node GraphInternal::constant_value(float value, Shape shape) {
             std::shared_ptr<Operator> op;
             if(max_float == f64) {
-                op = std::make_shared<op::ConstantValue>(this, f32);
+                op = std::make_shared<op::ConstantValue>(this, value, shape, f32);
             } else {
-                op = std::make_shared<op::ConstantValue>(this, max_float);
+                op = std::make_shared<op::ConstantValue>(this, value, shape, max_float);
             }
             return derived_node(op);
         }
 
         Node GraphInternal::constant_value(long value, Shape shape) {
-            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, max_int);
+            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, max_int);
             return derived_node(op);
         }
 
         Node GraphInternal::constant_value(int value, Shape shape) {
             std::shared_ptr<Operator> op;
             if(max_int == i64) {
-                op = std::make_shared<op::ConstantValue>(this, i32);
+                op = std::make_shared<op::ConstantValue>(this, value, shape, i32);
             } else {
-                op = std::make_shared<op::ConstantValue>(this, max_int);
+                op = std::make_shared<op::ConstantValue>(this, value, shape, max_int);
             }
             return derived_node(op);
         }
@@ -156,32 +156,32 @@ namespace metadiff{
         Node GraphInternal::constant_value(short value, Shape shape) {
             std::shared_ptr<Operator> op;
             if(max_int == i64 or max_int == i32) {
-                op = std::make_shared<op::ConstantValue>(this, i16);
+                op = std::make_shared<op::ConstantValue>(this, value, shape, i16);
             } else {
-                op = std::make_shared<op::ConstantValue>(this, max_int);
+                op = std::make_shared<op::ConstantValue>(this, value, shape, max_int);
             }
             return derived_node(op);
         }
 
         Node GraphInternal::constant_value(bool value, Shape shape) {
-            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, b8);
+            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, b8);
             return derived_node(op);
         }
 
         Node GraphInternal::zeros(Shape shape, dType type) {
-            return derived_node(std::make_shared<op::ConstantValue>(this, shape, 0, type));
+            return derived_node(std::make_shared<op::ConstantValue>(this, 0.0, shape, type));
         }
 
         Node GraphInternal::zeros(Shape shape) {
-            return derived_node(std::make_shared<op::ConstantValue>(this, shape, 0, max_float));
+            return derived_node(std::make_shared<op::ConstantValue>(this, 0.0, shape, max_float));
         }
 
         Node GraphInternal::ones(Shape shape, dType type) {
-            return derived_node(std::make_shared<op::ConstantValue>(this, shape, 1, type));
+            return derived_node(std::make_shared<op::ConstantValue>(this, 1.0, shape, type));
         }
 
         Node GraphInternal::ones(Shape shape) {
-            return derived_node(std::make_shared<op::ConstantValue>(this, shape, 1, max_float));
+            return derived_node(std::make_shared<op::ConstantValue>(this, 1.0, shape, max_float));
         }
 
         Node GraphInternal::eye(SymInt size, dType type) {

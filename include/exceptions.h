@@ -10,6 +10,20 @@ namespace metadiff{
     namespace exceptions {
         using namespace core;
 
+        void print_node(std::stringstream & stream, Node node){
+            stream << "Id:"
+            << std::setw(5) << node->id
+            << " | Name: " << node->name
+            << " | Shape: ("
+            << std::setw(5) << node->shape[0] << ","
+            << std::setw(5) << node->shape[1] << ","
+            << std::setw(5) << node->shape[2] << ","
+            << std::setw(5) << node->shape[3] << ")"
+            << " | dtype: " << node->dtype
+            << " | node_type: " << node->node_type
+            << " | Op name: " << node->op->name << "\n";
+        }
+
         class GraphError: public std::exception {
         public:
             NodeVec nodes;
@@ -18,23 +32,11 @@ namespace metadiff{
                 std::stringstream msg;
                 msg << "Nodes:\n";
                 for(size_t i=0;i<nodes.size(); i++){
-                    msg << "Id:"
-                    << std::setw(5) << nodes[i]->id
-                    << " | Shape: ("
-                    << std::setw(5) << nodes[i]->shape[0] << ","
-                    << std::setw(5) << nodes[i]->shape[1] << ","
-                    << std::setw(5) << nodes[i]->shape[2] << ","
-                    << std::setw(5) << nodes[i]->shape[3] << ")"
-                    << " | dtype: " << nodes[i]->dtype
-                    << " | node_type: " << nodes[i]->node_type
-                    << " | Op name: " << nodes[i]->op->name;
+                    print_node(msg, nodes[i]);
                 }
                 return msg.str();
             }
 
-            void set_message(std::string msg){
-
-            }
             GraphError(NodeVec nodes):
                     nodes(nodes){};
 
@@ -104,29 +106,30 @@ namespace metadiff{
 
         class MissingRequiredInput : public std::exception {
         public:
-            std::vector<size_t> target_ids;
-            size_t input_id;
-
-            MissingRequiredInput(std::vector<size_t> targets, size_t input_id) :
-                    target_ids(target_ids),
-                    input_id(input_id) { }
-
-            MissingRequiredInput(NodeVec targets, size_t input_id) :
-                    input_id(input_id) {
-                for (int i = 0; i < targets.size(); i++) {
-                    this->target_ids.push_back(targets[i].unwrap()->id);
+            NodeVec targets;
+            NodeVec inputs;
+            Node missing;
+            std::string msg;
+            MissingRequiredInput(NodeVec targets, NodeVec inputs, Node missing) :
+                    targets(targets),
+                    inputs(inputs),
+                    missing(missing) {
+                std::stringstream msg;
+                msg << "Error: Missing required input when trying to compile a function.\n"
+                 << "Missing node:\n";
+                print_node(msg, missing);
+                msg << "Target nodes:\n";
+                for(size_t i=0;i<targets.size();i++){
+                    print_node(msg, targets[i]);
                 }
+                msg << "Provided inputs:\n";
+                for(size_t i=0;i<inputs.size();i++){
+                    print_node(msg, inputs[i]);
+                }
+                this->msg = msg.str();
             }
 
             const char *what() const throw() {
-                std::string msg = "Missing required input " + std::to_string(input_id) + " for targets [";
-                for (int i = 0; i < target_ids.size(); i++) {
-                    msg += std::to_string(target_ids[i]);
-                    if (i < target_ids.size() - 1) {
-                        msg += ", ";
-                    }
-                }
-                msg += "]";
                 return msg.c_str();
             }
         };
@@ -136,7 +139,7 @@ namespace metadiff{
             std::string msg;
 
             CompilationFailed(std::string msg) :
-                    msg("Compilation failed due to:\n" + msg) { };
+                    msg("Compilation failed due to:" + msg) { };
 
             const char *what() const throw() {
                 return msg.c_str();

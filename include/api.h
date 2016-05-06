@@ -20,8 +20,22 @@ namespace metadiff{
         using core::Group;
         using core::Node;
         using core::NodeVec;
+        using core::Update;
         using core::Updates;
         using core::Graph;
+
+        using logging::metadiff_sink;
+        using dagre::dagre_to_file;
+        typedef backend::ArrayfireBackend AfBackend;
+
+        // API functions
+        /** Creates a new symbolic Graph instance */
+        Graph create_graph(){
+            return std::make_shared<core::GraphInternal>();
+        }
+
+
+
 
         // Replication of many function as sometimes it is more intuitive func(obj) then obj.func()
 

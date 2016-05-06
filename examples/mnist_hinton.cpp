@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 
-namespace md = metadiff;
+namespace md = metadiff::api;
 namespace sym = metadiff::symbolic;
 namespace dat = datasets;
 
@@ -27,7 +27,7 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     auto graph = md::create_graph();
     graph->name = name;
     // If you want to be informed about broadcast change this
-    graph->broadcast = md::ad_implicit_broadcast::QUIET;
+    graph->broadcast_err_policy = md::errorPolicy::WARN;
     // Batch size
     auto n = graph->get_new_symbolic_integer(); // a
     // Real batch size
@@ -39,7 +39,7 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     std::string layers[10] {"Inputs", "Encoder 1", "Encoder 2", "Encoder 3", "Encoder 4",
                           "Decoder 3", "Decoder 2", "Decoder 1", "Output Layer", "Objective"};
     graph->set_group(layers[0]);
-    md::NodeVec inputs = {graph->matrix(md::FLOAT, {d[0], n}, "Input")};
+    md::NodeVec inputs = {graph->matrix(md::dType::f32, {d[0], n}, "Input")};
     // Parameters
     std::vector<md::Node> params;
     for(int i=1;i<9;i++){
@@ -85,16 +85,16 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
                                            new_loss, new_updates, new_inputs);
 //    std::cout << "Original:" << graph->nodes.size() << std::endl;
 //    std::cout << "Optimized:" << optimized->nodes.size() << std::endl;
-    md::dagre::print_to_file(name + "_optim.html", optimized, new_updates);
+    md::dagre_to_file(name + "_optim.html", optimized, new_updates);
 //    std::cout << "Dagre" << std::endl;
     // Create backend and compile function
-    md::ArrayfireBackend md_backend = md::ArrayfireBackend(std::string("./mnist_hinton"));
+    md::AfBackend backend = md::AfBackend(std::string("./mnist_hinton"));
 //    std::cout << "Backend dir: " << md_backend.dir_path << std::endl;
 //    md_backend.dir_path = "./mnist_hinton";
 //    auto train_org = md_backend.compile_function(name, graph, inputs, loss, updates);
     clock_t start = clock();
     double compile_time = 0;
-    auto train_optim = md_backend.compile_function(optimized, new_inputs, new_loss, new_updates);
+    auto train_optim = backend.compile_function(optimized, new_inputs, new_loss, new_updates);
     std::cout << "train" << std::endl;
     compile_time = ((double)(1000 * (clock() - start))) / ((double)(CLOCKS_PER_SEC));
     // Run function
@@ -118,13 +118,14 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
         }
     }
     mean_time = ((double)(1000 * (clock() - start))) / ((double)(CLOCKS_PER_SEC * epochs));
-    md_backend.close();
+    backend.close();
     return std::pair<double, double>(mean_time, compile_time);
 };
 
 
 int main(int argc, char **argv)
 {
+    std::cout << "DADADA2" << std::endl;
     spdlog::set_pattern("*** [%H:%M:%S %z] [thread %t] %v ***");
     md::metadiff_sink->add_sink(std::make_shared<spdlog::sinks::stdout_sink_st>());
 
@@ -173,6 +174,8 @@ int main(int argc, char **argv)
         }
     }
 
+    std::cout << "DADADA" << std::endl;
+
     // Set backend
     af::setBackend(backend);
     af::array run_times = af::constant(0.0, 3, 3, repeats);
@@ -184,8 +187,8 @@ int main(int argc, char **argv)
                 std::cout << "Running for batch size " << batch_size_grid[i]
                 << " and factor " << factor_grid[j] << std::endl;
                 std::pair<double, double> result = run_md(batch_size_grid[i], factor_grid[j], burnout, epochs);
-                run_times(i, j, r) = result.first;
-                compile_times(i, j, r) = result.second;
+//                run_times(i, j, r) = result.first;
+//                compile_times(i, j, r) = result.second;
                 std::cout << "Run: " << result.first << ", " << result.second << std::endl;
                 af::deviceGC();
                 usleep(5);

@@ -39,13 +39,13 @@ namespace metadiff{
                 return my_grad.transpose();
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (parent->op->name == name) {
                     std::shared_ptr<Operator> base_op = parent->op->get_parents()[0]->op;
                     return base_op->equals(op) or op->equals(base_op);
                 }
                 if (name == op->name) {
-                    std::shared_ptr<Transpose> cast_op = std::static_pointer_cast<Transpose>(op);
+                    auto cast_op = std::static_pointer_cast<const Transpose>(op);
                     return symbolic_equals(parent, cast_op->parent);
                 }
                 return false;
@@ -124,7 +124,7 @@ namespace metadiff{
                 }
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
                     if (parents.size() != op->get_parents().size()) {
                         return false;

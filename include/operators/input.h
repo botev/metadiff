@@ -35,7 +35,7 @@ namespace metadiff {
                 return INPUT;
             };
 
-            size_t get_grad_level() const {
+            unsigned short get_grad_level() const {
                 return 0;
             }
 
@@ -53,7 +53,7 @@ namespace metadiff {
                 throw err;
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 return false;
             }
         };
@@ -61,22 +61,22 @@ namespace metadiff {
         /** Operator for shared input variables */
         class SharedInput : public Operator {
         public:
-            SharedPtr value;
+            SharedPtr var;
 
-            SharedInput(GraphInPtr graph, SharedPtr value) :
+            SharedInput(GraphInPtr graph, SharedPtr var) :
                     Operator("Shared", graph),
-                    value(value) { }
+                    var(var) { }
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
-                return std::make_shared<SharedInput>(graph, value);
+                return std::make_shared<SharedInput>(graph, var);
             }
 
             dType get_dtype() const {
-                return convert_af_dtype(value->value.type());
+                return convert_af_dtype(var->value.type());
             }
 
             Shape get_shape() const {
-                af::dim4 dims = value->value.dims();
+                af::dim4 dims = var->value.dims();
                 return Shape {dims[0], dims[1], dims[2], dims[3]};
             }
 
@@ -84,7 +84,7 @@ namespace metadiff {
                 return INPUT;
             };
 
-            size_t get_grad_level() const {
+            unsigned short get_grad_level() const {
                 return 0;
             }
 
@@ -102,7 +102,7 @@ namespace metadiff {
                 throw err;
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 return false;
             }
         };
@@ -132,7 +132,7 @@ namespace metadiff {
                 return value.is_constant() ? CONSTANT : CONSTANT_DERIVED;
             };
 
-            size_t get_grad_level() const {
+            unsigned short get_grad_level() const {
                 return 0;
             }
 
@@ -150,9 +150,9 @@ namespace metadiff {
                 throw err;
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (op->name == "SymInt") {
-                    std::shared_ptr<SymIntWrapper> cast_op = std::static_pointer_cast<SymIntWrapper>(op);
+                    auto cast_op = std::static_pointer_cast<const SymIntWrapper>(op);
                     return cast_op->value == value;
                 }
                 return false;
@@ -165,6 +165,35 @@ namespace metadiff {
             std::shared_ptr<Operator> op = std::make_shared<op::SymIntWrapper>(this, value);
             return derived_node(op);
         }
+
+        Node GraphInternal::tensor4(dType dtype,
+                                    std::array<SymInt, 4> shape,
+                                    std::string name) {
+            auto result = std::make_shared<NodeInternal>(
+                    shared_from_this().get(),
+                    default_device,
+                    nodes.size(),
+                    name,
+                    INPUT,
+                    dtype,
+                    shape,
+                    std::make_shared<op::Input>(shared_from_this().get(), dtype),
+                    0,
+                    current_group
+            );
+            nodes.push_back(result);
+            result->op->owner = result;
+            return result;
+        }
+
+        Node GraphInternal::shared_var(af::array value, std::string name) {
+            SharedPtr shared = std::make_shared<SharedVariable>(shared_vars.size(), value);
+            shared_vars.push_back(shared);
+            std::shared_ptr<Operator> op = std::make_shared<op::SharedInput>(this, shared);
+            Node node = derived_node(op);
+            node->name = name;
+            return node;
+        };
     }
 }
 #endif //METADIFF_SPECIAL_H

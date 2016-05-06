@@ -7,6 +7,8 @@
 
 namespace metadiff {
     namespace dagre {
+        using namespace core;
+
         /**
          * Writes the template part of the html at the top
          */
@@ -26,13 +28,13 @@ namespace metadiff {
         /**
          * Generates the javascript for the node representing this update
          */
-        void print_update_node(std::ofstream& f, std::pair<Node,Node> update);
+        void print_update_node(std::ofstream& f, Update update);
         /**
          * Generates the javascript for the edge representing this update
          */
-        void print_update_edge(std::ofstream& f, std::pair<Node,Node> update);
+        void print_update_edge(std::ofstream& f, Update update);
 
-        void print_to_file(std::string file_path,
+        void dagre_to_file(std::string file_path,
                            Graph graph,
                            Updates& updates) {
             // Open file
@@ -48,7 +50,7 @@ namespace metadiff {
             f << "\t// Set all groups\n";
             for(size_t i=1;i<graph->groups.size(); i++){
                 f << "\tmorpher.addGroup(\"_root/"
-                << graph->groups[i]->get_full_name()
+                << graph->groups[i]->full_name
                 << "\");\n";
             }
 
@@ -98,26 +100,26 @@ namespace metadiff {
             f.close();
         }
 
-        void print_to_file(std::string file_path, Graph graph){
+        void dagre_to_file(std::string file_path, Graph graph){
             Updates updates;
-            print_to_file(file_path, graph, updates);
+            dagre_to_file(file_path, graph, updates);
         }
 
         /**
          * Helper function to print the name of a node
          */
         std::ofstream& print_name(std::ofstream& f, Node node_in) {
-            auto node = node_in.unwrap();
-            if (node->type == ad_node_type::CONSTANT) {
+            auto node = node_in;
+            if (node->node_type == core::CONSTANT) {
                 if(node_in.is_scalar() and node->op->name == "Value"){
-                    std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node->op);
-                    f << cast_op->to_string() << "[" << node->id << "]";
+                    std::shared_ptr<op::ConstantValue> cast_op = std::static_pointer_cast<op::ConstantValue>(node->op);
+                    f << (roundf(cast_op->value*100) / 100) << "[" << node->id << "]";
                 } else if(node->op->name != "Input") {
                     f <<  node->op->name << "[" << node->id << "]";
                 } else {
                     f << "CONST[" << node->id << "]";
                 }
-            } else if (node->type == ad_node_type::INPUT) {
+            } else if (node->node_type == core::INPUT) {
                 f << node->name << "[" << node->id << "]";
             } else {
                 f << node->op->name << "[" << node->id << "]";
@@ -132,17 +134,17 @@ namespace metadiff {
             if(node->op->name == "Shared"){
                 f << "#006400"; return f;
             }
-            switch (node.unwrap()->type) {
-                case INPUT:
+            switch (node->node_type) {
+                case core::INPUT:
                     f << "#00ff00";
                     return f;
-                case INPUT_DERIVED:
+                case core::INPUT_DERIVED:
                     f << "#0000ff";
                     return f;
-                case CONSTANT:
+                case core::CONSTANT:
                     f << "#ffff00";
                     return f;
-                case CONSTANT_DERIVED:
+                case core::CONSTANT_DERIVED:
                     f << "#ffa500";
                     return f;
                 default:
@@ -158,17 +160,17 @@ namespace metadiff {
             if(node->op->name == "Shared"){
                 f << "rect"; return f;
             }
-            switch(node.unwrap()->type){
-                case INPUT:
+            switch(node->node_type){
+                case core::INPUT:
                     f << "rect";
                     return f;
-                case INPUT_DERIVED:
+                case core::INPUT_DERIVED:
                     f << "ellipse";
                     return f;
-                case CONSTANT:
+                case core::CONSTANT:
                     f << "circle";
                     return f;
-                case CONSTANT_DERIVED:
+                case core::CONSTANT_DERIVED:
                     f << "ellipse";
                     return f;
                 default:
@@ -180,17 +182,17 @@ namespace metadiff {
         /**
          * Helper function to print a list of the ids of the vector of nodes
          */
-        std::ofstream& print_ids(std::ofstream&f, NodeVec nodes){
+        std::ofstream& print_ids(std::ofstream&f, core::NodeVec nodes){
             if(nodes.size() == 0){
                 f << "()";
             } else if(nodes.size() == 1){
-                f << "(" << nodes[0].unwrap()->id << ")";
+                f << "(" << nodes[0]->id << ")";
             } else {
                 f << "(";
                 for (size_t i = 0; i < nodes.size() - 1; i++) {
-                    f << nodes[i].unwrap()->id << ", ";
+                    f << nodes[i]->id << ", ";
                 }
-                f << nodes[nodes.size()-1].unwrap()->id << ")";
+                f << nodes[nodes.size()-1]->id << ")";
             }
             return f;
         }
@@ -199,12 +201,12 @@ namespace metadiff {
          * Helper function to print the description of a node
          */
         std::ofstream& print_description(std::ofstream&f, Node node_in){
-            auto node = node_in.unwrap();
+            auto node = node_in;
             f << "\t\tdescription: \n";
             f << "\t\t\t\"Name: " << node->name << " <br>\"+\n";
             f << "\t\t\t\"Group: " << node->group.lock()->name << " <br>\"+\n";
-            f << "\t\t\t\"Type: " << node->type << " <br>\"+\n";
-            f << "\t\t\t\"Value type: " << node->v_type << " <br>\"+\n";
+            f << "\t\t\t\"Type: " << node->node_type << " <br>\"+\n";
+            f << "\t\t\t\"Data type: " << node->dtype << " <br>\"+\n";
             f << "\t\t\t\"Shape: (" <<
             node->shape[0] << ", " <<
             node->shape[1] << ", " <<
@@ -223,9 +225,9 @@ namespace metadiff {
          * Helper function to return true if the node is constant input
          */
         bool is_constant(Node node){
-            if(node.unwrap()-> type == CONSTANT){
-                std::string op_name = node.unwrap()->op->name;
-                return op_name == "Input" or op_name == "Value" or op_name == "Zeros" or op_name == "Ones";
+            if(node->node_type == core::CONSTANT){
+                std::string op_name = node->op->name;
+                return op_name == "Input" or op_name == "ConstValue";
             }
             return false;
         }
@@ -235,9 +237,9 @@ namespace metadiff {
             // moprpher.addNode("<group>", "<node name>", "{<node attributes>}");
             if(is_constant(node)){
                 // For constants we create a node for each single connection
-                for(size_t i=0;i<node.unwrap()->children.size(); i++){
-                    f << "\tmorpher.addNode(\"_root/" << node.unwrap()->group.lock()->get_full_name() <<
-                    "\",\n\t\t\"CONST[" << node.unwrap()->id << "]_" << i << "\", {\n";
+                for(size_t i=0;i<node->children.size(); i++){
+                    f << "\tmorpher.addNode(\"_root/" << node->group.lock()->full_name <<
+                    "\",\n\t\t\"CONST[" << node->id << "]_" << i << "\", {\n";
                     f << "\t\tlabel: \"\",\n";
                     f << "\t\tshape: \"";
                     print_shape(f, node) << "\",\n";
@@ -245,7 +247,7 @@ namespace metadiff {
                     print_description(f, node) << "});\n";
                 }
             } else {
-                f << "\tmorpher.addNode(\"_root/" << node.unwrap()->group.lock()->get_full_name() <<
+                f << "\tmorpher.addNode(\"_root/" << node->group.lock()->full_name <<
                 "\",\n\t\t\"";
                 print_name(f, node) << "\", {\n";
                 f << "\t\tlabel: \"";
@@ -260,13 +262,13 @@ namespace metadiff {
         void print_edges(std::ofstream& f, Node node){
             // The javascript code is:
             // moprpher.addEdge("<ancestor name>", "<node name>", "<label>");
-            NodeVec ancestors = node.unwrap()->op->get_ancestors();
+            NodeVec ancestors = node->op->get_ancestors();
             for (size_t i = 0; i < ancestors.size(); i++) {
                 if(is_constant(ancestors[i])){
                     // If parent is constant have to connect correctly
-                    for(size_t ind=0; ind<ancestors[i].unwrap()->children.size();ind ++){
-                        if(ancestors[i].unwrap()->children[ind].unwrap()->id == node.unwrap()->id){
-                            f << "\tmorpher.addEdge(\"CONST[" << ancestors[i].unwrap()->id << "]_" << ind << "\", \"";
+                    for(size_t ind=0; ind<ancestors[i]->children.size();ind ++){
+                        if(ancestors[i]->children[ind]->id == node->id){
+                            f << "\tmorpher.addEdge(\"CONST[" << ancestors[i]->id << "]_" << ind << "\", \"";
                             print_name(f, node) << "\", \"" << i << "\");\n";
                         }
                     }
@@ -281,9 +283,9 @@ namespace metadiff {
         void print_update_node(std::ofstream& f, std::pair<Node,Node> update){
             // The javascript code is:
             // moprpher.addNode("<group>", "<node name>", "{<node attributes>}");
-            auto first = update.first.unwrap();
-            auto second = update.second.unwrap();
-            f << "\tmorpher.addNode(\"_root/" << second->group.lock()->get_full_name() << "\", "
+            auto first = update.first;
+            auto second = update.second;
+            f << "\tmorpher.addNode(\"_root/" << second->group.lock()->full_name << "\", "
             << "\"Update " <<  first->name << "[" << first->id << "]\", {\n"
             << "\t\tstyle: \"fill: #FF1493\",\n"
             << "\t\tdescription: \"\"\n"
@@ -293,7 +295,7 @@ namespace metadiff {
         void print_update_edge(std::ofstream& f, std::pair<Node,Node> update){
             // The javascript code is:
             // moprpher.addEdge("<ancestor name>", "<node name>", "<label>");
-            auto first = update.first.unwrap();
+            auto first = update.first;
             f << "\tmorpher.addEdge(\"";
             print_name(f, update.second) << "\", \"Update "
             << first->name << "[" << first->id << "]\", \"\");\n";
@@ -319,9 +321,11 @@ namespace metadiff {
                     "</head><body style=\"margin:0;padding:0\" height=\"100%\">"
                     "<h3 style=\"margin-bottom: 0px\">" << graph->name << "</h3>\n"
                     "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Default device: " << graph->default_device << "</h5>\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Float type: " << graph->f_type << "</h5>\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Integer type: " << graph->i_type << "</h5>\n"
-                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Broadcast policy: " << graph->broadcast << "</h5>\n\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Max Float type: " << graph->max_float << "</h5>\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Max Int type: " << graph->max_int << "</h5>\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Broadcast policy: " << graph->broadcast_err_policy << "</h5>\n\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Type promotion policy: " << graph->type_promotion_err_policy << "</h5>\n\n"
+                    "<h5 style=\"margin-top: 0px; margin-bottom: 0px\">Cast policy: " << graph->cast_err_policy << "</h5>\n\n"
                     "<svg width=\"1500\" height=\"900\"></svg>\n"
                     "\n"
                     "<script id=\"js\">\n";

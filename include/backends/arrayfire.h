@@ -7,651 +7,650 @@
 
 #include <fstream>
 namespace metadiff{
-    class ArrayfireBackend : public FunctionBackend<af::array> {
-    public:
-        std::string af_path;
+    namespace backend {
+        using namespace exceptions;
 
-        ArrayfireBackend() :
-                FunctionBackend("ArrayFire"){
-            std::cout << "0" << std::endl;
-            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-        };
+        class ArrayfireBackend : public FunctionBackend<af::array> {
+        public:
+            std::string af_path;
 
-        ArrayfireBackend(bool debug) :
-                FunctionBackend("ArrayFire", debug){
-            std::cout << "1" << std::endl;
-            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-        };
+            ArrayfireBackend(bool debug = false) :
+                    FunctionBackend("ArrayFire", debug) {
+                af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
+                logger()->debug() << name << "] af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
+            };
 
-        ArrayfireBackend(std::string dir_path):
-                FunctionBackend("ArrayFire", dir_path){
-            std::cout << "2" << std::endl;
-            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-        };
+            ArrayfireBackend(std::string dir_path, bool debug = false) :
+                    FunctionBackend("ArrayFire", dir_path, debug) {
+                af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
+                logger()->debug() << name << "] af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
+            };
 
-        ArrayfireBackend(std::string dir_path, bool debug):
-                FunctionBackend("ArrayFire", dir_path, debug){
-            std::cout << "3" << std::endl;
-            af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-        };
+            ArrayfireBackend(std::string dir_path,
+                             std::string af_path,
+                             bool debug = false) :
+                    FunctionBackend("ArrayFire", dir_path, debug),
+                    af_path(af_path) {
+                logger()->debug() << name << "] af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
+            };
 
-        ArrayfireBackend(std::string dir_path,
-                         std::string af_path) :
-                FunctionBackend("ArrayFire", dir_path),
-                af_path(af_path) {
-            std::cout << "4" << std::endl;
-        };
-
-        ArrayfireBackend(std::string dir_path,
-                         std::string af_path,
-                         bool debug) :
-                FunctionBackend("ArrayFire", dir_path, debug),
-                af_path(af_path) {
-            std::cout << "5" << std::endl;
-        };
-
-
-        void compile(std::string source_dir, std::string target_dir, std::string graph_name) {
-            std::string source_path = source_dir;
-            source_path += kPathSeparator;
-            source_path += graph_name + ".cpp";
-            std::string dll_path = target_dir;
-            dll_path += kPathSeparator;
-            dll_path += graph_name + ".so";
-            logger()->debug() << name  << "] Compiling file " << source_path << " to " << dll_path;
-            std::string log_path = source_path + ".log";
-            std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
-            command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
-            command += " -I" + af_path;
-            command += kPathSeparator;
-            command += "include";
-            command += " -L" + af_path;
-            command += kPathSeparator;
-            command += "lib";
-            command += " -o " + dll_path + " " + source_path;
-            command += " > " + log_path + " 2>&1";
-            logger()->debug() << name << "] Compile command: " << command;
-            int response = system(command.c_str());
-            if (response != 0) {
-                std::ifstream log_file(log_path);
-                std::string err_msg((std::istreambuf_iterator<char>(log_file)),
-                                    std::istreambuf_iterator<char>());
-                CompilationFailed e = CompilationFailed("Bad compilation response: " + std::to_string(response) +
-                                                        "\nCommand output: " + err_msg);
-                logger()->error() << e.msg;
-                throw e;
+            void compile(std::string source_dir, std::string target_dir, std::string graph_name) {
+                std::string source_path = source_dir;
+                source_path += kPathSeparator;
+                source_path += graph_name + ".cpp";
+                std::string dll_path = target_dir;
+                dll_path += kPathSeparator;
+                dll_path += graph_name + ".so";
+                logger()->debug() << name << "] Compiling file " << source_path << " to " << dll_path;
+                std::string log_path = source_path + ".log";
+                std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
+                command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
+                command += " -I" + af_path;
+                command += kPathSeparator;
+                command += "include";
+                command += " -L" + af_path;
+                command += kPathSeparator;
+                command += "lib";
+                command += " -o " + dll_path + " " + source_path;
+                command += " > " + log_path + " 2>&1";
+                logger()->debug() << name << "] Compile command: " << command;
+                int response = system(command.c_str());
+                if (response != 0) {
+                    std::ifstream log_file(log_path);
+                    std::string err_msg((std::istreambuf_iterator<char>(log_file)),
+                                        std::istreambuf_iterator<char>());
+                    auto err = CompilationFailed("Bad compilation response: " + std::to_string(response) +
+                                                            ", command output: " + err_msg);
+                    logger()->error() << err.msg;
+                    throw err;
+                }
+                return;
             }
-            return;
-        }
 
-        EvaluationFunction link(std::string target_dir,
-                                std::string graph_name){
-            std::string dll_path = target_dir;
-            dll_path += kPathSeparator;
-            dll_path += graph_name + ".so";
-            return link_dll(dll_path, "eval_func");
-        }
+            EvaluationFunction link(std::string target_dir,
+                                    std::string graph_name) {
+                std::string dll_path = target_dir;
+                dll_path += kPathSeparator;
+                dll_path += graph_name + ".so";
+                return link_dll(dll_path, "eval_func");
+            }
 
-        void generate_source(std::string source_dir,
-                             Graph graph,
-                             std::vector<Node> inputs,
-                             std::vector<Node> targets) {
-            logger()->trace() << name << "] Generating source file";
-            std::string source_path = source_dir;
-            source_path += kPathSeparator;
-            source_path += graph->name + ".cpp";
-            std::ofstream f;
-            f.open(source_path);
+            void generate_source(std::string source_dir,
+                                 Graph graph,
+                                 std::vector<Node> inputs,
+                                 std::vector<Node> targets) {
+                std::string source_path = source_dir;
+                source_path += kPathSeparator;
+                source_path += graph->name + ".cpp";
+                logger()->trace() << name << "] Generating source file " << source_path;
+                std::ofstream f;
+                f.open(source_path);
 
-            // Print disclaimer
-            f << "// Auto generated by Metadiff\n// Please do not edit\n\n";
+                // Print disclaimer
+                f << "// Auto generated by Metadiff\n// Please do not edit\n\n";
 
-            // Print includes
-            f << "#include \"vector\"\n"
-                    "#include \"memory\"\n"
-                    "#include <exception>\n"
-                    "#include <arrayfire.h>\n";
-            f << "\n";
+                // Print includes
+                f << "#include \"vector\"\n"
+                        "#include \"memory\"\n"
+                        "#include <exception>\n"
+                        "#include <arrayfire.h>\n";
+                f << "\n";
 
-            // Write the interface to Shared Variables and InputShapeExceptions
-            write_interface(f);
+                // Write the interface to Shared Variables and InputShapeExceptions
+                write_interface(f);
 
-            // Print a helper function for memory info
-            f << "void print_mem_info(std::string name){\n"
-                    "\tsize_t alloc_bytes,alloc_buffers,lock_bytes,lock_buffers;\n"
-                    "\taf::deviceMemInfo(&alloc_bytes,&alloc_buffers,&lock_bytes,&lock_buffers);\n"
-                    "\tstd::cout << \"Memory info\" << name << std::endl;\n"
-                    "\tstd::cout << \"Allocated: \" << alloc_bytes / 1024 << \" KB\" << std::endl;\n"
-                    "\tstd::cout << \"Buffers allocated: \" << alloc_buffers << std::endl;\n"
-                    "\tstd::cout << \"In use: \" << lock_bytes / 1024 << \" KB\" << std::endl;\n"
-                    "\tstd::cout << \"Buffers in use: \" << lock_buffers << std::endl;\n"
-                    "\treturn;\n"
-                    "};\n\n";
+                // Print a helper function for memory info
+//                f << "void print_mem_info(std::string name){\n"
+//                        "\tsize_t alloc_bytes,alloc_buffers,lock_bytes,lock_buffers;\n"
+//                        "\taf::deviceMemInfo(&alloc_bytes,&alloc_buffers,&lock_bytes,&lock_buffers);\n"
+//                        "\tstd::cout << \"Memory info\" << name << std::endl;\n"
+//                        "\tstd::cout << \"Allocated: \" << alloc_bytes / 1024 << \" KB\" << std::endl;\n"
+//                        "\tstd::cout << \"Buffers allocated: \" << alloc_buffers << std::endl;\n"
+//                        "\tstd::cout << \"In use: \" << lock_bytes / 1024 << \" KB\" << std::endl;\n"
+//                        "\tstd::cout << \"Buffers in use: \" << lock_buffers << std::endl;\n"
+//                        "\treturn;\n"
+//                        "};\n\n";
 
-            // Print the function interface
-            f << "extern \"C\" std::vector<af::array> "
-                    "eval_func(std::vector<af::array>& inputs, "
-                    "std::vector<SharedPtr>& shared_vars){\n";
-            // Use the gfor
-            f << "\t// Set up automatic broadcasting\n";
-            f << "\taf::gforSet(true);\n";
+                // Print the function interface
+                f << "extern \"C\" std::vector<af::array> "
+                        "eval_func(std::vector<af::array>& inputs, "
+                        "std::vector<SharedPtr>& shared_vars){\n";
+                // Use the gfor
+                f << "\t// Set up automatic broadcasting\n";
+                f << "\taf::gforSet(true);\n";
 
-            // Check all of the required inputs are provided
-            for (size_t i = 0; i < graph->nodes.size(); i++) {
-                if (graph->nodes[i]->type == INPUT and graph->nodes[i]->op->name != "Shared") {
-                    for (size_t j = 0; j <= inputs.size(); j++) {
-                        if (j == inputs.size()) {
-                            throw MissingRequiredInput(targets, i);
-                        }
-                        if (inputs[j].unwrap()->id == i) {
-                            break;
+                // Check all of the required inputs are provided
+                for (size_t i = 0; i < graph->nodes.size(); i++) {
+                    if (graph->nodes[i]->node_type == core::INPUT and
+                            graph->nodes[i]->op->name != "Shared") {
+                        for (size_t j = 0; j <= inputs.size(); j++) {
+                            if (j == inputs.size()) {
+                                auto err = MissingRequiredInput(targets, inputs, graph->nodes[i]);
+                                logger()->error() << name << "] " << err.msg;
+                                throw err;
+                            }
+                            if (inputs[j]->id == i) {
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            // An expression table for all nodes
-            std::vector<std::string> expression_table(graph->nodes.size(), "Undefined");
+                // An expression table for all nodes
+                std::vector<std::string> expression_table(graph->nodes.size(), "Undefined");
 
-            // Loop over all nodes and calculate their expressions
-            // as well as write anything that is not inlined
-            f << "\n\t// Calculate all of the computation nodes\n";
-            for (size_t i = 0; i < graph->nodes.size(); i++) {
-                std::shared_ptr<NodeInternal> node = graph->nodes[i];
+                // Loop over all nodes and calculate their expressions
+                // as well as write anything that is not inlined
+                f << "\n\t// Calculate all of the computation nodes\n";
+                for (size_t i = 0; i < graph->nodes.size(); i++) {
+                    std::shared_ptr<NodeInternal> node = graph->nodes[i];
 
-                std::string expression = node_expression(node, expression_table);
-                if (graph->nodes[i]->execution.inlined) {
-                    expression_table[i] = expression;
-                } else {
-                    if(debug){
-                        f << "\tstd::cout << \"Calculating node '" << i << "'\" << std::endl;\n";
-                    }
-
-                    // TODO this should be properly done for all scalar types
-                    // The code generated is af::array node_index = <expression>;
-                    if (graph->nodes[i]->type == CONSTANT and Node(graph->nodes[i]).is_scalar()) {
-                        f << "\tfloat ";
-                    }
-                    else {
-                        f << "\taf::array ";
-                    }
-                    f << "node_" << i << " = " << expression << ";\n";
-                    expression_table[i] = "node_" + std::to_string(i);
-
-                    if(debug){
-                        f << "\tstd::cout << \"Node size:\" << node_" << i << ".dims() << std::endl;\n";
-                    }
-                }
-            }
-
-            // Update all of the shared_variables
-            f << "\n\t// Update all shared variables\n";
-            for (size_t i = 0; i < graph->updates.size(); i++) {
-                if(debug){
-                    f << "\tstd::cout << \"Calculating update '" << i << "'\" << std::endl;\n";
-                }
-                print_update(f, graph->updates[i], expression_table);
-            }
-            for (size_t i = 0; i < graph->temporary_updates.size(); i++) {
-                if(debug){
-                    f << "\tstd::cout << \"Calculating update '" << i << "'\" << std::endl;\n";
-                }
-                print_update(f, graph->temporary_updates[i], expression_table);
-            }
-
-            // Disable the automatic broadcasting
-            // TODO Decide whether to include this? Maybe have to check what it was before
-            // f << "\taf::gforSet(false);";
-
-            // Write all of the output nodes as the return statement
-            f << "\n\t// Write all of the output nodes in correct order\n";
-            f << "\treturn {";
-            for (size_t i = 0; i < targets.size(); i++) {
-                if (i < targets.size() - 1) {
-                    f << expression_table[targets[i].unwrap()->id] << ", ";
-                } else {
-                    f << expression_table[targets[i].unwrap()->id] << "};\n";
-                }
-            }
-            // Close the function block and the file
-            f << "}\n";
-            f.close();
-        }
-
-        void print_operator(std::string name, std::vector<size_t> p1,
-                            std::vector<size_t> args){
-
-        }
-
-        void print_update(std::ofstream &f, std::pair<Node, Node> graph_update,
-                          std::vector<std::string> &expression_table) {
-            std::shared_ptr<SharedInput> cast_op = std::static_pointer_cast<SharedInput>(graph_update.first->op);
-            size_t shared_id =  cast_op->value->id;
-            Node update = graph_update.second;
-
-            if (not update.unwrap()->execution.inlined or
-                (update.unwrap()->op->name != "Add" and update.unwrap()->op->name != "Mul")) {
-                f << "\tshared_vars[" << shared_id << "]->value = "
-                << expression_table[update.unwrap()->id] << ";\n";
-            } else {
-                // This part is for updates of the form
-                // x = x + ..., x - ..., x * ... or x / ...
-                // I try to merge this cases into one
-                // Note that all of this operations are either and Add or a Mul
-                std::string pos_char, neg_char, pos_name, neg_name;
-                std::string prefix = "";
-                if (update.unwrap()->op->name == "Add") {
-                    pos_char = "+";
-                    neg_char = "-";
-                    neg_name = "Neg";
-                } else {
-                    pos_char = "*";
-                    neg_char = "/";
-                    neg_name = "Div";
-                }
-                // First we need to check if the shared variable is in this operator
-                // Index of the shared_variable if it is present in the operator
-                int index = -1;
-                // All other parents are negative operator
-                // This is required in order to distinguish between += and -=, *= and /=
-                bool all_neg = true;
-                NodeVec parents = update.unwrap()->op->get_parents();
-                for (int i = 0; i < parents.size(); i++) {
-                    if( parents[i]->op->name == "Shared") {
-                        std::shared_ptr<SharedInput> cast_op2 = std::static_pointer_cast<SharedInput>(parents[i]->op);
-                        if (cast_op2->value->id == shared_id) {
-                            index = i;
+                    std::string expression = node_expression(node, expression_table);
+                    if (graph->nodes[i]->execution.inlined) {
+                        expression_table[i] = expression;
+                    } else {
+                        if (debug) {
+                            f << "\tstd::cout << \"Calculating node '" << i << "'\" << std::endl;\n";
                         }
-                    } else if (parents[i].unwrap()->op->name != neg_name and
-                               parents[i].unwrap()->op->name != neg_name) {
-                        all_neg = false;
+
+                        // TODO this should be properly done for all scalar types
+                        // The code generated is af::array node_index = <expression>;
+                        if (graph->nodes[i]->node_type == core::CONSTANT and Node(graph->nodes[i]).is_scalar()) {
+                            f << "\tfloat ";
+                        }
+                        else {
+                            f << "\taf::array ";
+                        }
+                        f << "node_" << i << " = " << expression << ";\n";
+                        expression_table[i] = "node_" + std::to_string(i);
+
+                        if (debug) {
+                            f << "\tstd::cout << \"Node size:\" << node_" << i << ".dims() << std::endl;\n";
+                        }
                     }
                 }
-                if (index == -1) {
-                    // If the shared variable is not in the operator than it is a standard syntax
+
+                // Update all of the shared_variables
+                f << "\n\t// Update all shared variables\n";
+                for (size_t i = 0; i < graph->updates.size(); i++) {
+                    if (debug) {
+                        f << "\tstd::cout << \"Calculating update '" << i << "'\" << std::endl;\n";
+                    }
+                    print_update(f, graph->updates[i], expression_table);
+                }
+                for (size_t i = 0; i < graph->temporary_updates.size(); i++) {
+                    if (debug) {
+                        f << "\tstd::cout << \"Calculating update '" << i << "'\" << std::endl;\n";
+                    }
+                    print_update(f, graph->temporary_updates[i], expression_table);
+                }
+
+                // Disable the automatic broadcasting
+                // TODO Decide whether to include this? Maybe have to check what it was before
+                // f << "\taf::gforSet(false);";
+
+                // Write all of the output nodes as the return statement
+                f << "\n\t// Write all of the output nodes in correct order\n";
+                f << "\treturn {";
+                for (size_t i = 0; i < targets.size(); i++) {
+                    if (i < targets.size() - 1) {
+                        f << expression_table[targets[i]->id] << ", ";
+                    } else {
+                        f << expression_table[targets[i]->id] << "};\n";
+                    }
+                }
+                // Close the function block and the file
+                f << "}\n";
+                f.close();
+            }
+
+            void print_operator(std::string name, std::vector<size_t> p1,
+                                std::vector<size_t> args) {
+
+            }
+
+            void print_update(std::ofstream &f, std::pair<Node, Node> graph_update,
+                              std::vector<std::string> &expression_table) {
+                std::shared_ptr<op::SharedInput> cast_op = std::static_pointer_cast<op::SharedInput>(graph_update.first->op);
+                size_t shared_id = cast_op->var->id;
+                Node update = graph_update.second;
+
+                if (not update->execution.inlined or
+                    (update->op->name != "Add" and update->op->name != "Mul")) {
                     f << "\tshared_vars[" << shared_id << "]->value = "
-                    << expression_table[update.unwrap()->id] << ";\n";
+                    << expression_table[update->id] << ";\n";
                 } else {
-                    // Remove the shared variable from the parents
-                    parents.erase(parents.begin() + index);
-                    // If all are negative we make the prefix the neg_char, otherwise the pos_char
-                    if (all_neg) {
-                        prefix = neg_char;
+                    // This part is for updates of the form
+                    // x = x + ..., x - ..., x * ... or x / ...
+                    // I try to merge this cases into one
+                    // Note that all of this operations are either and Add or a Mul
+                    std::string pos_char, neg_char, pos_name, neg_name;
+                    std::string prefix = "";
+                    if (update->op->name == "Add") {
+                        pos_char = "+";
+                        neg_char = "-";
+                        neg_name = "Neg";
                     } else {
-                        prefix = pos_char;
+                        pos_char = "*";
+                        neg_char = "/";
+                        neg_name = "Div";
                     }
-                    f << "\tshared_vars[" << shared_id << "]->value " << prefix << "=";
-                    if (all_neg) {
-                        // If all are negative we need the grand parents rather than the parents
-                        for (size_t i = 0; i < parents.size(); i++) {
-                            size_t id = parents[i].unwrap()->op->get_parents()[0].unwrap()->id;
-                            if (i == 0) {
-                                f << " " << expression_table[id];
-                            } else {
-                                f << " " << pos_char << " " << expression_table[id];
+                    // First we need to check if the shared variable is in this operator
+                    // Index of the shared_variable if it is present in the operator
+                    int index = -1;
+                    // All other parents are negative operator
+                    // This is required in order to distinguish between += and -=, *= and /=
+                    bool all_neg = true;
+                    NodeVec parents = update->op->get_parents();
+                    for (int i = 0; i < parents.size(); i++) {
+                        if (parents[i]->op->name == "Shared") {
+                            std::shared_ptr<op::SharedInput> cast_op2 = std::static_pointer_cast<op::SharedInput>(
+                                    parents[i]->op);
+                            if (cast_op2->var->id == shared_id) {
+                                index = i;
                             }
-                            if (i < parents.size() - 1) {
-                                f << pos_char;
-                            }
+                        } else if (parents[i]->op->name != neg_name and
+                                   parents[i]->op->name != neg_name) {
+                            all_neg = false;
                         }
-                        f << ";\n";
+                    }
+                    if (index == -1) {
+                        // If the shared variable is not in the operator than it is a standard syntax
+                        f << "\tshared_vars[" << shared_id << "]->value = "
+                        << expression_table[update->id] << ";\n";
                     } else {
-                        for (size_t i = 0; i < parents.size(); i++) {
-                            // If the parent is a negative operator we need to write its grand parent
-                            // with a neg_char
-                            if (i == 0) {
-                                f << " " << expression_table[parents[i].unwrap()->id];
-                            } else if (parents[i].unwrap()->op->name != neg_name) {
-                                f << " " << pos_char << " " << expression_table[parents[i].unwrap()->id];
-                            } else {
-                                size_t id = parents[i].unwrap()->op->get_parents()[0].unwrap()->id;
-                                f << " " << neg_char << " " << expression_table[id];
-                            }
+                        // Remove the shared variable from the parents
+                        parents.erase(parents.begin() + index);
+                        // If all are negative we make the prefix the neg_char, otherwise the pos_char
+                        if (all_neg) {
+                            prefix = neg_char;
+                        } else {
+                            prefix = pos_char;
                         }
-                        f << ";\n";
-                    }
+                        f << "\tshared_vars[" << shared_id << "]->value " << prefix << "=";
+                        if (all_neg) {
+                            // If all are negative we need the grand parents rather than the parents
+                            for (size_t i = 0; i < parents.size(); i++) {
+                                size_t id = parents[i]->op->get_parents()[0]->id;
+                                if (i == 0) {
+                                    f << " " << expression_table[id];
+                                } else {
+                                    f << " " << pos_char << " " << expression_table[id];
+                                }
+                                if (i < parents.size() - 1) {
+                                    f << pos_char;
+                                }
+                            }
+                            f << ";\n";
+                        } else {
+                            for (size_t i = 0; i < parents.size(); i++) {
+                                // If the parent is a negative operator we need to write its grand parent
+                                // with a neg_char
+                                if (i == 0) {
+                                    f << " " << expression_table[parents[i]->id];
+                                } else if (parents[i]->op->name != neg_name) {
+                                    f << " " << pos_char << " " << expression_table[parents[i]->id];
+                                } else {
+                                    size_t id = parents[i]->op->get_parents()[0]->id;
+                                    f << " " << neg_char << " " << expression_table[id];
+                                }
+                            }
+                            f << ";\n";
+                        }
 
+                    }
                 }
             }
-        }
 
 
-        std::string node_expression(Node node, std::vector<std::string> &expression_table) {
-            auto node_in = node.unwrap();
-            auto op_name = node_in->op->name;
-            auto parents = node_in->op->get_parents();
-            auto args = node_in->op->get_arguments();
-            auto children = node_in->children;
+            std::string node_expression(Node node, std::vector<std::string> &expression_table) {
+                auto node_in = node;
+                auto op_name = node_in->op->name;
+                auto parents = node_in->op->get_parents();
+                auto args = node_in->op->get_arguments();
+                auto children = node_in->children;
 
-            // Constant operators
-            if(op_name == "MakeConst"){
-                return expression_table[node_in->id];
-            }
-            if(op_name == "Eye"){
-                // TODO actually have to implement symbolics
-                return "NotImplemented";
-            }
-            if(op_name == "Zeros"){
-                if(node.is_scalar()){
-                    return "0.0";
-                } else {
+                // Constant operators
+                if (op_name == "MakeConst") {
+                    return expression_table[node_in->id];
+                }
+                if (op_name == "Eye") {
                     // TODO actually have to implement symbolics
                     return "NotImplemented";
                 }
-            }
-            if(op_name == "Ones"){
-                if(node.is_scalar()){
-                    return "1.0";
-                } else {
-                    // TODO
-                    return "NotImplemented";
-                }
-            }
-            if (op_name == "Value") {
-                std::shared_ptr<ConstantValue> cast_op = std::static_pointer_cast<ConstantValue>(node_in->op);
-                if(node.is_scalar()){
-                    return cast_op->to_string();
-                } else {
-                    // TODO
-                    return "NotImplemented";
-                }
-            }
-            if (op_name == "Seq" ){
-                // TODO
-                return "NotImplemented";
-            }
-
-            // Base operators
-            if (op_name == "Input"){
-                return "inputs[" + std::to_string(node_in->id) + "]";
-            }
-            if (op_name == "Shared"){
-                std::shared_ptr<SharedInput> cast_op2 = std::static_pointer_cast<SharedInput>(node_in->op);
-                return "shared_vars[" + std::to_string(cast_op2->value->id) + "]->value";
-            }
-            if (op_name == "Alias") {
-                return expression_table[parents[0].unwrap()->id];
-            }
-            if (op_name == "Broadcast") {
-                bool not_supported = false;
-                for (size_t i = 0; i < children.size(); i++) {
-                    auto name = children[i].unwrap()->op->name;
-                    if (name != "Add" and name != "Mul"
-                        and name != "Neg" and name != "Div") {
-                        not_supported = true;
-                        break;
+                if (op_name == "Zeros") {
+                    if (node.is_scalar()) {
+                        return "0.0";
+                    } else {
+                        // TODO actually have to implement symbolics
+                        return "NotImplemented";
                     }
                 }
-                if (not_supported) {
-                    // For operators where this is not supported we have to use af::tile()
-                    std::string expression = "af::tile(" + expression_table[parents[0].unwrap()->id] + ", ";
-                    for (int i = 0; i < 4; i++) {
-                        if (node_in->shape[i] != parents[0].unwrap()->shape[i]) {
-                            expression += node_in->shape[i].to_string_with_star();
-                        } else {
-                            expression += "1";
+                if (op_name == "Ones") {
+                    if (node.is_scalar()) {
+                        return "1.0";
+                    } else {
+                        // TODO
+                        return "NotImplemented";
+                    }
+                }
+                if (op_name == "ConstValue") {
+                    std::shared_ptr<op::ConstantValue> cast_op = std::static_pointer_cast<op::ConstantValue>(node_in->op);
+                    if (node.is_scalar()) {
+                        // TODO correctly do this
+                        return std::to_string(round(cast_op->value * 100)/ 100);
+                    } else {
+                        // TODO
+                        return "NotImplemented";
+                    }
+                }
+                if (op_name == "Seq") {
+                    // TODO
+                    return "NotImplemented";
+                }
+
+                // Base operators
+                if (op_name == "Input") {
+                    return "inputs[" + std::to_string(node_in->id) + "]";
+                }
+                if (op_name == "Shared") {
+                    std::shared_ptr<op::SharedInput> cast_op2 = std::static_pointer_cast<op::SharedInput>(node_in->op);
+                    return "shared_vars[" + std::to_string(cast_op2->var->id) + "]->value";
+                }
+                if (op_name == "Alias") {
+                    return expression_table[parents[0]->id];
+                }
+                if (op_name == "Broadcast") {
+                    bool not_supported = false;
+                    for (size_t i = 0; i < children.size(); i++) {
+                        auto name = children[i]->op->name;
+                        if (name != "Add" and name != "Mul"
+                            and name != "Neg" and name != "Div") {
+                            not_supported = true;
+                            break;
                         }
+                    }
+                    if (not_supported) {
+                        // For operators where this is not supported we have to use af::tile()
+                        std::string expression = "af::tile(" + expression_table[parents[0]->id] + ", ";
+                        for (int i = 0; i < 4; i++) {
+                            if (node_in->shape[i] != parents[0]->shape[i]) {
+                                expression += node_in->shape[i].to_string_with_star();
+                            } else {
+                                expression += "1";
+                            }
+                            if (i < 3) {
+                                expression += ", ";
+                            }
+                        }
+                        return expression + ")";
+                    } else {
+                        return expression_table[parents[0]->id];
+                    }
+                }
+                if (op_name == "Add") {
+                    std::string expression = expression_table[parents[0]->id];
+                    for (int i = 1; i < parents.size(); i++) {
+                        if (parents[i]->op->name == "Neg") {
+                            expression +=
+                                    " - " + expression_table[parents[i]->op->get_parents()[0]->id];
+                        } else {
+                            expression += " + " + expression_table[parents[i]->id];
+                        }
+                    }
+                    return "(" + expression + ")";
+                }
+                if (op_name == "Neg") {
+                    return "(-" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Mul") {
+                    std::string expression = expression_table[parents[0]->id];
+                    for (int i = 1; i < parents.size(); i++) {
+                        if (parents[i]->op->name == "Div") {
+                            expression +=
+                                    " / " + expression_table[parents[i]->op->get_parents()[0]->id];
+                        } else {
+                            expression += " * " + expression_table[parents[i]->id];
+                        }
+                    }
+                    return expression;
+                }
+                if (op_name == "Div") {
+                    return "(1.0/" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Sum") {
+                    auto axes = dynamic_cast<op::Sum *>(node_in->op.get())->axes;
+                    if (Node(node).is_scalar()) {
+                        return "af::sum(af::flat(" + expression_table[parents[0]->id] + "))";
+                    } else {
+                        std::string expression = expression_table[parents[0]->id];
+                        for (size_t i = 0; i < axes.size(); i++) {
+                            expression = "af::sum(" + expression + ", " + std::to_string(axes[i]) + ")";
+                        }
+                        return expression;
+                    }
+                }
+                // Logical operators
+                if (op_name == "Not") {
+                    return "!" + expression_table[parents[0]->id];
+                }
+                if (op_name == "Gt") {
+                    return expression_table[parents[0]->id] + " > " +
+                           expression_table[parents[1]->id];
+                }
+                if (op_name == "Ge") {
+                    return expression_table[parents[0]->id] + " >= " +
+                           expression_table[parents[1]->id];
+                }
+                if (op_name == "Lt") {
+                    return expression_table[parents[0]->id] + " < " +
+                           expression_table[parents[1]->id];
+                }
+                if (op_name == "Lte") {
+                    return expression_table[parents[0]->id] + " <= " +
+                           expression_table[parents[1]->id];
+                }
+                if (op_name == "Eq") {
+                    return expression_table[parents[0]->id] + " == " +
+                           expression_table[parents[1]->id];
+                }
+                if (op_name == "ApproxEq") {
+                    // TODO
+                    return "NotImplemented";
+                }
+                if (op_name == "And") {
+                    return expression_table[parents[0]->id] + " && " +
+                           expression_table[parents[1]->id];
+                }
+                if (op_name == "Or") {
+                    return expression_table[parents[0]->id] + " || " +
+                           expression_table[parents[1]->id];
+                }
+                if (op_name == "ZeroElem") {
+                    return "af::iszero(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "IsNaN") {
+                    return "af::isNaN(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "IsInf") {
+                    return "af::isInf(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Select") {
+                    return "af::select(" + expression_table[args[0]->id] + ", " +
+                           expression_table[parents[0]->id] + ", " +
+                           expression_table[parents[1]->id] + ")";
+                }
+                // Elementwise operators
+                if (op_name == "Square") {
+                    return expression_table[parents[0]->id] + " * " +
+                           expression_table[parents[0]->id];
+                }
+                if (op_name == "Exp") {
+                    return "af::exp(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Log") {
+                    return "af::log(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Abs") {
+                    return "af::abs(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Log1p") {
+                    return "af::log1p(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Sin") {
+                    return "af::sin(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Cos") {
+                    return "af::cos(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Tan") {
+                    return "af::tan(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Sinh") {
+                    return "af::sinh(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Cosh") {
+                    return "af::cosh(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Tanh") {
+                    return "af::tanh(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Pow") {
+                    // TODO
+                    return "UnImplemented";
+                }
+                // Linear Algebra operators
+                if (op_name == "Transpose") {
+                    return "af::transpose(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "MatrixMul") {
+                    if (parents.size() > 2) {
+                        // TODO
+                        return "Matmul implemented only for 2 parents";
+                    }
+                    // Have to check for transpose to use flags
+                    std::string p0;
+                    std::string flag0 = "AF_MAT_NONE";
+                    std::string p1;
+                    std::string flag1 = "AF_MAT_NONE";
+                    std::string expr;
+                    if (parents[0]->op->name == "Transpose") {
+                        p0 = expression_table[parents[0]->op->get_parents()[0]->id];
+                        flag0 = "AF_MAT_TRANS";
+                    } else {
+                        p0 = expression_table[parents[0]->id];
+                    }
+                    if (parents[1]->op->name == "Transpose") {
+                        p1 = expression_table[parents[1]->op->get_parents()[0]->id];
+                        flag1 = "AF_MAT_TRANS";
+                    } else {
+                        p1 = expression_table[parents[1]->id];
+                    }
+                    return "af::matmul(" + p0 + ", " + p1 + ", " + flag0 + ", " + flag1 + ")";
+                }
+                if (op_name == "MatrixInv") {
+                    return "af::inverse(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Det") {
+                    return "af::det(" + expression_table[parents[0]->id] + ")";
+                }
+                if (op_name == "Logdet") {
+                    return "af::log(af::det(" + expression_table[parents[0]->id] + "))";
+                }
+                if (op_name == "Trace") {
+                    return "af::sum(af::diag(" + expression_table[parents[0]->id] + "))";
+                }
+                // Shape operators
+                if (op_name == "Diag") {
+                    return "af::diag(" + expression_table[parents[0]->id] + ", 0, " +
+                           std::to_string(node_in->shape[1] == 1) + ")";
+                }
+                if (op_name == "Reshape") {
+                    std::string expression = "af::moddims(" + expression_table[parents[0]->id] + ", ";
+                    for (int i = 0; i < 4; i++) {
+                        expression += node_in->shape[i].to_string_with_star();
                         if (i < 3) {
                             expression += ", ";
                         }
                     }
                     return expression + ")";
-                } else {
-                    return expression_table[parents[0].unwrap()->id];
                 }
-            }
-            if (op_name == "Add") {
-                std::string expression = expression_table[parents[0].unwrap()->id];
-                for (int i = 1; i < parents.size(); i++) {
-                    if (parents[i].unwrap()->op->name == "Neg") {
-                        expression += " - " + expression_table[parents[i].unwrap()->op->get_parents()[0].unwrap()->id];
-                    } else {
-                        expression += " + " + expression_table[parents[i].unwrap()->id];
+                if (op_name == "Reorder") {
+                    std::string expression = "af::reorder(" + expression_table[parents[0]->id] + ", ";
+                    auto order = dynamic_cast<op::Reorder *>(node_in->op.get())->order;
+                    for (int i = 0; i < 4; i++) {
+                        expression += order[i];
+                        if (i < 3) {
+                            expression += ", ";
+                        }
                     }
+                    return expression + ")";
                 }
-                return "(" + expression + ")";
-            }
-            if (op_name == "Neg") {
-                return "(-" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Mul") {
-                std::string expression = expression_table[parents[0].unwrap()->id];
-                for (int i = 1; i < parents.size(); i++) {
-                    if (parents[i].unwrap()->op->name == "Div") {
-                        expression += " / " + expression_table[parents[i].unwrap()->op->get_parents()[0].unwrap()->id];
-                    } else {
-                        expression += " * " + expression_table[parents[i].unwrap()->id];
-                    }
-                }
-                return expression;
-            }
-            if (op_name == "Div") {
-                return "(1.0/" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Sum") {
-                auto axes = dynamic_cast<Sum *>(node_in->op.get())->axes;
-                if (Node(node).is_scalar()) {
-                    return "af::sum(af::flat(" + expression_table[parents[0].unwrap()->id] + "))";
-                } else {
-                    std::string expression = expression_table[parents[0].unwrap()->id];
-                    for (size_t i = 0; i < axes.size(); i++) {
-                        expression = "af::sum(" + expression + ", " + std::to_string(axes[i]) + ")";
-                    }
-                    return expression;
-                }
-            }
-            // Logical operators
-            if (op_name == "Not") {
-                return "!" + expression_table[parents[0].unwrap()->id];
-            }
-            if (op_name == "Gt") {
-                return expression_table[parents[0].unwrap()->id] + " > " + expression_table[parents[1].unwrap()->id];
-            }
-            if (op_name == "Ge") {
-                return expression_table[parents[0].unwrap()->id] + " >= " + expression_table[parents[1].unwrap()->id];
-            }
-            if (op_name == "Lt") {
-                return expression_table[parents[0].unwrap()->id] + " < " + expression_table[parents[1].unwrap()->id];
-            }
-            if (op_name == "Lte") {
-                return expression_table[parents[0].unwrap()->id] + " <= " + expression_table[parents[1].unwrap()->id];
-            }
-            if (op_name == "Eq") {
-                return expression_table[parents[0].unwrap()->id] + " == " + expression_table[parents[1].unwrap()->id];
-            }
-            if (op_name == "ApproxEq") {
-                // TODO
-                return "NotImplemented";
-            }
-            if (op_name == "And") {
-                return expression_table[parents[0].unwrap()->id] + " && " + expression_table[parents[1].unwrap()->id];
-            }
-            if (op_name == "Or") {
-                return expression_table[parents[0].unwrap()->id] + " || " + expression_table[parents[1].unwrap()->id];
-            }
-            if (op_name == "ZeroElem") {
-                return "af::iszero(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "IsNaN") {
-                return "af::isNaN(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "IsInf") {
-                return "af::isInf(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Select") {
-                return "af::select(" + expression_table[args[0].unwrap()->id] + ", " +
-                       expression_table[parents[0].unwrap()->id] + ", " +
-                       expression_table[parents[1].unwrap()->id] + ")";
-            }
-            // Elementwise operators
-            if (op_name == "Square") {
-                return expression_table[parents[0].unwrap()->id] + " * " + expression_table[parents[0].unwrap()->id];
-            }
-            if (op_name == "Exp") {
-                return "af::exp(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Log") {
-                return "af::log(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Abs") {
-                return "af::abs(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Log1p") {
-                return "af::log1p(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Sin") {
-                return "af::sin(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Cos") {
-                return "af::cos(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Tan") {
-                return "af::tan(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Sinh") {
-                return "af::sinh(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Cosh") {
-                return "af::cosh(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Tanh") {
-                return "af::tanh(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Pow") {
-                // TODO
-                return "UnImplemented";
-            }
-            // Linear Algebra operators
-            if (op_name == "Transpose") {
-                return "af::transpose(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "MatrixMul") {
-                if (parents.size() > 2) {
+                // Indexing operators
+                if (op_name == "Slice") {
                     // TODO
-                    return "Matmul implemented only for 2 parents";
+                    return "UnImplemented";
                 }
-                // Have to check for transpose to use flags
-                std::string p0;
-                std::string flag0 = "AF_MAT_NONE";
-                std::string p1;
-                std::string flag1 = "AF_MAT_NONE";
-                std::string expr;
-                if (parents[0].unwrap()->op->name == "Transpose") {
-                    p0 = expression_table[parents[0].unwrap()->op->get_parents()[0].unwrap()->id];
-                    flag0 = "AF_MAT_TRANS";
-                } else {
-                    p0 = expression_table[parents[0].unwrap()->id];
+                if (op_name == "SliceGrad") {
+                    // TODO
+                    return "UnImplemented";
                 }
-                if (parents[1].unwrap()->op->name == "Transpose") {
-                    p1 = expression_table[parents[1].unwrap()->op->get_parents()[0].unwrap()->id];
-                    flag1 = "AF_MAT_TRANS";
-                } else {
-                    p1 = expression_table[parents[1].unwrap()->id];
+                if (op_name == "Index") {
+                    // TODO
+                    return "UnImplemented";
                 }
-                return "af::matmul(" + p0 + ", " + p1 + ", " + flag0 + ", " + flag1 + ")";
-            }
-            if (op_name == "MatrixInv") {
-                return "af::inverse(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Det") {
-                return "af::det(" + expression_table[parents[0].unwrap()->id] + ")";
-            }
-            if (op_name == "Logdet") {
-                return "af::log(af::det(" + expression_table[parents[0].unwrap()->id] + "))";
-            }
-            if (op_name == "Trace") {
-                return "af::sum(af::diag(" + expression_table[parents[0].unwrap()->id] + "))";
-            }
-            // Shape operators
-            if (op_name == "Diag") {
-                return "af::diag(" + expression_table[parents[0].unwrap()->id] + ", 0, " +
-                       std::to_string(node_in->shape[1] == 1) + ")";
-            }
-            if (op_name == "Reshape") {
-                std::string expression = "af::moddims(" + expression_table[parents[0].unwrap()->id] + ", ";
-                for (int i = 0; i < 4; i++) {
-                    expression += node_in->shape[i].to_string_with_star();
-                    if (i < 3) {
-                        expression += ", ";
-                    }
+                if (op_name == "IndexGrad") {
+                    // TODO
+                    return "UnImplemented";
                 }
-                return expression + ")";
-            }
-            if (op_name == "Reorder") {
-                std::string expression = "af::reorder(" + expression_table[parents[0].unwrap()->id] + ", ";
-                auto order = dynamic_cast<Reorder *>(node_in->op.get())->order;
-                for (int i = 0; i < 4; i++) {
-                    expression += order[i];
-                    if (i < 3) {
-                        expression += ", ";
-                    }
+                // Multy-node operators
+                if (op_name == "MaxAndArgMax") {
+                    // TODO
+                    return "UnImplemented";
                 }
-                return expression + ")";
-            }
-            // Indexing operators
-            if (op_name == "Slice"){
-            // TODO
-                return "UnImplemented";
-            }
-            if (op_name == "SliceGrad"){
-                // TODO
-                return "UnImplemented";
-            }
-            if (op_name == "Index"){
-                // TODO
-                return "UnImplemented";
-            }
-            if (op_name == "IndexGrad"){
-                // TODO
-                return "UnImplemented";
-            }
-            // Multy-node operators
-            if (op_name == "MaxAndArgMax") {
-                // TODO
-                return "UnImplemented";
-            }
-            if (op_name == "SortAndArgSort") {
-                // TODO
-                return "UnImplemented";
-            }
-            // Optimized operators
-            if (op_name == "BinCrossEntropyLogit") {
-                std::string p = expression_table[parents[0].unwrap()->id];
-                std::string sfx = expression_table[args[0].unwrap()->id];
-                std::string sfmx = expression_table[args[1].unwrap()->id];
-                return p + " * " + sfmx + " + (1.0 - " + p + ") * " + sfx;
+                if (op_name == "SortAndArgSort") {
+                    // TODO
+                    return "UnImplemented";
+                }
+                // Optimized operators
+                if (op_name == "BinCrossEntropyLogit") {
+                    std::string p = expression_table[parents[0]->id];
+                    std::string sfx = expression_table[args[0]->id];
+                    std::string sfmx = expression_table[args[1]->id];
+                    return p + " * " + sfmx + " + (1.0 - " + p + ") * " + sfx;
+                }
+
+                return "Unreachable";
             }
 
-            return "Unreachable";
-        }
-
-        void print_shape_esception(std::ofstream &f) {
-            f << "class InvalidInputShape: public std::exception{\n"
-                    "    public:\n"
-                    "        size_t id;\n"
-                    "        af::dim4 expected;\n"
-                    "        af::dim4 given;\n"
-                    "        std::string msg;\n"
-                    "        InvalidInputShape(size_t id,\n"
-                    "                          af::dim4 expected,\n"
-                    "                          af::dim4 given):\n"
-                    "                id(id),\n"
-                    "                expected(expected),\n"
-                    "                given(given)\n"
-                    "        {\n"
-                    "            msg = \"The input node with id \" + std::to_string(id) + \" provided has incorrect shape.\\n\" +\n"
-                    "                  \"Expected:\" + std::to_string(expected[0]) + \", \" + std::to_string(expected[1]) + \", \"\n"
-                    "                  + std::to_string(expected[2]) + \", \" + std::to_string(expected[3]) + \", \" +\"\\n\" +\n"
-                    "                  \"Given:   \" + std::to_string(given[0]) + \", \" + std::to_string(given[1]) + \", \"\n"
-                    "                  + std::to_string(given[2]) + \", \" + std::to_string(given[3]) + \", \" +\"\\n\";\n"
-                    "        };\n"
-                    "\n"
-                    "        const char* what() const throw(){\n"
-                    "            return msg.c_str();\n"
-                    "        }\n"
-                    "    };\n\n";
-        }
-    };
+            void print_shape_esception(std::ofstream &f) {
+                f << "class InvalidInputShape: public std::exception{\n"
+                        "    public:\n"
+                        "        size_t id;\n"
+                        "        af::dim4 expected;\n"
+                        "        af::dim4 given;\n"
+                        "        std::string msg;\n"
+                        "        InvalidInputShape(size_t id,\n"
+                        "                          af::dim4 expected,\n"
+                        "                          af::dim4 given):\n"
+                        "                id(id),\n"
+                        "                expected(expected),\n"
+                        "                given(given)\n"
+                        "        {\n"
+                        "            msg = \"The input node with id \" + std::to_string(id) + \" provided has incorrect shape.\\n\" +\n"
+                        "                  \"Expected:\" + std::to_string(expected[0]) + \", \" + std::to_string(expected[1]) + \", \"\n"
+                        "                  + std::to_string(expected[2]) + \", \" + std::to_string(expected[3]) + \", \" +\"\\n\" +\n"
+                        "                  \"Given:   \" + std::to_string(given[0]) + \", \" + std::to_string(given[1]) + \", \"\n"
+                        "                  + std::to_string(given[2]) + \", \" + std::to_string(given[3]) + \", \" +\"\\n\";\n"
+                        "        };\n"
+                        "\n"
+                        "        const char* what() const throw(){\n"
+                        "            return msg.c_str();\n"
+                        "        }\n"
+                        "    };\n\n";
+            }
+        };
+    }
 }
 
 #endif //AUTODIFF_BACKENDS_ARRAYFIRE_H

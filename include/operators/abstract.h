@@ -97,7 +97,7 @@ namespace metadiff {
                 return parent->shape;
             }
 
-            size_t get_grad_level() const {
+            unsigned short get_grad_level() const {
                 return parent->grad_level;
             };
 
@@ -105,9 +105,9 @@ namespace metadiff {
                 return NodeVec {};
             }
 
-            bool equals(const std::shared_ptr <Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr <UnaryOperator> cast_op = std::static_pointer_cast<UnaryOperator>(op);
+                    auto cast_op = std::static_pointer_cast<const UnaryOperator>(op);
                     return symbolic_equals(parent, cast_op->parent);
                 }
                 return false;
@@ -152,7 +152,7 @@ namespace metadiff {
                 return shape;
             }
 
-            size_t get_grad_level() const {
+            unsigned short get_grad_level() const {
                 return parent1->grad_level > parent2->grad_level ?
                        parent1->grad_level :
                        parent2->grad_level;
@@ -162,9 +162,9 @@ namespace metadiff {
                 return NodeVec {};
             }
 
-            bool equals(const std::shared_ptr <Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr <BinaryOperator> cast_op = std::static_pointer_cast<BinaryOperator>(op);
+                    auto cast_op = std::static_pointer_cast<const BinaryOperator>(op);
                     return symbolic_equals(parent1, cast_op->parent1) and
                            symbolic_equals(parent2, cast_op->parent2);
                 }
@@ -217,7 +217,7 @@ namespace metadiff {
                 return shape;
             }
 
-            size_t get_grad_level() const {
+            unsigned short get_grad_level() const {
                 size_t max_grad_level = 0;
                 for (int i = 0; i < parents.size(); i++) {
                     if (parents[i]->grad_level > max_grad_level) {
@@ -273,7 +273,7 @@ namespace metadiff {
                 return shape;
             }
 
-            size_t get_grad_level() const {
+            unsigned short get_grad_level() const {
                 return 0;
             };
 
@@ -287,9 +287,9 @@ namespace metadiff {
                 throw err;
             }
 
-            bool equals(const std::shared_ptr <Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr <ConstantOperator> cast_op = std::static_pointer_cast<ConstantOperator>(op);
+                    auto cast_op = std::static_pointer_cast<const ConstantOperator>(op);
                     return shape == cast_op->shape and dtype == cast_op->dtype;
                 }
                 return false;

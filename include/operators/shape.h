@@ -76,9 +76,9 @@ namespace metadiff{
                 return my_grad.reshape(parent->shape);
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr<Reshape> cast_op = std::static_pointer_cast<Reshape>(op);
+                    auto cast_op = std::static_pointer_cast<const Reshape>(op);
                     return symbolic_equals(parent, cast_op->parent) and shape == cast_op->shape;
                 }
                 return false;
@@ -165,9 +165,9 @@ namespace metadiff{
                 return my_grad.reorder(reverse_order(order));
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr<Reorder> cast_op = std::static_pointer_cast<Reorder>(op);
+                    auto cast_op = std::static_pointer_cast<const Reorder>(op);
                     return symbolic_equals(parent, cast_op->parent) and order == cast_op->order;
                 }
                 return false;

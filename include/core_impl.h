@@ -259,7 +259,7 @@ namespace metadiff{
 
             // Sets the current group to _root/gradient0/parent_group
             Group current_group = graph->current_group;
-            Group top_level = graph->get_group("Gradients " + std::to_string(graph->gradient_mode));
+            Group top_level = graph->get_group("Gradients " + std::to_string(graph->grad_level));
             Group owner_group = this->owner->group;
             std::string group_name = top_level.lock()->full_name;
             group_name += GROUP_DELIMITER;
@@ -541,10 +541,10 @@ namespace metadiff{
             }
 
             // The gradient mode is one higher than that of the objective
-            gradient_mode = objective->grad_level + 1;
+            grad_level = objective->grad_level + 1;
 
             // Set the current group to the corresponding gradients group
-            current_group = get_group("Gradients " + std::to_string(gradient_mode));
+            current_group = get_group("Gradients " + std::to_string(grad_level));
 
             // Send the first message as 1 to the objective
             grad_messages[objective->id] = constant_value(1.0);
@@ -557,7 +557,7 @@ namespace metadiff{
             }
 
             // Reset the gradient mode
-            gradient_mode = 0;
+            grad_level = 0;
 
             // Extract the gradients for each parameter
             std::vector<Node> grads;
@@ -688,7 +688,7 @@ namespace metadiff{
                         op->get_dtype(),
                         op->get_shape(),
                         op,
-                        gradient_mode > op->get_grad_level() ? gradient_mode : op->get_grad_level(),
+                        grad_level > op->get_grad_level() ? grad_level : op->get_grad_level(),
                         current_group
                 );
                 nodes.push_back(result);
@@ -726,7 +726,7 @@ namespace metadiff{
             // Check that the value types are correct
             if (shared->dtype != update->dtype) {
                 auto err = InvalidArguments(NodeVec{shared, update}, "Update",
-                                             "The Shared variable and the update should have the same dtype");
+                                            "The Shared variable and the update should have the same dtype");
                 logger()->error() << name << "] " << err.msg;
                 throw err;
             }
@@ -863,7 +863,7 @@ namespace metadiff{
 //                    INPUT,
 //                    dtype,
 //                    shape,
-//                    std::make_shared<Input>(shared_from_this().get(), dtype),
+//                    std::make_shared<op::Input>(shared_from_this().get(), dtype),
 //                    0,
 //                    current_group
 //            );
@@ -912,12 +912,12 @@ namespace metadiff{
                                     SymInt shape2,
                                     std::string name) {
             return tensor4(dtype, std::array<SymInt, 4>{
-                                  shape0,
-                                  shape1,
-                                  shape2,
-                                  1
-                          },
-                          name);
+                                   shape0,
+                                   shape1,
+                                   shape2,
+                                   1
+                           },
+                           name);
         }
 
         Node GraphInternal::tensor3(dType dtype,
@@ -954,11 +954,11 @@ namespace metadiff{
                                    SymInt shape1,
                                    std::string name) {
             return tensor4(dtype, std::array<SymInt, 4>{
-                                  shape0,
-                                  shape1,
-                                  SymInt::one(),
-                                  SymInt::one()},
-                          name);
+                                   shape0,
+                                   shape1,
+                                   SymInt::one(),
+                                   SymInt::one()},
+                           name);
         }
 
         Node GraphInternal::matrix(dType dtype,
@@ -1020,15 +1020,15 @@ namespace metadiff{
             return tensor4(dtype, shape_t, name);
         }
 
-        std::shared_ptr<Operator> get_base_op(const std::shared_ptr<Operator> op) {
-            std::shared_ptr<Operator> base_op = op;
+        std::shared_ptr<const Operator> Operator::get_base_op(std::shared_ptr<const Operator> const op) {
+            std::shared_ptr<const Operator> base_op = op;
             while (base_op->name == "Alias") {
                 base_op = base_op->get_parents()[0]->op;
             }
             return base_op;
         }
 
-        bool symbolic_equals(const Node &node1, const Node &node2) {
+        bool symbolic_equals(Node const & node1, Node const & node2) {
             if (node1->id == node2->id) {
                 return true;
             }
@@ -1039,8 +1039,8 @@ namespace metadiff{
             if (node_type == INPUT) {
                 return false;
             } else {
-                const std::shared_ptr<Operator> base_op1 = get_base_op(node1->op);
-                const std::shared_ptr<Operator> base_op2 = get_base_op(node2->op);
+                auto base_op1 = Operator::get_base_op(node1->op);
+                auto base_op2 = Operator::get_base_op(node2->op);
                 return base_op1->equals(base_op2) or base_op2->equals(base_op1);
             }
         };

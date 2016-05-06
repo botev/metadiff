@@ -7,28 +7,30 @@
 
 namespace metadiff {
     namespace op{
+        using namespace core;
+
         class Cast : public UnaryOperator{
         public:
-            core::dType dtype;
-            Cast(core::GraphInPtr graph, core::Node parent, core::dType dtype) :
-            UnaryOperator("Cast", graph, parent),
-            dtype(dtype) {};
+            dType dtype;
+            Cast(GraphInPtr graph, Node parent, dType dtype) :
+                    UnaryOperator("Cast", graph, parent),
+                    dtype(dtype) {};
 
-            core::dType get_dtype() const {
+            dType get_dtype() const {
                 return dtype;
             };
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Cast>(graph, ancestors[0], dtype);
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
+            Node get_parent_grad(Node my_grad, unsigned short index) {
                 return my_grad.cast(parent->dtype);
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr<Cast> cast_op = std::static_pointer_cast<Cast>(op);
+                    auto cast_op = std::static_pointer_cast<const Cast>(op);
                     return symbolic_equals(parent, cast_op->parent) and dtype == cast_op->dtype;
                 }
                 return false;
@@ -42,19 +44,19 @@ namespace metadiff {
          */
         class Alias : public UnaryOperator {
         public:
-            Alias(core::GraphInPtr graph, core::Node parent) :
+            Alias(GraphInPtr graph, Node parent) :
                     UnaryOperator("Alias", graph, parent) { };
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Alias>(graph, ancestors[0]);
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
+            Node get_parent_grad(Node my_grad, unsigned short index) {
                 return my_grad;
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
-                std::shared_ptr<Operator> my_op = get_base_op(parent->op);
+            bool equals(std::shared_ptr<const Operator> const op) const {
+                std::shared_ptr<const Operator> my_op = get_base_op(parent->op);
                 return my_op->equals(op) or op->equals(my_op);
             }
         };
@@ -62,11 +64,11 @@ namespace metadiff {
         /** Broadcasts the parent to the specified shape */
         class Broadcast : public UnaryOperator {
         public:
-            core::Shape to_shape;
+            Shape to_shape;
 
-            Broadcast(core::GraphInPtr graph,
-                      core::Node parent,
-                      core::Shape to_shape) :
+            Broadcast(GraphInPtr graph,
+                      Node parent,
+                      Shape to_shape) :
                     UnaryOperator("Broadcast", graph, parent),
                     to_shape(to_shape) {
                 for (int i = 0; i < 4; i++) {
@@ -78,16 +80,16 @@ namespace metadiff {
                 }
             }
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Broadcast>(graph, ancestors[0], to_shape);
             }
 
-            core::Shape get_shape() const {
+            Shape get_shape() const {
                 return to_shape;
             }
 
-            core::Axes get_broadcast_axes() const {
-                core::Axes axes;
+            Axes get_broadcast_axes() const {
+                Axes axes;
                 auto p1_shape = this->parent->shape;
                 for (size_t i = 0; i < 4; i++) {
                     if (p1_shape[i] != to_shape[i]) {
@@ -97,13 +99,13 @@ namespace metadiff {
                 return axes;
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
+            Node get_parent_grad(Node my_grad, unsigned short index) {
                 return my_grad.sum(get_broadcast_axes());
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr<Broadcast> cast_op = std::static_pointer_cast<Broadcast>(op);
+                    auto cast_op = std::static_pointer_cast<const Broadcast>(op);
                     return symbolic_equals(parent, cast_op->parent) and to_shape == cast_op->to_shape;
                 }
                 return false;
@@ -114,11 +116,11 @@ namespace metadiff {
         /** Performs a summation reduction along the axes specified */
         class Sum : public UnaryOperator {
         public:
-            core::Axes axes;
+            Axes axes;
 
-            Sum(core::GraphInPtr graph,
-                core::Node parent,
-                core::Axes axes) :
+            Sum(GraphInPtr graph,
+                Node parent,
+                Axes axes) :
                     UnaryOperator("Sum", graph, parent),
                     axes(axes) {
                 if (not validate_axes(axes)) {
@@ -138,25 +140,25 @@ namespace metadiff {
                 }
             }
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Sum>(graph, ancestors[0], axes);
             }
 
-            core::Shape get_shape() const {
-                core::Shape p_shape = parent->shape;
+            Shape get_shape() const {
+                Shape p_shape = parent->shape;
                 for (int i = 0; i < axes.size(); i++) {
                     p_shape[axes[i]] = 1;
                 }
                 return p_shape;
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
+            Node get_parent_grad(Node my_grad, unsigned short index) {
                 return my_grad.broadcast(parent->shape);
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
-                    std::shared_ptr<Sum> cast_op = std::static_pointer_cast<Sum>(op);
+                    auto cast_op = std::static_pointer_cast<const Sum>(op);
                     return symbolic_equals(parent, cast_op->parent) and axes == cast_op->axes;
                 }
                 return false;
@@ -167,21 +169,21 @@ namespace metadiff {
         /** Addition operator */
         class Add : public ElementwiseNary {
         public:
-            Add(core::GraphInPtr graph, core::NodeVec parents) :
+            Add(GraphInPtr graph, NodeVec parents) :
                     ElementwiseNary("Add", graph, parents) { }
 
-            Add(core::GraphInPtr graph, core::Node parent1, core::Node parent2) :
+            Add(GraphInPtr graph, Node parent1, Node parent2) :
                     Add(graph, {parent1, parent2}) { }
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Add>(graph, ancestors);
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
+            Node get_parent_grad(Node my_grad, unsigned short index) {
                 return my_grad;
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
                     bool check[parents.size()];
                     for (int i = 0; i < parents.size(); i++) {
@@ -191,7 +193,7 @@ namespace metadiff {
                         return false;
                     }
                     for (int i = 0; i < parents.size(); i++) {
-                        core::Node parent = op->get_parents()[i];
+                        Node parent = op->get_parents()[i];
                         int j = 0;
                         for (; j < parents.size(); j++) {
                             if (symbolic_equals(parent, parents[j]) and not check[j]) {
@@ -211,14 +213,14 @@ namespace metadiff {
         /** Unary negation */
         class Neg : public UnaryOperator {
         public:
-            Neg(core::GraphInPtr graph, core::Node parent) :
+            Neg(GraphInPtr graph, Node parent) :
                     UnaryOperator("Neg", graph, parent) { };
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Neg>(graph, ancestors[0]);
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
+            Node get_parent_grad(Node my_grad, unsigned short index) {
                 return my_grad.neg();
             };
         };
@@ -226,17 +228,17 @@ namespace metadiff {
         /** Elementwise multiplication */
         class Mul : public ElementwiseNary {
         public:
-            Mul(core::GraphInPtr graph, core::NodeVec parents) :
+            Mul(GraphInPtr graph, NodeVec parents) :
                     ElementwiseNary("Mul", graph, parents) { };
 
-            Mul(core::GraphInPtr graph, core::Node p1, core::Node p2) :
+            Mul(GraphInPtr graph, Node p1, Node p2) :
                     ElementwiseNary("Mul", graph, {p1, p2}) { };
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Mul>(graph, ancestors);
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
+            Node get_parent_grad(Node my_grad, unsigned short index) {
                 // TODO change the ones and zeros to correct
                 if (parents.size() == 2) {
                     // Special case when only two parents
@@ -250,14 +252,14 @@ namespace metadiff {
                     } else if (parents[1 - index]->op->name == "Zeros") {
                         return parents[1 - index];
                     }
-                    return core::apply<Mul>(my_grad, parents[1 - index]);
+                    return apply<Mul>(my_grad, parents[1 - index]);
                 } else {
-                    core::Node product = core::apply<Mul>(my_grad, owner);
-                    return core::apply<Mul>(product, parents[index].div());
+                    Node product = apply<Mul>(my_grad, owner);
+                    return apply<Mul>(product, parents[index].div());
                 }
             }
 
-            bool equals(const std::shared_ptr<Operator> op) const {
+            bool equals(std::shared_ptr<const Operator> const op) const {
                 if (name == op->name) {
                     bool check[parents.size()];
                     for (int i = 0; i < parents.size(); i++) {
@@ -267,7 +269,7 @@ namespace metadiff {
                         return false;
                     }
                     for (int i = 0; i < parents.size(); i++) {
-                        core::Node parent = op->get_parents()[i];
+                        Node parent = op->get_parents()[i];
                         int j = 0;
                         for (; j < parents.size(); j++) {
                             if (symbolic_equals(parent, parents[j]) and not check[j]) {
@@ -287,15 +289,15 @@ namespace metadiff {
         /** Unary division (inverse) */
         class Div : public UnaryOperator {
         public:
-            Div(core::GraphInPtr graph, core::Node parent) :
+            Div(GraphInPtr graph, Node parent) :
                     UnaryOperator("Div", graph, parent) { };
 
-            std::shared_ptr<Operator> copy_to(core::GraphInPtr graph, core::NodeVec ancestors) const {
+            std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Div>(graph, ancestors[0]);
             }
 
-            core::Node get_parent_grad(core::Node my_grad, size_t index) {
-                return core::Node::mul(core::NodeVec{my_grad, parent.square().div()}).neg();
+            Node get_parent_grad(Node my_grad, unsigned short index) {
+                return Node::mul(NodeVec{my_grad, parent.square().div()}).neg();
             }
         };
     }

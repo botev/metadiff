@@ -353,6 +353,8 @@ namespace metadiff {
         /** Vector of Nodes */
         typedef std::vector<Node> NodeVec;
         /** An update is a pair of shared variable and a node */
+        typedef std::pair<Node, Node> Update;
+        /** A collection of updates */
         typedef std::vector<std::pair<Node, Node>> Updates;
         /** Just a pointer to GraphInternal */
         typedef GraphInternal* GraphInPtr;
@@ -368,7 +370,7 @@ namespace metadiff {
         class Node {
         private:
             std::shared_ptr<spdlog::logger> logger() const {
-                return metadiff::logger("node");
+                return logging::logger("node");
             }
 
         public:
@@ -567,12 +569,7 @@ namespace metadiff {
         class Operator {
         public:
             std::shared_ptr<spdlog::logger> logger() const {
-                return metadiff::logger("operator::" + this->name);
-            }
-
-            void throw_error(std::exception const & err){
-                logger()->error() << name << "] " << err.what();
-                throw err;
+                return logging::logger("operator::" + this->name);
             }
         public:
             /** Pointer to the owning GraphInternal */
@@ -602,7 +599,7 @@ namespace metadiff {
             virtual nodeType get_node_type() const = 0;
 
             /** Calculates what should be the resulting NodeInternal#grad_level */
-            virtual size_t get_grad_level() const = 0;
+            virtual unsigned short get_grad_level() const = 0;
 
             /** Returns the parents NodeVec of this operator */
             virtual NodeVec get_parents() const = 0;
@@ -653,7 +650,7 @@ namespace metadiff {
             /**
              * Skips any alias operators to get the base operator
              */
-            static std::shared_ptr<Operator> get_base_op(std::shared_ptr<const Operator> const op);
+            static std::shared_ptr<const Operator> get_base_op(std::shared_ptr<const Operator> const op);
         };
 
         /**
@@ -670,7 +667,7 @@ namespace metadiff {
             Shape shape;
             std::shared_ptr<Operator> op;
             NodeVec children;
-            size_t grad_level;
+            unsigned short grad_level;
             // Value variables (how can we make this better?)
 //        SymInt sym_value;
 //        af::array value;
@@ -691,7 +688,7 @@ namespace metadiff {
                          dType dtype,
                          Shape shape,
                          std::shared_ptr<Operator> op,
-                         size_t grad_level,
+                         unsigned short grad_level,
                          Group group) :
                     graph(graph),
                     device(device),
@@ -714,7 +711,7 @@ namespace metadiff {
         class GraphInternal : public std::enable_shared_from_this<GraphInternal> {
         private:
             std::shared_ptr<spdlog::logger> logger() const {
-                return metadiff::logger("graph");
+                return logging::logger("graph");
             }
         public:
             /** The name of the graph */
@@ -745,7 +742,7 @@ namespace metadiff {
             Updates updates;
 
             std::vector<std::shared_ptr<NodeGroup>> groups;
-            size_t gradient_mode;
+            unsigned short grad_level;
             Group current_group;
 
             NodeVec temporary_constants;
@@ -765,7 +762,7 @@ namespace metadiff {
                 type_promotion_err_policy = WARN;
                 cast_err_policy = WARN;
                 groups.push_back(std::make_shared<NodeGroup>());
-                gradient_mode = 0;
+                grad_level = 0;
                 current_group = groups[0];
             }
 
@@ -1018,26 +1015,26 @@ namespace metadiff {
          * Check if two nodes are symbolically equivalent.
          * TODO still need to think how to this correctly
          */
-        bool symbolic_equals(Node const &node1, Node const &node2);
+        bool symbolic_equals(Node const & node1, Node const & node2);
 
 
         /** Convenience for applying an unary operator for a derived node */
         template<typename T>
         Node apply(Node node) {
-            return node.unwrap()->graph->derived_node(std::make_shared<T>(node.unwrap()->graph, node));
+            return node->graph->derived_node(std::make_shared<T>(node->graph, node));
         }
 
         /** Convenience for applying a binary operator trough template */
         template<typename T>
         Node apply(Node parent1, Node parent2) {
-            GraphInPtr graph = parent1.unwrap()->graph;
+            GraphInPtr graph = parent1->graph;
             return graph->derived_node(std::make_shared<T>(graph, parent1, parent2));
         }
 
         /** Convenience for applying a nary operator trough template */
         template<typename T>
         Node apply(NodeVec parents) {
-            GraphInPtr graph = parents[0].unwrap()->graph;
+            GraphInPtr graph = parents[0]->graph;
             return graph->derived_node(std::make_shared<T>(graph, parents));
         }
 
@@ -1045,14 +1042,14 @@ namespace metadiff {
             switch (node_type) {
 //            case ad_node_type::SYMBOLIC_INTEGER: return "SYMBOLIC_INTEGER";
                 case CONSTANT:
-                    return "Const";
+                    return "Constant";
                 case INPUT :
-                    return "Input";
+                    return " Input  ";
 //            case ad_node_type::SHARED_INPUT : return "SHARED";
                 case INPUT_DERIVED:
-                    return "Derived";
+                    return "Derived ";
                 case CONSTANT_DERIVED:
-                    return "constDerived";
+                    return "CDerived";
                 default:
                     return "UNREACHABLE";
             }
@@ -1066,7 +1063,7 @@ namespace metadiff {
             } else if (dType == f16) {
                 return "f16";
             } else if (dType == f8) {
-                return "f8";
+                return "f8 ";
             } else if (dType == i64) {
                 return "i64";
             } else if (dType == i32) {
@@ -1074,7 +1071,7 @@ namespace metadiff {
             } else if (dType == i16) {
                 return "i16";
             } else if (dType == i8) {
-                return "i8";
+                return "i8 ";
             } else if (dType == u64) {
                 return "u64";
             } else if (dType == u32) {
@@ -1082,9 +1079,9 @@ namespace metadiff {
             } else if (dType == u16) {
                 return "u16";
             } else if (dType == u8) {
-                return "u8";
+                return "u8 ";
             } else if (dType == b8) {
-                return "bool";
+                return "b8 ";
             } else {
                 return "UNREACHABLE";
             }
@@ -1104,7 +1101,7 @@ namespace metadiff {
                 case HOST:
                     return "HOST";
                 case GPU:
-                    return "GPU";
+                    return "GPU ";
                 default:
                     return "UNREACHABLE";
             }
@@ -1115,7 +1112,7 @@ namespace metadiff {
                 case RAISE:
                     return "Raise";
                 case WARN:
-                    return "Warn";
+                    return "Warn ";
                 case QUIET:
                     return "Quiet";
                 default:
