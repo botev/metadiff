@@ -60,7 +60,7 @@ namespace metadiff{
                     std::string err_msg((std::istreambuf_iterator<char>(log_file)),
                                         std::istreambuf_iterator<char>());
                     auto err = CompilationFailed("Bad compilation response: " + std::to_string(response) +
-                                                            ", command output: " + err_msg);
+                                                 ", command output: " + err_msg);
                     logger()->error() << err.msg;
                     throw err;
                 }
@@ -91,6 +91,7 @@ namespace metadiff{
 
                 // Print includes
                 f << "#include \"vector\"\n"
+                             "#include \"iostream\"\n"
                         "#include \"memory\"\n"
                         "#include <exception>\n"
                         "#include <arrayfire.h>\n";
@@ -98,6 +99,7 @@ namespace metadiff{
 
                 // Write the interface to Shared Variables and InputShapeExceptions
                 write_interface(f);
+                write_af_interface(f);
 
                 // Print a helper function for memory info
 //                f << "void print_mem_info(std::string name){\n"
@@ -122,7 +124,7 @@ namespace metadiff{
                 // Check all of the required inputs are provided
                 for (size_t i = 0; i < graph->nodes.size(); i++) {
                     if (graph->nodes[i]->node_type == core::INPUT and
-                            graph->nodes[i]->op->name != "Shared") {
+                        graph->nodes[i]->op->name != "Shared") {
                         for (size_t j = 0; j <= inputs.size(); j++) {
                             if (j == inputs.size()) {
                                 auto err = MissingRequiredInput(targets, inputs, graph->nodes[i]);
@@ -217,7 +219,7 @@ namespace metadiff{
 
                 if (not update->execution.inlined or
                     (update->op->name != "Add" and update->op->name != "Mul")) {
-                    f << "\tshared_vars[" << shared_id << "]->value = "
+                    f << "\t" << shared_value(shared_id)  << " = "
                     << expression_table[update->id] << ";\n";
                 } else {
                     // This part is for updates of the form
@@ -249,14 +251,13 @@ namespace metadiff{
                             if (cast_op2->var->id == shared_id) {
                                 index = i;
                             }
-                        } else if (parents[i]->op->name != neg_name and
-                                   parents[i]->op->name != neg_name) {
+                        } else if (parents[i]->op->name != neg_name) {
                             all_neg = false;
                         }
                     }
                     if (index == -1) {
                         // If the shared variable is not in the operator than it is a standard syntax
-                        f << "\tshared_vars[" << shared_id << "]->value = "
+                        f << "\t" << shared_value(shared_id) << " = "
                         << expression_table[update->id] << ";\n";
                     } else {
                         // Remove the shared variable from the parents
@@ -267,7 +268,7 @@ namespace metadiff{
                         } else {
                             prefix = pos_char;
                         }
-                        f << "\tshared_vars[" << shared_id << "]->value " << prefix << "=";
+                        f << "\t" << shared_value(shared_id) << prefix << "=";
                         if (all_neg) {
                             // If all are negative we need the grand parents rather than the parents
                             for (size_t i = 0; i < parents.size(); i++) {
@@ -355,7 +356,7 @@ namespace metadiff{
                 }
                 if (op_name == "Shared") {
                     std::shared_ptr<op::SharedInput> cast_op2 = std::static_pointer_cast<op::SharedInput>(node_in->op);
-                    return "shared_vars[" + std::to_string(cast_op2->var->id) + "]->value";
+                    return  shared_value(cast_op2->var->id);
                 }
                 if (op_name == "Alias") {
                     return expression_table[parents[0]->id];
@@ -648,6 +649,71 @@ namespace metadiff{
                         "            return msg.c_str();\n"
                         "        }\n"
                         "    };\n\n";
+            }
+
+            void write_af_interface(std::ofstream &f){
+//                f << "namespace metadiff {\n"
+//                             "    namespace core {\n"
+//                             "dType convert_af_dtype(af_dtype dtype){\n"
+//                             "            switch (dtype){\n"
+//                             "                case af_dtype::b8 : return core::b8;\n"
+//                             "                case af_dtype::u8 : return core::u8;\n"
+//                             "                case af_dtype::u16: return core::u16;\n"
+//                             "                case af_dtype::u32: return core::u32;\n"
+//                             "                case af_dtype::u64: return core::u64;\n"
+//                             "                case af_dtype::s16: return core::i16;\n"
+//                             "                case af_dtype::s32: return core::i32;\n"
+//                             "                case af_dtype::s64: return core::i64;\n"
+//                             "                case af_dtype::f32 : return core::f32;\n"
+//                             "                case af_dtype::f64: return core::f64;\n"
+//                             "                default: throw 20;\n"
+//                             "            }\n"
+//                             "        }\n"
+//                             "//#ifdef AFAPI\n"
+//                             "        /**\n"
+//                             "         * A shared variable backed by an ArrayFire array\n"
+//                             "         * TODO: Currently implemented without taking into account the device\n"
+//                             "         */\n"
+//                             "        class ArrayfireShared: public SharedVariable{\n"
+//                             "        public:\n"
+//                             "            af::array value;\n"
+//                             "//            template <typename T>\n"
+//                             "//            T* get_device_pointer(Device device) {\n"
+//                             "//                return value.host<T>();\n"
+//                             "//            }\n"
+//                             "\n"
+//                             "            static std::shared_ptr<ArrayfireShared> make_var(af::array value, std::string name){\n"
+//                             "                std::shared_ptr<ArrayfireShared> ptr = std::make_shared<ArrayfireShared>(value, name);\n"
+//                             "                SharedVariable::shared_vars.push_back(ptr);\n"
+//                             "                return ptr;\n"
+//                             "            }\n"
+//                             "\n"
+//                             "        public:\n"
+//                             "            ArrayfireShared(af::array value, std::string name):\n"
+//                             "                    SharedVariable(std::array<size_t, 4> {value.dims(0), value.dims(1),\n"
+//                             "                                                          value.dims(2), value.dims(3)},\n"
+//                             "                                   convert_af_dtype(value.type()),\n"
+//                             "                                   name),\n"
+//                             "                    value(value) {\n"
+//                             "            };\n"
+//                             "        };"
+//                             "//#endif //AFAPI\n"
+//                             "\n"
+//                             "    }\n"
+//                             "}\n"
+//                             "\n"
+//                             "using metadiff::core::ArrayfireShared;\n"
+//                             "\n"
+//                             "\ninline\n"
+//                             "std::shared_ptr<ArrayfireShared> get_shared(size_t index, std::vector<SharedPtr>& shared_vars){\n"
+//                             "std::cout << shared_vars[index]->name << std::endl;\n"
+//                             "    return std::static_pointer_cast<ArrayfireShared>(shared_vars[index]);\n"
+//                             "}\n";
+            }
+
+            std::string shared_value(size_t index){
+//                return "get_shared(" + std::to_string(index) + ", shared_vars)->value";
+                return "shared_vars[" + std::to_string(index) + "]->value";
             }
         };
     }

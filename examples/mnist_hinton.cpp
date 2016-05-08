@@ -42,8 +42,8 @@ std::pair<double, double> run_md(int batch_size, int factor, int burnout, int ep
     std::vector<md::Node> params;
     for(int i=1;i<9;i++){
         graph->set_group(layers[i]);
-        params.push_back(graph->shared_var(af::randn(d[i], d[i-1], f32) / 100.0, "W_" + std::to_string(i)));
-        params.push_back(graph->shared_var(af::constant(float(0.0), d[i], 1, f32), "b_" + std::to_string(i)));
+        params.push_back(graph->shared_variable(af::randn(d[i], d[i-1], f32) / 100.0, "W_" + std::to_string(i)));
+        params.push_back(graph->shared_variable(af::constant(float(0.0), d[i], 1, f32), "b_" + std::to_string(i)));
     }
     // First layer
     graph->set_group(layers[1]);
@@ -202,5 +202,5 @@ int main(int argc, char **argv)
     af_print(compile_mean);
     std::cout << "Compile stds:" << std::endl;
     af_print(compile_std);
-
+    metadiff::shared::shared_vars.clear();
 }

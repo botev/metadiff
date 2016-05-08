@@ -76,8 +76,7 @@ namespace metadiff {
             }
 
             Shape get_shape() const {
-                af::dim4 dims = var->value.dims();
-                return Shape {dims[0], dims[1], dims[2], dims[3]};
+                return Shape{var->shape[0], var->shape[1], var->shape[2], var->shape[3]};
             }
 
             nodeType get_node_type() const {
@@ -186,9 +185,15 @@ namespace metadiff {
             return result;
         }
 
-        Node GraphInternal::shared_var(af::array value, std::string name) {
-            SharedPtr shared = std::make_shared<SharedVariable>(shared_vars.size(), value);
-            shared_vars.push_back(shared);
+        Node GraphInternal::shared_variable(SharedPtr shared, std::string name) {
+            std::shared_ptr<Operator> op = std::make_shared<op::SharedInput>(this, shared);
+            Node node = derived_node(op);
+            node->name = name;
+            return node;
+        }
+
+        Node GraphInternal::shared_variable(af::array value, std::string name) {
+            SharedPtr shared = shared::make_shared(value, name);
             std::shared_ptr<Operator> op = std::make_shared<op::SharedInput>(this, shared);
             Node node = derived_node(op);
             node->name = name;

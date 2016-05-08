@@ -80,7 +80,7 @@ namespace metadiff{
             class EvaluationFunction {
             public:
                 /** The list of shared variables */
-                std::vector<SharedPtr> shared_variables;
+//                std::vector<SharedPtr> shared_variables;
                 /** The list of constant variables */
                 std::vector<T> constant_variables;
                 /** The actual function pointer */
@@ -91,7 +91,7 @@ namespace metadiff{
 
                 /** When called you don't need to pass the shared variables */
                 std::vector<T> eval(std::vector<T> &inputs) {
-                    return eval_func(inputs, shared_variables);
+                    return eval_func(inputs, shared::shared_vars);
                 }
             };
 
@@ -169,53 +169,52 @@ namespace metadiff{
                 EvaluationFunction function = link(target_dir, graph->name);
 
                 // Set the shared variables
-                function.shared_variables = graph->shared_vars;
+//                function.shared_variables = graph->shared_vars;
 
                 return function;
             }
 
             void write_interface(std::ofstream &f) {
-                f << "class InvalidInputShape : public std::exception {\n"
-                        "public:\n"
-                        "    size_t id;\n"
-                        "    size_t expected[4];\n"
-                        "    size_t given[4];\n"
-                        "    std::string msg;\n"
-                        "\n"
-                        "    InvalidInputShape(size_t id,\n"
-                        "                      size_t  expected[4],\n"
-                        "                      size_t  given[4]) :\n"
-                        "            id(id){\n"
-                        "        for(int i=0;i<4;i++){\n"
-                        "            this->expected[i] = expected[i];\n"
-                        "            this->given[i] = given[i];\n"
-                        "        }\n"
-                        "        msg = \"The input node with id \" + std::to_string(id) + \" provided has incorrect shape.\\n\" +\n"
-                        "              \"Expected:\" + std::to_string(expected[0]) + \", \" + std::to_string(expected[1]) + \", \"\n"
-                        "              + std::to_string(expected[2]) + \", \" + std::to_string(expected[3]) + \", \" + \"\\n\" +\n"
-                        "              \"Given:   \" + std::to_string(given[0]) + \", \" + std::to_string(given[1]) + \", \"\n"
-                        "              + std::to_string(given[2]) + \", \" + std::to_string(given[3]) + \", \" + \"\\n\";\n"
-                        "    };\n"
-                        "\n"
-                        "    const char *what() const throw() {\n"
-                        "        return msg.c_str();\n"
-                        "    }\n"
-                        "};\n"
-                        "\n"
-                        "class SharedVariable{\n"
-                        "public:\n"
-                        "    size_t id;\n"
-                        "    af::array value;\n"
-                        "    SharedVariable():\n"
-                        "            id(0),\n"
-                        "            value(af::array())\n"
-                        "    {};\n"
-                        "    SharedVariable(size_t id, af::array value):\n"
-                        "            id(id),\n"
-                        "            value(value)\n"
-                        "    {};\n"
-                        "};\n"
-                        "typedef std::shared_ptr<SharedVariable> SharedPtr;\n";
+                f << "namespace metadiff{\n"
+                             "    namespace shared{\n"
+                             "        /** A shared variable is a like a static variable, which is synchronized between devices */\n"
+                             "        class SharedVariable {\n"
+                             "        public:\n"
+                             "            size_t const id;\n"
+                             "            std::string const name;\n"
+                             "            std::array<long long, 4> const shape;\n"
+                             "\n"
+                             "            af::array value;\n"
+                             "        public:\n"
+                             "            SharedVariable(size_t id,\n"
+                             "                           std::array<long long, 4> shape,\n"
+                             "                           std::string name):\n"
+                             "                    id(id),\n"
+                             "                    shape(shape),\n"
+                             "                    name(name) {};\n"
+                             "\n"
+                             "            SharedVariable(size_t id,\n"
+                             "                           af::array value,\n"
+                             "                           std::string name):\n"
+                             "                    id(id),\n"
+                             "                    value(value),\n"
+                             "                    shape(std::array<long long, 4> {value.dims(0), value.dims(1),\n"
+                             "                                                    value.dims(2), value.dims(3)}),\n"
+                             "                    name(name) {};\n"
+                             "        };\n"
+                             "\n"
+                             "        typedef std::shared_ptr<SharedVariable> SharedPtr;\n"
+                             "        static std::vector<SharedPtr> shared_vars;\n"
+                             "\n"
+                             "        static SharedPtr make_shared(af::array value, std::string name){\n"
+                             "            SharedPtr ptr = std::make_shared<SharedVariable>(shared_vars.size(), value, name);\n"
+                             "            shared_vars.push_back(ptr);\n"
+                             "            return ptr;\n"
+                             "        }\n"
+                             "    }\n"
+                             "}\n"
+                             "using metadiff::shared::SharedVariable;\n"
+                             "using metadiff::shared::SharedPtr;\n";
             }
         };
     }

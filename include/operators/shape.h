@@ -97,7 +97,7 @@ namespace metadiff{
                     Axes order) :
                     UnaryOperator("Reorder", graph, parent),
                     order(order) {
-                InvalidArguments err = InvalidArguments(NodeVec{parent}, name, "");
+                InvalidArguments err = InvalidArguments();
                 if(order.size() > 4){
                     err = InvalidArguments(NodeVec{parent}, name,
                                            "The ordering must contain no more than 4 elements");
@@ -114,7 +114,7 @@ namespace metadiff{
                     throw InvalidArguments(NodeVec{parent}, name,
                                            "The ordering must contain at least 1 element");
                 }
-                if (err.err.compare("") != 0) {
+                if (err.msg.compare("") != 0) {
                     logger()->error() << err.msg;
                     throw err;
                 }

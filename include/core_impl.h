@@ -348,7 +348,7 @@ namespace metadiff{
             new_graph->broadcast_err_policy = broadcast_err_policy;
             new_graph->type_promotion_err_policy = type_promotion_err_policy;
             new_graph->sym_integer_count = sym_integer_count;
-            new_graph->shared_vars = shared_vars;
+//            new_graph->shared_vars = shared_vars;
             new_graph->groups = groups;
             size_t n = nodes.size();
             // Variable which maps each node (by id) of the original graph to a Node in the new graph

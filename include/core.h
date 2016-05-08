@@ -6,8 +6,8 @@
 #define METADIFF_CORE_H
 
 namespace metadiff {
-
     namespace core {
+        using shared::SharedPtr;
         /** The maximum number of symbolic integers allowed */
         static size_t const N = 1000;
 
@@ -355,6 +355,9 @@ namespace metadiff {
         typedef GraphInternal* GraphInPtr;
         /** A shared_ptr to GraphInternal, this is the outside API */
         typedef std::shared_ptr<core::GraphInternal> Graph;
+        /** The host running the process has always an id of 0 */
+        static const Device MASTER (HOST, 0);
+//        Device MASTER = Device(deviceType::HOST, 0);
 
         // Helper function to get all elements of a node
         SymInt number_of_elements(Shape shape) {
@@ -730,7 +733,7 @@ namespace metadiff {
 
             size_t sym_integer_count;
             std::vector<std::shared_ptr<NodeInternal>> nodes;
-            std::vector<SharedPtr> shared_vars;
+//            std::vector<SharedPtr> shared_vars;
             Updates updates;
 
             std::vector<std::shared_ptr<NodeGroup>> groups;
@@ -744,7 +747,7 @@ namespace metadiff {
                 // TODO Have a better preference of devices available in order
                 name = "Function";
                 sym_integer_count = 0;
-                default_device = Device(HOST, 0);
+                default_device = MASTER;
                 max_float = f32;
                 max_int = i32;
                 promote_type = [this](dType dtype1, dType dtype2)->dType {
@@ -789,11 +792,11 @@ namespace metadiff {
             Graph optimize(NodeVec &targets, Updates &updates, NodeVec &inputs,
                            NodeVec &new_targets, Updates &new_updates, NodeVec &new_inputs);
 
-            /**
-             * Creates a new shared variable
-             * TODO This should be made independent from arrayfire as well as the whole SharedVariable class
-             */
-            Node shared_var(af::array value, std::string name = "SharedVar");
+//            /**
+//             * Creates a new shared variable
+//             * TODO This should be made independent from arrayfire as well as the whole SharedVariable class
+//             */
+//            Node shared_var(af::array value, std::string name = "SharedVar");
 
             /** Creates a new derived node (INTERNAL) */
             Node derived_node(std::shared_ptr<Operator> op);
@@ -803,7 +806,7 @@ namespace metadiff {
 
 //            /**
 //             * Creates a new constant node
-//             * TODO This should be made independant from arrayfire as well as the whole SharedVariable class
+//             * TODO This should be made independent from arrayfire as well as the whole SharedVariable class
 //             */
 //        Node constant_node(af::array value);
             /** Returns the next unused symbolic integer */
@@ -933,6 +936,12 @@ namespace metadiff {
 
             /** Returns a matrix filled with zeros with the given shape */
             Node zeros(Shape shape);
+
+            /** Returns a Node wrapper around a shared variable */
+            Node shared_variable(SharedPtr var, std::string name = "SharedVar");
+
+            /** Returns a Node wrapper around a shared variable */
+            Node shared_variable(af::array value, std::string name = "SharedVar");
 
             /**
              * Returns a Node wrapper around the constant value.
