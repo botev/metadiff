@@ -8,83 +8,9 @@
 namespace metadiff {
     namespace core {
         using shared::SharedPtr;
-        /** The maximum number of symbolic integers allowed */
-        static size_t const N = 1000;
-
-        /** The root NodeGroup name */
-        static std::string const GROUP_ROOT  = "_root";
-
-        /** The NodeGroup name separator */
-        static char const GROUP_DELIMITER = '/';
-
-        /**
-         * When calling an Operator working along one axis
-         * this flag for the axis indicates to auto infer it.
-         * (Can we make this int8?)
-         */
-        static short const AUTO_INFER_AXIS = 1000;
-
-        /** Each Node on the Graph is exactly one of these types */
-        enum nodeType {
-            /**
-    //         * The node is just a SymInt, which interacts with other nodes in an operator
-    //         */
-//                SYMBOLIC_INTEGER,
-            /** The node represents a constant */
-                    CONSTANT = 0,
-            /** The node is derived from a constant, trough one or more Operator */
-                    CONSTANT_DERIVED = 1,
-            /**
-             * The node is an input.
-             * This can be either function input or a shared variable
-             */
-                    INPUT = 2,
-//        /**
-//         * The node is a shared variable
-//         */
-//                SHARED_INPUT,
-            /** The node is derived from an input, trough one or more Operator */
-                    INPUT_DERIVED = 3
-        };
-
-        /**
-         * Data type of a Node
-         *
-         * Note that currently not all provided types are supported
-         */
-        enum dType{
-            /** 8 bit boolean */
-                    b8 = 0,
-            /** 8 bit unsigned integer */
-                    u8 = 1,
-            /** 16 bit unsigned integer */
-                    u16 = 2,
-            /** 32 bit unsigned integer */
-                    u32 = 3,
-            /** 64 bit unsigned integer */
-                    u64 = 4,
-            /** 8 bit signed integer */
-                    i8 = 5,
-            /** 16 bit signed integer */
-                    i16 = 6,
-            /** 32 bit signed integer */
-                    i32 = 7,
-            /** 64 bit signed integer */
-                    i64 = 8,
-            /** 8 bit floating point */
-                    f8 = 9,
-            /** 16 bit floating point */
-                    f16 = 10,
-            /** 32 bit floating point */
-                    f32 = 11,
-            /** 64 bit floating point */
-                    f64 = 12
-        };
-
-
-        /** Converts an af_dtype to dType
-         * TODO: Make proper exception when given complex type */
-        dType convert_af_dtype(af_dtype dtype);
+//        /** Converts an af_dtype to dType
+//         * TODO: Make proper exception when given complex type */
+//        dType convert_af_dtype(af_dtype dtype);
 
         /**
          * This is the default data type promotion,
@@ -137,52 +63,6 @@ namespace metadiff {
 //             */
 //                    bit64
 //        };
-
-        /**
-         * An error policy defines how should we behave when an error occurs
-         */
-        enum errorPolicy {
-            /** Does nothing */
-                    QUIET = 0,
-            /** Prints a warning */
-                    WARN = 1,
-            /** Throws an error */
-                    RAISE = 2
-        };
-
-        /**
-         * Currently we support only two device types
-         */
-        enum deviceType {
-            /** Represents a host with one or more CPUs */
-                    HOST = 0,
-            /** Represents a single GPU */
-                    GPU = 1
-        };
-
-        /**
-         * A single computational device to facilitate multy node computations
-         * TODO not yet well designed, high probability it will change in the future
-         */
-        class Device {
-        public:
-            /** Type of the device - host or gpu*/
-            deviceType type;
-            /** A unique identifier of the device */
-            size_t id;
-
-            Device() :
-                    type(HOST),
-                    id(0) { };
-
-            Device(deviceType type, size_t id) :
-                    type(type),
-                    id(id) { };
-
-            Device(Device &device) :
-                    type(device.type),
-                    id(device.id) { };
-        };
 
 
 //        class ValueType {
@@ -939,10 +819,10 @@ namespace metadiff {
 
             /** Returns a Node wrapper around a shared variable */
             Node shared_variable(SharedPtr var, std::string name = "SharedVar");
-
+#ifdef AFAPI
             /** Returns a Node wrapper around a shared variable */
             Node shared_variable(af::array value, std::string name = "SharedVar");
-
+#endif
             /**
              * Returns a Node wrapper around the constant value.
              * The #ones(Shape shape, dType type = f32) is a case of this when value = 1.0
@@ -973,28 +853,28 @@ namespace metadiff {
              */
             Node constant_value(short value, Shape shape = {1, 1, 1, 1});
 
-            /**
-             * Returns a Node wrapper around the boolean value.
-             */
+            /** Returns a Node wrapper around the boolean value. */
             Node constant_value(bool value, Shape shape = {1, 1, 1, 1});
-
-            /**
-             * Returns a Node wrapper around the af::array.
-             */
+#ifdef AFAPI
+            /** Returns a Node wrapper around the af::array. */
             Node constant_value(af::array value);
-
-            /**
-             * Returns a Node wrapper around the SymInt
-             */
+#endif
+            /** Returns a Node wrapper around the SymInt */
             Node wrap_symbolic_int(SymInt value);
 
             template<typename T>
             Node wrap(T value) {
                 if (std::is_same<T, Node>::value) {
                     return static_cast<Node>(value);
-                } else if (std::is_same<T, af::array>::value) {
+                } else if(std::is_same<T, SharedPtr>::value){
+                    return shared_variable(value, ((SharedPtr) value)->name);
+                }
+#ifdef AFAPI
+                else if (std::is_same<T, af::array>::value) {
                     return constant_value(value);
-                } else if (std::is_same<T, SymInt>::value) {
+                }
+#endif
+                else if (std::is_same<T, SymInt>::value) {
                     return wrap_symbolic_int(value);
                 } else {
                     return constant_value(value);

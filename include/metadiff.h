@@ -24,8 +24,8 @@
 
 #include "logging.h"
 #include "symbolic.h"
+#include "defs.h"
 #include "shared.h"
-//#include "interface.h"
 #include "core.h"
 #include "exceptions.h"
 #include "core_impl.h"

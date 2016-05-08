@@ -25,21 +25,21 @@ namespace metadiff{
             }
         }
 
-        dType convert_af_dtype(af_dtype dtype){
-            switch (dtype){
-                case af_dtype::b8 : return core::b8;
-                case af_dtype::u8 : return core::u8;
-                case af_dtype::u16: return core::u16;
-                case af_dtype::u32: return core::u32;
-                case af_dtype::u64: return core::u64;
-                case af_dtype::s16: return core::i16;
-                case af_dtype::s32: return core::i32;
-                case af_dtype::s64: return core::i64;
-                case af_dtype::f32 : return core::f32;
-                case af_dtype::f64: return core::f64;
-                default: throw 20;
-            }
-        }
+//        dType convert_af_dtype(af_dtype dtype){
+//            switch (dtype){
+//                case af_dtype::b8 : return core::b8;
+//                case af_dtype::u8 : return core::u8;
+//                case af_dtype::u16: return core::u16;
+//                case af_dtype::u32: return core::u32;
+//                case af_dtype::u64: return core::u64;
+//                case af_dtype::s16: return core::i16;
+//                case af_dtype::s32: return core::i32;
+//                case af_dtype::s64: return core::i64;
+//                case af_dtype::f32 : return core::f32;
+//                case af_dtype::f64: return core::f64;
+//                default: throw 20;
+//            }
+//        }
 
         dType default_dType_promotion(dType type1,
                                       dType type2,

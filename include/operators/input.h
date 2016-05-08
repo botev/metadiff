@@ -72,7 +72,7 @@ namespace metadiff {
             }
 
             dType get_dtype() const {
-                return convert_af_dtype(var->value.type());
+                return var->get_dtype();
             }
 
             Shape get_shape() const {
@@ -102,6 +102,10 @@ namespace metadiff {
             }
 
             bool equals(std::shared_ptr<const Operator> const op) const {
+                if(name == op->name){
+                    auto cast_op = std::static_pointer_cast<const SharedInput>(op);
+                    return var->id == cast_op->var->id;
+                }
                 return false;
             }
         };
@@ -150,7 +154,7 @@ namespace metadiff {
             }
 
             bool equals(std::shared_ptr<const Operator> const op) const {
-                if (op->name == "SymInt") {
+                if (this->name == op->name) {
                     auto cast_op = std::static_pointer_cast<const SymIntWrapper>(op);
                     return cast_op->value == value;
                 }
@@ -192,6 +196,7 @@ namespace metadiff {
             return node;
         }
 
+#ifdef AFAPI
         Node GraphInternal::shared_variable(af::array value, std::string name) {
             SharedPtr shared = shared::make_shared(value, name);
             std::shared_ptr<Operator> op = std::make_shared<op::SharedInput>(this, shared);
@@ -199,6 +204,7 @@ namespace metadiff {
             node->name = name;
             return node;
         };
+#endif
     }
 }
 #endif //METADIFF_SPECIAL_H

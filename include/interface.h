@@ -5,12 +5,9 @@
 #ifndef METADIFF_INTERFACE_H
 #define METADIFF_INTERFACE_H
 
-#include <exception>
-
 namespace metadiff{
-    namespace core{
-
-        enum dType{
+    namespace core {
+        enum dType {
             /** 8 bit boolean */
                     b8 = 0,
             /** 8 bit unsigned integer */
@@ -38,74 +35,79 @@ namespace metadiff{
             /** 64 bit floating point */
                     f64 = 12
         };
+    }
 
+    namespace shared{
         /** A shared variable is a like a static variable, which is synchronized between devices */
         class SharedVariable {
         public:
-            static std::vector<std::shared_ptr<SharedVariable>> shared_vars;
             size_t const id;
-            dType const dtype;
             std::string const name;
-            std::array<size_t, 4> const shape;
+            std::array<long long, 4> const shape;
 
-//            template <typename T>
-//            T* get_device_pointer(Device device);
-//
-//            template <typename T>
-//            T* get_pointer(){
-//                return get_device_pointer<T>(MASTER);
-//            }
-        protected:
-            SharedVariable(std::array<size_t, 4> shape, std::string name):
-                    id(shared_vars.size()),
-                    dtype(dtype),
+//            af::array value;
+        public:
+            SharedVariable(size_t id,
+                           std::array<long long, 4> shape,
+                           std::string name):
+                    id(id),
                     shape(shape),
                     name(name) {};
+
+            virtual core::dType get_dtype() const = 0;
         };
 
         typedef std::shared_ptr<SharedVariable> SharedPtr;
-        std::vector<SharedPtr> SharedVariable::shared_vars;
-    }
+        static std::vector<SharedPtr> shared_vars;
 
-    namespace exceptions{
-        class InvalidInputShape : public std::exception {
-        private:
-            std::string generate_message(){
-                std::stringstream msg;
-                msg << "The input to the function at index " << input_index << "(zero based), "
-                << "corresponding to node with id " << id << " has expected shape"
-                << "(" << expected_shape[0] << "," << expected_shape[1] << ","
-                << expected_shape[2] << "," << expected_shape[3] << "), "
-                << "but the provided input had shape"
-                << "(" << provided_shape[0] << "," << provided_shape[1] << ","
-                << provided_shape[2] << "," << provided_shape[3] << ").";
-                return msg.str();
-            }
+        /** A shared variable is a like a static variable, which is synchronized between devices */
+        class ArrayFireVariable: public SharedVariable {
         public:
-            size_t input_index;
-            size_t id;
-            std::array<size_t, 4> expected_shape;
-            std::array<size_t, 4> provided_shape;
-            std::string msg;
-            InvalidInputShape(): msg("") {};
+            af::array value;
+            ArrayFireVariable(size_t id,
+                              af::array value,
+                              std::string name):
+                    SharedVariable(id, std::array<long long, 4> {value.dims(0), value.dims(1),
+                                                                 value.dims(2), value.dims(3)},
+                                   name),
+                    value(value) {};
 
-            InvalidInputShape(size_t const input_index,
-                              size_t const id,
-                              std::array<size_t, 4> expected_shape,
-                              std::array<size_t, 4> provided_shape):
-                    input_index(input_index), id(id),
-                    expected_shape(expected_shape),
-                    provided_shape(provided_shape),
-                    msg(generate_message()) {};
+            /** Converts an af_dtype to dType
+             * TODO: Make proper exception when given complex type */
+            static core::dType convert_af_dtype(af_dtype dtype){
+                switch (dtype){
+                    case af_dtype::b8 : return core::b8;
+                    case af_dtype::u8 : return core::u8;
+                    case af_dtype::u16: return core::u16;
+                    case af_dtype::u32: return core::u32;
+                    case af_dtype::u64: return core::u64;
+                    case af_dtype::s16: return core::i16;
+                    case af_dtype::s32: return core::i32;
+                    case af_dtype::s64: return core::i64;
+                    case af_dtype::f32 : return core::f32;
+                    case af_dtype::f64: return core::f64;
+                    default: throw 20;
+                }
+            }
 
-            const char *what() const throw() {
-                return msg.c_str();
+            core::dType get_dtype() const{
+                return ArrayFireVariable::convert_af_dtype(value.type());
             }
         };
+
+        typedef std::shared_ptr<ArrayFireVariable> AfShared;
+
+        static SharedPtr make_shared(af::array value, std::string name){
+            SharedPtr ptr = std::make_shared<ArrayFireVariable>(shared_vars.size(), value, name);
+            shared_vars.push_back(ptr);
+            return ptr;
+        }
     }
 }
 
-using metadiff::core::SharedPtr;
-using metadiff::exceptions::InvalidInputShape;
+using metadiff::shared::SharedVariable;
+using metadiff::shared::SharedPtr;
+using metadiff::shared::ArrayFireVariable;
+using metadiff::shared::AfShared;
 
 #endif //METADIFF_INTERFACE_H

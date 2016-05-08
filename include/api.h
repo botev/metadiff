@@ -6,6 +6,7 @@
 #define METADIFF_API_H
 namespace metadiff{
     namespace api{
+        using shared::SharedPtr;
         using core::GROUP_ROOT;
         using core::GROUP_DELIMITER;
         using core::AUTO_INFER_AXIS;
@@ -26,8 +27,9 @@ namespace metadiff{
 
         using logging::metadiff_sink;
         using dagre::dagre_to_file;
+#ifdef AFAPI
         typedef backend::ArrayfireBackend AfBackend;
-
+#endif
         // API functions
         /** Creates a new symbolic Graph instance */
         Graph create_graph(){

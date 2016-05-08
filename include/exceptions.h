@@ -53,7 +53,7 @@ namespace metadiff{
             UnsupportedGradient(Node node):
                     GraphError(NodeVec{node},
                                "Error: Taking gradient is only possible with respect to scalar objectives. " +
-                               nodes_description(nodes)) {}
+                               nodes_description(NodeVec{node})) {}
         };
 
         class WrongGradient : public GraphError {
@@ -65,7 +65,7 @@ namespace metadiff{
                                "Error: The gradient node with id " + std::to_string(inputs[1]->id) +
                                " was sent to node with id " + std::to_string(inputs[0]->id) +
                                " and operator " + inputs[0]->op->name + " , but all its parents are constant. " +
-                               nodes_description(nodes)) {}
+                               nodes_description(inputs)) {}
         };
 
         class OtherError: public GraphError{
@@ -73,7 +73,7 @@ namespace metadiff{
             OtherError(): GraphError() {};
 
             OtherError(NodeVec inputs, std::string msg):
-                    GraphError(inputs, "Error: " + msg + " " + nodes_description(nodes)) {};
+                    GraphError(inputs, "Error: " + msg + " " + nodes_description(inputs)) {};
         };
 
         class OperatorError : public GraphError{
@@ -83,7 +83,7 @@ namespace metadiff{
             OperatorError(): GraphError() {};
 
             OperatorError(NodeVec inputs, std::string op_name, std::string err):
-                    GraphError(inputs, err + " " + nodes_description(nodes)), op_name(op_name), err(err) {}
+                    GraphError(inputs, err + " " + nodes_description(inputs)), op_name(op_name), err(err) {}
         };
 
         class ImplicitBroadcast : public OperatorError {

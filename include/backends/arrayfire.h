@@ -5,11 +5,10 @@
 #ifndef AUTODIFF_BACKENDS_ARRAYFIRE_H
 #define AUTODIFF_BACKENDS_ARRAYFIRE_H
 
-#include <fstream>
 namespace metadiff{
     namespace backend {
         using namespace exceptions;
-
+#ifdef AFAPI
         class ArrayfireBackend : public FunctionBackend<af::array> {
         public:
             std::string af_path;
@@ -91,7 +90,7 @@ namespace metadiff{
 
                 // Print includes
                 f << "#include \"vector\"\n"
-                             "#include \"iostream\"\n"
+                        "#include \"iostream\"\n"
                         "#include \"memory\"\n"
                         "#include <exception>\n"
                         "#include <arrayfire.h>\n";
@@ -624,98 +623,76 @@ namespace metadiff{
                 return "Unreachable";
             }
 
-            void print_shape_esception(std::ofstream &f) {
-                f << "class InvalidInputShape: public std::exception{\n"
-                        "    public:\n"
-                        "        size_t id;\n"
-                        "        af::dim4 expected;\n"
-                        "        af::dim4 given;\n"
-                        "        std::string msg;\n"
-                        "        InvalidInputShape(size_t id,\n"
-                        "                          af::dim4 expected,\n"
-                        "                          af::dim4 given):\n"
-                        "                id(id),\n"
-                        "                expected(expected),\n"
-                        "                given(given)\n"
-                        "        {\n"
-                        "            msg = \"The input node with id \" + std::to_string(id) + \" provided has incorrect shape.\\n\" +\n"
-                        "                  \"Expected:\" + std::to_string(expected[0]) + \", \" + std::to_string(expected[1]) + \", \"\n"
-                        "                  + std::to_string(expected[2]) + \", \" + std::to_string(expected[3]) + \", \" +\"\\n\" +\n"
-                        "                  \"Given:   \" + std::to_string(given[0]) + \", \" + std::to_string(given[1]) + \", \"\n"
-                        "                  + std::to_string(given[2]) + \", \" + std::to_string(given[3]) + \", \" +\"\\n\";\n"
-                        "        };\n"
-                        "\n"
-                        "        const char* what() const throw(){\n"
-                        "            return msg.c_str();\n"
-                        "        }\n"
-                        "    };\n\n";
-            }
 
             void write_af_interface(std::ofstream &f){
-//                f << "namespace metadiff {\n"
-//                             "    namespace core {\n"
-//                             "dType convert_af_dtype(af_dtype dtype){\n"
-//                             "            switch (dtype){\n"
-//                             "                case af_dtype::b8 : return core::b8;\n"
-//                             "                case af_dtype::u8 : return core::u8;\n"
-//                             "                case af_dtype::u16: return core::u16;\n"
-//                             "                case af_dtype::u32: return core::u32;\n"
-//                             "                case af_dtype::u64: return core::u64;\n"
-//                             "                case af_dtype::s16: return core::i16;\n"
-//                             "                case af_dtype::s32: return core::i32;\n"
-//                             "                case af_dtype::s64: return core::i64;\n"
-//                             "                case af_dtype::f32 : return core::f32;\n"
-//                             "                case af_dtype::f64: return core::f64;\n"
-//                             "                default: throw 20;\n"
-//                             "            }\n"
-//                             "        }\n"
-//                             "//#ifdef AFAPI\n"
-//                             "        /**\n"
-//                             "         * A shared variable backed by an ArrayFire array\n"
-//                             "         * TODO: Currently implemented without taking into account the device\n"
-//                             "         */\n"
-//                             "        class ArrayfireShared: public SharedVariable{\n"
-//                             "        public:\n"
-//                             "            af::array value;\n"
-//                             "//            template <typename T>\n"
-//                             "//            T* get_device_pointer(Device device) {\n"
-//                             "//                return value.host<T>();\n"
-//                             "//            }\n"
-//                             "\n"
-//                             "            static std::shared_ptr<ArrayfireShared> make_var(af::array value, std::string name){\n"
-//                             "                std::shared_ptr<ArrayfireShared> ptr = std::make_shared<ArrayfireShared>(value, name);\n"
-//                             "                SharedVariable::shared_vars.push_back(ptr);\n"
-//                             "                return ptr;\n"
-//                             "            }\n"
-//                             "\n"
-//                             "        public:\n"
-//                             "            ArrayfireShared(af::array value, std::string name):\n"
-//                             "                    SharedVariable(std::array<size_t, 4> {value.dims(0), value.dims(1),\n"
-//                             "                                                          value.dims(2), value.dims(3)},\n"
-//                             "                                   convert_af_dtype(value.type()),\n"
-//                             "                                   name),\n"
-//                             "                    value(value) {\n"
-//                             "            };\n"
-//                             "        };"
-//                             "//#endif //AFAPI\n"
-//                             "\n"
-//                             "    }\n"
-//                             "}\n"
-//                             "\n"
-//                             "using metadiff::core::ArrayfireShared;\n"
-//                             "\n"
-//                             "\ninline\n"
-//                             "std::shared_ptr<ArrayfireShared> get_shared(size_t index, std::vector<SharedPtr>& shared_vars){\n"
-//                             "std::cout << shared_vars[index]->name << std::endl;\n"
-//                             "    return std::static_pointer_cast<ArrayfireShared>(shared_vars[index]);\n"
-//                             "}\n";
+                f << "namespace metadiff{\n"
+                        "    namespace shared{\n"
+                        "        /** A shared variable is a like a static variable, which is synchronized between devices */\n"
+                        "        class ArrayFireVariable: public SharedVariable {\n"
+                        "        public:\n"
+                        "            af::array value;\n"
+                        "            ArrayFireVariable(size_t id,\n"
+                        "                              af::array value,\n"
+                        "                              std::string name):\n"
+                        "                    SharedVariable(id, std::array<long long, 4> {value.dims(0), value.dims(1),\n"
+                        "                                                                 value.dims(2), value.dims(3)},\n"
+                        "                                   name),\n"
+                        "                    value(value) {};\n"
+                        "\n"
+                        "            /** Converts an af_dtype to dType\n"
+                        "             * TODO: Make proper exception when given complex type */\n"
+                        "            static core::dType convert_af_dtype(af_dtype dtype){\n"
+                        "                switch (dtype){\n"
+                        "                    case af_dtype::b8 : return core::b8;\n"
+                        "                    case af_dtype::u8 : return core::u8;\n"
+                        "                    case af_dtype::u16: return core::u16;\n"
+                        "                    case af_dtype::u32: return core::u32;\n"
+                        "                    case af_dtype::u64: return core::u64;\n"
+                        "                    case af_dtype::s16: return core::i16;\n"
+                        "                    case af_dtype::s32: return core::i32;\n"
+                        "                    case af_dtype::s64: return core::i64;\n"
+                        "                    case af_dtype::f32 : return core::f32;\n"
+                        "                    case af_dtype::f64: return core::f64;\n"
+                        "                    default: throw 20;\n"
+                        "                }\n"
+                        "            }\n"
+                        "\n"
+                        "            core::dType get_dtype() const{\n"
+                        "                return ArrayFireVariable::convert_af_dtype(value.type());\n"
+                        "            }\n"
+                        "        };\n"
+                        "        \n"
+                        "        typedef std::shared_ptr<ArrayFireVariable> AfShared;\n"
+                        "\n"
+                        "        static SharedPtr make_shared(af::array value, std::string name){\n"
+                        "            SharedPtr ptr = std::make_shared<ArrayFireVariable>(shared_vars.size(), value, name);\n"
+                        "            shared_vars.push_back(ptr);\n"
+                        "            return ptr;\n"
+                        "        }\n"
+                        "    }\n"
+                        "}\n"
+                        "\n"
+                        "using metadiff::shared::ArrayFireVariable;\n"
+                        "using metadiff::shared::AfShared;\n"
+                        "template <size_t T>\n\n"
+                        "inline  AfShared get(std::vector<SharedPtr>& shared_vars){\n"
+                        "     return std::static_pointer_cast<ArrayFireVariable>(shared_vars[T]);\n"
+                        "}\n";
             }
 
+//            template <typename size_t T>
+//            inline  shared::AfShared get(std::vector<SharedPtr>& shared_vars){
+//                return std::static_pointer_cast<shared::ArrayFireVariable>(shared_vars[T]);
+//            }
+
             std::string shared_value(size_t index){
+                return "get<" + std::to_string(index) + ">(shared_vars)->value";
+//                return "std::static_pointer_cast<ArrayFireVariable>(shared_vars[" + std::to_string(index) + "])";
 //                return "get_shared(" + std::to_string(index) + ", shared_vars)->value";
-                return "shared_vars[" + std::to_string(index) + "]->value";
+//                return "shared_vars[" + std::to_string(index) + "]->value";
             }
         };
+#endif
     }
 }
 

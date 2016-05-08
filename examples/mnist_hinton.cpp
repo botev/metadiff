@@ -6,7 +6,6 @@
 
 
 namespace md = metadiff::api;
-namespace sym = metadiff::symbolic;
 namespace dat = datasets;
 
 

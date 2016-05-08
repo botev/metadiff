@@ -9,18 +9,17 @@ namespace metadiff{
     namespace op {
         using namespace core;
         using namespace exceptions;
-        
+#ifdef AFAPI
         /** Operator for constant input variables */
         class ConstantInput : public ConstantOperator {
         public:
             af::array value;
-
             ConstantInput(GraphInPtr graph,
                           af::array value) :
                     ConstantOperator("ConstInput", graph ,
                                      Shape{value.dims(0), value.dims(1),
-                                                 value.dims(2), value.dims(3)},
-                                     convert_af_dtype(value.type())) {};
+                                           value.dims(2), value.dims(3)},
+                                     shared::ArrayFireVariable::convert_af_dtype(value.type())) {};
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<ConstantInput>(graph, value);
@@ -30,7 +29,7 @@ namespace metadiff{
                 return false;
             }
         };
-
+#endif
 
         /** Tensor filled with the same value */
         class ConstantValue : public ConstantOperator {
@@ -117,12 +116,12 @@ namespace metadiff{
     };
 
     namespace core {
-
+#ifdef AFAPI
         Node GraphInternal::constant_value(af::array value) {
             std::shared_ptr<Operator> op = std::make_shared<op::ConstantInput>(this, value);
             return derived_node(op);
         }
-
+#endif
         Node GraphInternal::constant_value(double value, Shape shape) {
             std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, max_float);
             return derived_node(op);
