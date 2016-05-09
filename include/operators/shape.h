@@ -25,13 +25,13 @@ namespace metadiff{
                     throw err;
                 }
                 if (parent.is_vector()) {
-                    shape = {parent->shape[0], parent->shape[0], 1, 1};
+                    shape = {parent->shape[0], parent->shape[0], SymInt::one, SymInt::one};
                 } else if (parent->shape[0] != parent->shape[1]) {
                     auto err = InvalidArguments(NodeVec{parent}, name, "Parent is not a square matrix.");
                     logger()->error() << err.msg;
                     throw err;
                 } else {
-                    shape = {parent->shape[0], 1, 1, 1};
+                    shape = {parent->shape[0], SymInt::one, SymInt::one, SymInt::one};
                 }
             };
 
@@ -142,7 +142,7 @@ namespace metadiff{
             }
 
             Shape get_shape() const {
-                Shape shape = {1, 1, 1, 1};
+                Shape shape = scalar_shape;
                 for(int i=0; i<4; i++){
                     if(i < order.size()){
                         shape[i] = parent->shape[order[i]];
@@ -196,7 +196,7 @@ namespace metadiff{
             Shape shape = ptr->shape;
             for (int i = 3; i >= dims; i--) {
                 shape[i - 1] = shape[i] * shape[i - 1];
-                shape[i] = 1;
+                shape[i] = SymInt::one;
             }
             return reshape(shape);
         }

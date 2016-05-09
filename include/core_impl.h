@@ -860,7 +860,7 @@ namespace metadiff{
         }
 
 //        Node GraphInternal::tensor4(dType dtype,
-//                                    std::array<SymInt, 4> shape,
+//                                    Shape shape,
 //                                    std::string name) {
 //            auto result = std::make_shared<NodeInternal>(
 //                    shared_from_this().get(),
@@ -885,7 +885,7 @@ namespace metadiff{
                                     SymInt shape2,
                                     SymInt shape3,
                                     std::string name) {
-            std::array<SymInt, 4> shape{shape0,
+            Shape shape{shape0,
                                         shape1,
                                         shape2,
                                         shape3};
@@ -894,7 +894,7 @@ namespace metadiff{
 
         Node GraphInternal::tensor4(dType dtype,
                                     std::string name) {
-            std::array<SymInt, 4> shape = {
+            Shape shape = {
                     get_new_symbolic_integer(),
                     get_new_symbolic_integer(),
                     get_new_symbolic_integer(),
@@ -910,7 +910,7 @@ namespace metadiff{
         Node GraphInternal::tensor3(dType dtype,
                                     std::array<SymInt, 3> shape,
                                     std::string name) {
-            return tensor4(dtype, {shape[0], shape[1], shape[2], 1}, name);
+            return tensor4(dtype, {shape[0], shape[1], shape[2], SymInt::one}, name);
         }
 
         Node GraphInternal::tensor3(dType dtype,
@@ -918,11 +918,11 @@ namespace metadiff{
                                     SymInt shape1,
                                     SymInt shape2,
                                     std::string name) {
-            return tensor4(dtype, std::array<SymInt, 4>{
+            return tensor4(dtype, Shape{
                                    shape0,
                                    shape1,
                                    shape2,
-                                   1
+                                   SymInt::one
                            },
                            name);
         }
@@ -952,7 +952,7 @@ namespace metadiff{
         Node GraphInternal::matrix(dType dtype,
                                    std::array<SymInt, 2> shape,
                                    std::string name) {
-            std::array<SymInt, 4> shape_t{shape[0], shape[1], SymInt::one(), SymInt::one()};
+            Shape shape_t{shape[0], shape[1], SymInt::one, SymInt::one};
             return tensor4(dtype, shape_t, name);
         }
 
@@ -960,11 +960,11 @@ namespace metadiff{
                                    SymInt shape0,
                                    SymInt shape1,
                                    std::string name) {
-            return tensor4(dtype, std::array<SymInt, 4>{
+            return tensor4(dtype, Shape{
                                    shape0,
                                    shape1,
-                                   SymInt::one(),
-                                   SymInt::one()},
+                                   SymInt::one,
+                                   SymInt::one},
                            name);
         }
 
@@ -991,14 +991,14 @@ namespace metadiff{
         Node GraphInternal::square_matrix(dType dtype,
                                           SymInt shape,
                                           std::string name) {
-            std::array<SymInt, 4> shape_t{shape, shape, SymInt::one(), SymInt::one()};
+            Shape shape_t{shape, shape, SymInt::one, SymInt::one};
             return tensor4(dtype, shape_t, name);
         }
 
         Node GraphInternal::vector(dType dtype,
                                    SymInt shape,
                                    std::string name) {
-            std::array<SymInt, 4> shape_t{shape, SymInt::one(), SymInt::one(), SymInt::one()};
+            Shape shape_t{shape, SymInt::one, SymInt::one, SymInt::one};
             return tensor4(dtype, shape_t, name);
         }
 
@@ -1023,7 +1023,7 @@ namespace metadiff{
 
         Node GraphInternal::scalar(dType dtype,
                                    std::string name) {
-            std::array<SymInt, 4> shape_t{SymInt::one(), SymInt::one(), SymInt::one(), SymInt::one()};
+            Shape shape_t{SymInt::one, SymInt::one, SymInt::one, SymInt::one};
             return tensor4(dtype, shape_t, name);
         }
 

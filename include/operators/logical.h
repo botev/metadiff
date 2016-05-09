@@ -220,7 +220,7 @@ namespace metadiff {
             }
 
             Shape get_shape() const {
-                return Shape{1, 1, 1, 1};
+                return scalar_shape;
             }
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
@@ -245,7 +245,7 @@ namespace metadiff {
             }
 
             Shape get_shape() const {
-                return Shape{1, 1, 1, 1};
+                return scalar_shape;
             }
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {

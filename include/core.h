@@ -213,13 +213,15 @@ namespace metadiff {
         /** Axes are used for certain operators */
         typedef std::vector<short> Axes;
         /** A symbolic integer is just a SymbolicPolynomial */
-        typedef symbolic::SymbolicPolynomial<N, unsigned short> SymInt;
+        typedef symbolic::SymbolicPolynomial<unsigned short, unsigned short> SymInt;
         /**
         * The shape of any variable.
         * Currently we support 4 dimensional tensors.
         * Each dimension is a SymInt
         */
         typedef std::array<SymInt, 4> Shape;
+        static const Shape scalar_shape = Shape{SymInt::one, SymInt::one, SymInt::one, SymInt::one};
+
         /** A group is a weak_ptr to internal Group */
         typedef std::weak_ptr<core::NodeGroup> Group;
         class GraphInternal;
@@ -827,34 +829,34 @@ namespace metadiff {
              * Returns a Node wrapper around the constant value.
              * The #ones(Shape shape, dType type = f32) is a case of this when value = 1.0
              */
-            Node constant_value(double value, Shape shape = {1, 1, 1, 1});
+            Node constant_value(double value, Shape shape = scalar_shape);
 
             /**
              * Returns a Node wrapper around the constant value.
              * The #ones(Shape shape, dType type) is a case of this when value = 1.0
              */
-            Node constant_value(float value, Shape shape = {1, 1, 1, 1});
+            Node constant_value(float value, Shape shape = scalar_shape);
 
             /**
              * Returns a Node wrapper around the constant value.
              * The #ones(Shape shape, dType type) is a case of this when value = 1.0
              */
-            Node constant_value(long value, Shape shape = {1, 1, 1, 1});
+            Node constant_value(long value, Shape shape = scalar_shape);
 
             /**
              * Returns a Node wrapper around the constant value.
              * The #ones(Shape shape, dType type) is a case of this when value = 1.0
              */
-            Node constant_value(int value, Shape shape = {1, 1, 1, 1});
+            Node constant_value(int value, Shape shape = scalar_shape);
 
             /**
              * Returns a Node wrapper around the constant value.
              * The #ones(Shape shape, dType type) is a case of this when value = 1.0
              */
-            Node constant_value(short value, Shape shape = {1, 1, 1, 1});
+            Node constant_value(short value, Shape shape = scalar_shape);
 
             /** Returns a Node wrapper around the boolean value. */
-            Node constant_value(bool value, Shape shape = {1, 1, 1, 1});
+            Node constant_value(bool value, Shape shape = scalar_shape);
 #ifdef AFAPI
             /** Returns a Node wrapper around the af::array. */
             Node constant_value(af::array value);

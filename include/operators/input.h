@@ -28,7 +28,7 @@ namespace metadiff {
             }
 
             Shape get_shape() const {
-                return Shape{0, 0, 0, 0};
+                return Shape{SymInt::zero, SymInt::zero, SymInt::zero, SymInt::zero};
             }
 
             nodeType get_node_type() const {
@@ -128,7 +128,7 @@ namespace metadiff {
             }
 
             Shape get_shape() const {
-                return Shape{1, 1, 1, 1};
+                return scalar_shape;
             }
 
             nodeType get_node_type() const {

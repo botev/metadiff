@@ -144,7 +144,7 @@ namespace metadiff{
 
             Shape get_shape(unsigned short index) const{
                 Shape shape = parent->shape;
-                shape[axis] = 1;
+                shape[axis] = SymInt::one;
                 return shape;
             }
 
@@ -213,7 +213,7 @@ namespace metadiff{
 
             Shape get_shape(unsigned short index) const{
                 Shape shape = parent->shape;
-                shape[axis] = 1;
+                shape[axis] = SymInt::one;
                 return shape;
             }
 

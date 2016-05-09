@@ -21,7 +21,7 @@ namespace metadiff{
             }
 
             Shape get_shape() const {
-                Shape shape{1, 1, 1, 1};
+                Shape shape{SymInt::one, SymInt::one, SymInt::one, SymInt::one};
                 int last_non_zero = 0;
                 for (int i = 3; i >= 0; i--) {
                     if (parent->shape[i] != 1) {
@@ -184,7 +184,7 @@ namespace metadiff{
             }
 
             Shape get_shape() const {
-                return {1, 1, 1, 1};
+                return scalar_shape;
             }
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
@@ -219,7 +219,7 @@ namespace metadiff{
             }
 
             Shape get_shape() const {
-                return {1, 1, 1, 1};
+                return scalar_shape;
             }
 
             Node get_parent_grad(Node my_grad, unsigned short index) {
@@ -252,7 +252,7 @@ namespace metadiff{
 
 
             Shape get_shape() const {
-                return {1, 1, 1, 1};
+                return scalar_shape;
             }
 
             Node get_parent_grad(Node my_grad, unsigned short index) {

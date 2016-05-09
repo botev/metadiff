@@ -5,14 +5,6 @@
 #ifndef METADIFF_METADIFF_H
 #define METADIFF_METADIFF_H
 
-//#ifdef DEBUG
-//#define METADIFF_LOGGING
-//#endif
-//
-//#ifdef METADIFF_LOGGING
-//sad
-//#endif
-
 #include <exception>
 #include <algorithm>
 #include "vector"

@@ -8,7 +8,7 @@
 namespace metadiff{
     namespace core{
         /** The maximum number of symbolic integers allowed */
-        static size_t const N = 1000;
+//        static size_t const N = 1000;
 
         /** The root NodeGroup name */
         static std::string const GROUP_ROOT  = "_root";

@@ -149,7 +149,7 @@ namespace metadiff {
             Shape get_shape() const {
                 Shape p_shape = parent->shape;
                 for (int i = 0; i < axes.size(); i++) {
-                    p_shape[axes[i]] = 1;
+                    p_shape[axes[i]] = SymInt::one;
                 }
                 return p_shape;
             }

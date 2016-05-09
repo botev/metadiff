@@ -59,7 +59,7 @@ namespace metadiff{
         class Eye : public ConstantOperator {
         public:
             Eye(GraphInPtr graph, SymInt size, dType dtype) :
-                    ConstantOperator("Eye", graph, Shape{size, size, 1, 1}, dtype) {}
+                    ConstantOperator("Eye", graph, Shape{size, size, SymInt::one, SymInt::one}, dtype) {}
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Eye>(graph, shape[0], dtype);
@@ -74,7 +74,7 @@ namespace metadiff{
             SymInt end;
 
             Sequence(GraphInPtr graph, SymInt start, SymInt end, dType dtype) :
-                    ConstantOperator("Sequence", graph, Shape {end - start, 1, 1, 1}, dtype),
+                    ConstantOperator("Sequence", graph, Shape {end - start, SymInt::one, SymInt::one, SymInt::one}, dtype),
                     start(start), end(end) {}
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
