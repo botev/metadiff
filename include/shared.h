@@ -12,9 +12,7 @@ namespace metadiff{
         public:
             size_t const id;
             std::string const name;
-            std::array<long long, 4> const shape;
-
-//            af::array value;
+            std::array<long long int, 4> const shape;
         public:
             SharedVariable(size_t id,
                            std::array<long long, 4> shape,
@@ -73,7 +71,6 @@ namespace metadiff{
             shared_vars.push_back(ptr);
             return ptr;
         }
-
 #endif
     }
 }

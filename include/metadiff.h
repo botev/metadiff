@@ -5,13 +5,12 @@
 #ifndef METADIFF_METADIFF_H
 #define METADIFF_METADIFF_H
 
-#include <exception>
-#include <algorithm>
 #include "vector"
+#include "memory"
 #include "iostream"
 #include "iomanip"
+#include <exception>
 #include <fstream>
-#include "memory"
 #include <dlfcn.h>
 
 #include "logging.h"
