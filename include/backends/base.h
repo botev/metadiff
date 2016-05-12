@@ -79,12 +79,12 @@ namespace metadiff{
             /** Inner class for the function */
             class EvaluationFunction {
             public:
-                /** The list of shared variables */
-//                std::vector<SharedPtr> shared_variables;
                 /** The list of constant variables */
                 std::vector<T> constant_variables;
                 /** The actual function pointer */
-                const func_ptr eval_func;
+                func_ptr eval_func;
+
+                EvaluationFunction() {};
 
                 EvaluationFunction(func_ptr eval_func) :
                         eval_func(eval_func) { };
