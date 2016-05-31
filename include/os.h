@@ -131,6 +131,15 @@ namespace metadiff{
             }
             curl_global_cleanup();
         }
+
+        /** Returns the size of a file in bytes
+         * TODO Check if this is truly correct way to do this */
+        long long file_size(std::string file_name) {
+            struct stat st;
+            if (stat(file_name.c_str(), &st) == -1)
+                return 0;
+            return ((long long)st.st_size);
+        }
     }
 }
 
