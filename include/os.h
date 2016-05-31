@@ -140,6 +140,11 @@ namespace metadiff{
                 return 0;
             return ((long long)st.st_size);
         }
+
+        /** Definitely not cross platform, but for now will do */
+        int unpack_gz(std::string gz_path){
+            return system(("gzip -d -f " + gz_path).c_str());
+        }
     }
 }
 
