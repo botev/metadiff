@@ -164,7 +164,7 @@ namespace metadiff {
     }
 
     namespace core {
-        Node GraphInternal::wrap_symbolic_int(SymInt value) {
+        Node GraphInternal::wrap(SymInt value) {
             std::shared_ptr<Operator> op = std::make_shared<op::SymIntWrapper>(this, value);
             return derived_node(op);
         }

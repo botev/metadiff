@@ -34,22 +34,14 @@ namespace metadiff{
             };
 
             void compile(std::string source_dir, std::string target_dir, std::string graph_name) {
-                std::string source_path = source_dir;
-                source_path += kPathSeparator;
-                source_path += graph_name + ".cpp";
-                std::string dll_path = target_dir;
-                dll_path += kPathSeparator;
-                dll_path += graph_name + ".so";
+                std::string source_path = os::join_paths(source_dir, graph_name + ".cpp");
+                std::string dll_path = os::join_paths(target_dir, graph_name + ".so");
                 logger()->debug() << name << "] Compiling file " << source_path << " to " << dll_path;
                 std::string log_path = source_path + ".log";
                 std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
                 command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
-                command += " -I" + af_path;
-                command += kPathSeparator;
-                command += "include";
-                command += " -L" + af_path;
-                command += kPathSeparator;
-                command += "lib";
+                command += " -I" + os::join_paths(af_path, "include");
+                command += " -L" + os::join_paths(af_path, "lib");
                 command += " -o " + dll_path + " " + source_path;
                 command += " > " + log_path + " 2>&1";
                 logger()->debug() << name << "] Compile command: " << command;
@@ -68,19 +60,14 @@ namespace metadiff{
 
             EvaluationFunction link(std::string target_dir,
                                     std::string graph_name) {
-                std::string dll_path = target_dir;
-                dll_path += kPathSeparator;
-                dll_path += graph_name + ".so";
-                return link_dll(dll_path, "eval_func");
+                return link_dll(os::join_paths(target_dir, graph_name + ".so"), "eval_func");
             }
 
             void generate_source(std::string source_dir,
                                  Graph graph,
                                  std::vector<Node> inputs,
                                  std::vector<Node> targets) {
-                std::string source_path = source_dir;
-                source_path += kPathSeparator;
-                source_path += graph->name + ".cpp";
+                std::string source_path = os::join_paths(source_dir, graph->name + ".cpp");
                 logger()->trace() << name << "] Generating source file " << source_path;
                 std::ofstream f;
                 f.open(source_path);
@@ -338,7 +325,7 @@ namespace metadiff{
                     std::shared_ptr<op::ConstantValue> cast_op = std::static_pointer_cast<op::ConstantValue>(node_in->op);
                     if (node.is_scalar()) {
                         // TODO correctly do this
-                        return std::to_string(round(cast_op->value * 100)/ 100);
+                        return std::to_string(cast_op->value);
                     } else {
                         // TODO
                         return "NotImplemented";
@@ -618,6 +605,11 @@ namespace metadiff{
                     std::string sfx = expression_table[args[0]->id];
                     std::string sfmx = expression_table[args[1]->id];
                     return p + " * " + sfmx + " + (1.0 - " + p + ") * " + sfx;
+                }
+
+                if(op_name == "Cast"){
+                    logger()->info() << parents[0]->op->name << " " << expression_table[parents[0]->id];
+                    return expression_table[parents[0]->id];
                 }
 
                 return "Unreachable";

@@ -12,6 +12,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Werror=return-type -fopenmp")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 -fopenmp -lmkl_rt -lpthread -lm -Wl,--no-as-needed -Wall")
 
+#target_include_directories(metadiff PUBLIC "include")
 include_directories(spdlog/include)
 include_directories(include)
 

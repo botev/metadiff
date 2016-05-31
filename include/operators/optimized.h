@@ -50,7 +50,7 @@ namespace metadiff {
                 // dE/dp = dE * (sf(-x)-sf(x))
                 // dE/dx = dE * (q-p) = dE * (sigmoid(x) - p)
                 if (index == 0) {
-                    return Node::mul(my_grad, softplus_mx - softplus_x);
+                    return my_grad * (softplus_mx - softplus_x);
                 } else {
 //                    std::cout << my_grad->shape << std::endl
 //                    << my_grad->op->name << std::endl
@@ -63,7 +63,7 @@ namespace metadiff {
 //                    std::cout << b->shape << std::endl;
 //                    auto c = a + b;
 //                    std::cout << c->shape << std::endl;
-                    return Node::mul(my_grad, parent2.sigmoid() - parent1);
+                    return my_grad * (parent2.sigmoid() - parent1);
                 }
             }
         };

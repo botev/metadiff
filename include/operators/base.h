@@ -353,13 +353,20 @@ namespace metadiff {
             }
         };
 
-        Node Node::add(Node node1, Node node2) {
-            return Node::add(NodeVec {node1, node2});
-        };
-
         Node operator+(Node node1, Node node2) {
             return Node::add(NodeVec {node1, node2});
         };
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator+(L node1, Node node2) {
+            return Node::add(NodeVec {node2->graph->wrap(node1), node2});
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator+(Node node1, R node2) {
+            return Node::add(NodeVec {node1, node1->graph->wrap(node2)});
+        };
+
 
         Node Node::neg() {
             // TODO x.neg().neg() = x
@@ -373,6 +380,16 @@ namespace metadiff {
         Node operator-(Node node1, Node node2) {
             return Node::add(NodeVec{node1, node2.neg()});
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator-(L node1, Node node2) {
+            return Node::add(NodeVec {node2->graph->wrap(node1), node2.neg()});
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator-(Node node1, R node2) {
+            return Node::add(NodeVec {node1, node1->graph->wrap(node2).neg()});
+        };
 
         Node Node::mul(NodeVec nodes) {
             // TODO e^x * e^y = e^(x+y)
@@ -402,12 +419,18 @@ namespace metadiff {
 
         };
 
-        Node Node::mul(Node node1, Node node2){
-            return Node::mul(NodeVec{node1, node2});
-        }
-
         Node operator*(Node node1, Node node2) {
             return Node::mul(NodeVec{node1, node2});
+        };
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator*(L node1, Node node2) {
+            return Node::mul(NodeVec {node2->graph->wrap(node1), node2});
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator*(Node node1, R node2) {
+            return Node::mul(NodeVec {node1, node1->graph->wrap(node2)});
         };
 
         Node Node::div() {
@@ -417,6 +440,16 @@ namespace metadiff {
 
         Node operator/(Node node1, Node node2) {
             return Node::mul(NodeVec{node1, node2.div()});
+        };
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator/(L node1, Node node2) {
+            return Node::mul(NodeVec {node2->graph->wrap(node1), node2.div()});
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator/(Node node1, R node2) {
+            return Node::mul(NodeVec {node1, node1->graph->wrap(node2).div()});
         };
     }
 }

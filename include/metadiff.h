@@ -12,7 +12,9 @@
 #include <exception>
 #include <fstream>
 #include <dlfcn.h>
+#include "sstream"
 
+#include "os.h"
 #include "logging.h"
 #include "symbolic.h"
 #include "defs.h"

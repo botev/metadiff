@@ -20,35 +20,6 @@ namespace metadiff{
                 return logging::logger("backend::" + name);
             }
 
-            const char kPathSeparator =
-            #ifdef _WIN32
-                                '\\';
-            #else
-                                '/';
-            #endif
-
-            /** Function to create a temporary directory and return its path
-             * TODO - make this cross-platform */
-            std::string get_and_create_temp_dir() {
-                std::string path = std::tmpnam(nullptr);
-                return path;
-            };
-
-            /** Function to check if the folder exists and create it if not
-             * TODO - make this cross-platform */
-            void check_create_dir(std::string path) {
-                if (stat(path.c_str(), &info) != 0) {
-                    logger()->debug() << name << "] Creating directory " << path;
-                    mkdir(path.c_str(), S_IRWXU);
-                } else if (info.st_mode & S_IFDIR) {
-                    logger()->debug() << name << "] Directory " + path + " already exists";
-                } else {
-                    auto e = CompilationFailed("Directory " + path + " is a file");
-                    logger()->error() << e.msg;
-                    throw e;
-                }
-            }
-
             /** Handle to the underlying DLL */
             void *dll_handle;
 
@@ -66,7 +37,7 @@ namespace metadiff{
             FunctionBackend(std::string name, bool debug = false) :
                     name(name),
                     debug(debug) {
-                dir_path = get_and_create_temp_dir();
+                dir_path = os::make_temp_dir();
             };
 
             FunctionBackend(std::string name, std::string dir_path, bool debug = false) :
@@ -144,12 +115,10 @@ namespace metadiff{
                                                 std::vector<Node> targets,
                                                 Updates &updates) {
                 logger()->debug() << name << "] Compiling function to " << dir_path;
-                check_create_dir(dir_path);
+                 os::create_dir(dir_path, true);
                 // Set path for the source
-                std::string source_dir = dir_path;
-                source_dir += kPathSeparator;
-                source_dir += "src";
-                check_create_dir(source_dir);
+                std::string source_dir = os::join_paths(dir_path, "src");
+                os::create_dir(dir_path, true);
 
                 // Generate the source
                 graph->add_temporary_updates(updates);
@@ -157,10 +126,8 @@ namespace metadiff{
                 graph->clear_temporary_updates();
 
                 // Set path for the lib
-                std::string target_dir = dir_path;
-                target_dir += kPathSeparator;
-                target_dir += "lib";
-                check_create_dir(target_dir);
+                std::string target_dir = os::join_paths(dir_path, "lib");
+                os::create_dir(target_dir, true);
 
                 // Compile the source to the lib
                 compile(source_dir, target_dir, graph->name);

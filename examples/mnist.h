@@ -146,7 +146,7 @@ namespace datasets {
                     {
                         unsigned char temp=0;
                         file.read((char*)&temp,sizeof(temp));
-                        data[(r*MNIST_NUM_COLS + c) + i*MNIST_NUM_COLS*MNIST_NUM_ROWS]= ((float)temp) / float(255.0);
+                        data[(n_rows*r)+c + i*MNIST_NUM_COLS*MNIST_NUM_ROWS]= ((float)temp) / float(255.0);
                     }
                 }
             }
@@ -175,4 +175,5 @@ namespace datasets {
         file.close();
     }
 }
+
 #endif //METADIFF_MNIST_H

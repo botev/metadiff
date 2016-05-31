@@ -122,48 +122,89 @@ namespace metadiff{
             return derived_node(op);
         }
 #endif
-        Node GraphInternal::constant_value(double value, Shape shape) {
-            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, max_float);
+        Node GraphInternal::constant_value(bool value, Shape shape) {
+            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, b8);
             return derived_node(op);
         }
 
-        Node GraphInternal::constant_value(float value, Shape shape) {
+        Node GraphInternal::constant_value(unsigned short value, Shape shape) {
             std::shared_ptr<Operator> op;
-            if(max_float == f64) {
-                op = std::make_shared<op::ConstantValue>(this, value, shape, f32);
-            } else {
-                op = std::make_shared<op::ConstantValue>(this, value, shape, max_float);
+            switch (max_int){
+                case i8: op = std::make_shared<op::ConstantValue>(this, value, shape, u8); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, u16); break;
             }
             return derived_node(op);
         }
 
-        Node GraphInternal::constant_value(long value, Shape shape) {
-            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, max_int);
+        Node GraphInternal::constant_value(unsigned int value, Shape shape) {
+            std::shared_ptr<Operator> op;
+            switch (max_int){
+                case i8: op = std::make_shared<op::ConstantValue>(this, value, shape, u8); break;
+                case i16: op = std::make_shared<op::ConstantValue>(this, value, shape, u16); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, u32); break;
+            }
             return derived_node(op);
         }
 
-        Node GraphInternal::constant_value(int value, Shape shape) {
+        Node GraphInternal::constant_value(unsigned long value, Shape shape) {
             std::shared_ptr<Operator> op;
-            if(max_int == i64) {
-                op = std::make_shared<op::ConstantValue>(this, value, shape, i32);
-            } else {
-                op = std::make_shared<op::ConstantValue>(this, value, shape, max_int);
+            switch (max_int){
+                case i8: op = std::make_shared<op::ConstantValue>(this, value, shape, u8); break;
+                case i16: op = std::make_shared<op::ConstantValue>(this, value, shape, u16); break;
+                case i32: op = std::make_shared<op::ConstantValue>(this, value, shape, u32); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, u64); break;
             }
             return derived_node(op);
         }
 
         Node GraphInternal::constant_value(short value, Shape shape) {
             std::shared_ptr<Operator> op;
-            if(max_int == i64 or max_int == i32) {
-                op = std::make_shared<op::ConstantValue>(this, value, shape, i16);
-            } else {
-                op = std::make_shared<op::ConstantValue>(this, value, shape, max_int);
+            switch (max_int){
+                case i8: op = std::make_shared<op::ConstantValue>(this, value, shape, i8); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, i16); break;
             }
             return derived_node(op);
         }
 
-        Node GraphInternal::constant_value(bool value, Shape shape) {
-            std::shared_ptr<Operator> op = std::make_shared<op::ConstantValue>(this, value, shape, b8);
+        Node GraphInternal::constant_value(int value, Shape shape) {
+            std::shared_ptr<Operator> op;
+            switch (max_int){
+                case i8: op = std::make_shared<op::ConstantValue>(this, value, shape, i8); break;
+                case i16: op = std::make_shared<op::ConstantValue>(this, value, shape, i16); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, i32); break;
+            }
+            return derived_node(op);
+        }
+
+        Node GraphInternal::constant_value(long value, Shape shape) {
+            std::shared_ptr<Operator> op;
+            switch (max_int){
+                case i8: op = std::make_shared<op::ConstantValue>(this, value, shape, i8); break;
+                case i16: op = std::make_shared<op::ConstantValue>(this, value, shape, i16); break;
+                case i32: op = std::make_shared<op::ConstantValue>(this, value, shape, i32); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, i64); break;
+            }
+            return derived_node(op);
+        }
+
+        Node GraphInternal::constant_value(float value, Shape shape) {
+            std::shared_ptr<Operator> op;
+            switch (max_float){
+                case f8: op = std::make_shared<op::ConstantValue>(this, value, shape, f8); break;
+                case f16: op = std::make_shared<op::ConstantValue>(this, value, shape, f16); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, f32); break;
+            }
+            return derived_node(op);
+        }
+
+        Node GraphInternal::constant_value(double value, Shape shape) {
+            std::shared_ptr<Operator> op;
+            switch (max_float){
+                case f8: op = std::make_shared<op::ConstantValue>(this, value, shape, f8); break;
+                case f16: op = std::make_shared<op::ConstantValue>(this, value, shape, f16); break;
+                case f32: op = std::make_shared<op::ConstantValue>(this, value, shape, f32); break;
+                default: op = std::make_shared<op::ConstantValue>(this, value, shape, f64); break;
+            }
             return derived_node(op);
         }
 

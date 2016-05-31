@@ -53,21 +53,21 @@ namespace metadiff{
             return node.alias();
         }
 
-        Node add(Node node1, Node node2) {
-            return Node::add(NodeVec{node1, node2});
-        };
-
-        Node neg(Node node1, Node node2) {
-            return Node::add(NodeVec{node1, node2.neg()});
-        }
-
-        Node mul(Node node1, Node node2) {
-            return Node::mul(NodeVec{node1, node2});
-        }
-
-        Node div(Node node1, Node node2) {
-            return Node::mul(NodeVec{node1, node2.div()});
-        }
+//        Node add(Node node1, Node node2) {
+//            return Node::add(NodeVec{node1, node2});
+//        };
+//
+//        Node neg(Node node1, Node node2) {
+//            return Node::add(NodeVec{node1, node2.neg()});
+//        }
+//
+//        Node mul(Node node1, Node node2) {
+//            return Node::mul(NodeVec{node1, node2});
+//        }
+//
+//        Node div(Node node1, Node node2) {
+//            return Node::mul(NodeVec{node1, node2.div()});
+//        }
 
         // Logical operators
 
@@ -83,37 +83,57 @@ namespace metadiff{
             return node1.logical_or(node2);
         }
 
-        Node gt(Node node1, Node node2) {
-            return node1.gt(node2);
-        }
-
-        Node ge(Node node1, Node node2) {
-            return node1.ge(node2);
-        }
-
-        Node lt(Node node1, Node node2) {
-            return node1.lt(node2);
-        }
-
-        Node le(Node node1, Node node2) {
-            return node1.le(node2);
-        }
-
-        Node eq(Node node1, Node node2) {
-            return node1.eq(node2);
-        }
-
-        Node neq(Node node1, Node node2) {
-            return node1.neq(node2);
-        }
+//        Node gt(Node node1, Node node2) {
+//            return node1.gt(node2);
+//        }
+//
+//        Node ge(Node node1, Node node2) {
+//            return node1.ge(node2);
+//        }
+//
+//        Node lt(Node node1, Node node2) {
+//            return node1.lt(node2);
+//        }
+//
+//        Node le(Node node1, Node node2) {
+//            return node1.le(node2);
+//        }
+//
+//        Node eq(Node node1, Node node2) {
+//            return node1.eq(node2);
+//        }
+//
+//        Node neq(Node node1, Node node2) {
+//            return node1.neq(node2);
+//        }
 
         Node approx_eq(Node node1, Node node2, double tol = 0.00001) {
             return node1.approx_eq(node2, tol);
         }
 
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node approx_eq(L node1, Node node2, double tol = 0.00001) {
+            return node2->graph->wrap(node1).approx_eq(node2, tol);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node approx_eq(Node node1, R node2, double tol = 0.00001) {
+            return node1.approx_eq(node1->graph->wrap(node2), tol);
+        };
+
         Node approx_neq(Node node1, Node node2, double tol = 0.00001) {
             return node1.approx_neq(node2, tol);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node approx_neq(L node1, Node node2, double tol = 0.00001) {
+            return node2->graph->wrap(node1).approx_neq(node2, tol);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node approx_neq(Node node1, R node2, double tol = 0.00001) {
+            return node1.approx_neq(node1->graph->wrap(node2), tol);
+        };
 
         Node is_nan(Node node) {
             return node.is_nan();
@@ -205,6 +225,17 @@ namespace metadiff{
             return node.pow(power);
         }
 
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node pow(L node, Node power) {
+            return power->graph->wrap(node).pow(power);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node pow(Node node, R power) {
+            return node.pow(node->graph->wrap(power));
+        };
+
+
         // Shape operators
 
         Node diag(Node node) {
@@ -240,6 +271,16 @@ namespace metadiff{
         Node dot(Node node1, Node node2) {
             return dot(NodeVec{node1, node2});
         }
+
+#ifdef AFAPI
+        Node dot(af::array node1, Node node2) {
+            return dot(NodeVec{node2->graph->constant_value(node1), node2});
+        }
+
+        Node dot(Node node1, af::array node2) {
+            return dot(NodeVec{node1, node1->graph->constant_value(node2)});
+        }
+#endif
 
         Node minv(Node node) {
             return node.minv();
@@ -286,10 +327,19 @@ namespace metadiff{
         };
 
         // Optimized operators
-
         Node binary_cross_entropy_logit(Node p, Node x) {
             return p.binary_cross_entropy_logit(x);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node binary_cross_entropy_logit(L p, Node x) {
+            return x->graph->wrap(p).binary_cross_entropy_logit(x);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node binary_cross_entropy_logit(Node p, R x) {
+            return p.binary_cross_entropy_logit(p->graph->wrap(x));
+        };
 
         Node relu(Node node) {
             return node.relu();

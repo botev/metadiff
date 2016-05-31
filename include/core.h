@@ -6,6 +6,7 @@
 #define METADIFF_CORE_H
 
 namespace metadiff {
+//    template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
     namespace core {
         using shared::SharedPtr;
 
@@ -89,13 +90,9 @@ namespace metadiff {
 
             static Node add(NodeVec nodes);
 
-            static Node add(Node node1, Node node2);
-
             Node neg();
 
             static Node mul(NodeVec nodes);
-
-            static Node mul(Node node1, Node node2);
 
             Node div();
 
@@ -178,6 +175,10 @@ namespace metadiff {
 
             Node transpose();
 
+            Node T(){
+                return transpose();
+            }
+
             static Node dot(NodeVec nodes);
 
             static Node dot(Node node1, Node node2);
@@ -200,9 +201,9 @@ namespace metadiff {
 
             Node reorder(short dim0, short dim1, short dim2 = 2, short dim3 = 3);
 
-            Node slice(Node index, short axis = 0);
-
-            Node index(Node index, short axis = AUTO_INFER_AXIS);
+//            Node slice(Node index, short axis = 0);
+//
+//            Node index(Node index, short axis = AUTO_INFER_AXIS);
 
             Node max(short axis = AUTO_INFER_AXIS);
 
@@ -587,72 +588,86 @@ namespace metadiff {
             /** Returns a Node wrapper around a shared variable */
             Node shared_variable(af::array value, std::string name = "SharedVar");
 #endif
-            /**
-             * Returns a Node wrapper around the constant value.
-             * The #ones(Shape shape, dType type = f32) is a case of this when value = 1.0
-             */
-            Node constant_value(double value, Shape shape = scalar_shape);
+            /** Returns a Node wrapper around the value. */
+            Node constant_value(bool value, Shape shape = scalar_shape);
 
-            /**
-             * Returns a Node wrapper around the constant value.
-             * The #ones(Shape shape, dType type) is a case of this when value = 1.0
-             */
-            Node constant_value(float value, Shape shape = scalar_shape);
+            /** Returns a Node wrapper around the short value. */
+            Node constant_value(unsigned short value, Shape shape = scalar_shape);
 
-            /**
-             * Returns a Node wrapper around the constant value.
-             * The #ones(Shape shape, dType type) is a case of this when value = 1.0
-             */
-            Node constant_value(long value, Shape shape = scalar_shape);
+            /** Returns a Node wrapper around the int value. */
+            Node constant_value(unsigned int value, Shape shape = scalar_shape);
 
-            /**
-             * Returns a Node wrapper around the constant value.
-             * The #ones(Shape shape, dType type) is a case of this when value = 1.0
-             */
-            Node constant_value(int value, Shape shape = scalar_shape);
+            /** Returns a Node wrapper around the long value. */
+            Node constant_value(unsigned long value, Shape shape = scalar_shape);
 
-            /**
-             * Returns a Node wrapper around the constant value.
-             * The #ones(Shape shape, dType type) is a case of this when value = 1.0
-             */
+            /** Returns a Node wrapper around the short value. */
             Node constant_value(short value, Shape shape = scalar_shape);
 
-            /** Returns a Node wrapper around the boolean value. */
-            Node constant_value(bool value, Shape shape = scalar_shape);
+            /** Returns a Node wrapper around the int value. */
+            Node constant_value(int value, Shape shape = scalar_shape);
+
+            /** Returns a Node wrapper around the long value. */
+            Node constant_value(long value, Shape shape = scalar_shape);
+
+            /** Returns a Node wrapper around the float value. */
+            Node constant_value(float value, Shape shape = scalar_shape);
+
+            /** Returns a Node wrapper around the double value. */
+            Node constant_value(double value, Shape shape = scalar_shape);
+
+            Node wrap(Node value){
+                return value;
+            }
+
+            Node wrap(SharedPtr value){
+                return shared_variable(value);
+            }
+
+            Node wrap(SymInt value);
+
+            Node wrap(bool value){
+                return constant_value(value);
+            }
+
+            Node wrap(unsigned short value){
+                return constant_value(value);
+            }
+
+            Node wrap(unsigned int value){
+                return constant_value(value);
+            }
+
+            Node wrap(unsigned long value){
+                return constant_value(value);
+            }
+
+            Node wrap(short value){
+                return constant_value(value);
+            }
+
+            Node wrap(int value){
+                return constant_value(value);
+            }
+
+            Node wrap(long value){
+                return constant_value(value);
+            }
+
+            Node wrap(float value){
+                return constant_value(value);
+            }
+
+            Node wrap(double value){
+                return constant_value(value);
+            }
 #ifdef AFAPI
             /** Returns a Node wrapper around the af::array. */
             Node constant_value(af::array value);
 #endif
-            /** Returns a Node wrapper around the SymInt */
-            Node wrap_symbolic_int(SymInt value);
-
-            template<typename T>
-            Node wrap(T value) {
-                if (std::is_same<T, Node>::value) {
-                    return static_cast<Node>(value);
-                } else if(std::is_same<T, SharedPtr>::value){
-                    return shared_variable(value, ((SharedPtr) value)->name);
-                }
-#ifdef AFAPI
-                else if (std::is_same<T, af::array>::value) {
-                    return constant_value(value);
-                }
-#endif
-                else if (std::is_same<T, SymInt>::value) {
-                    return wrap_symbolic_int(value);
-                } else {
-                    return constant_value(value);
-                }
-            }
-
-            /**
-             * Returns a vector representing the sequence from start to end.
-             */
+            /** Returns a vector representing the sequence from start to end. */
             Node seq(SymInt start, SymInt end, dType dtype);
 
-            /**
-             * Returns a vector representing the sequence from start to end.
-             */
+            /** Returns a vector representing the sequence from start to end. */
             Node seq(SymInt start, SymInt end);
         };
 

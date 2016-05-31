@@ -365,6 +365,16 @@ namespace metadiff {
             return apply<op::And>(node1, node2);
         }
 
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator&&(L node1, Node node2) {
+            return node2->graph->wrap(node1).logical_and(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator&&(Node node1, R node2) {
+            return node1.logical_and(node1->graph->wrap(node2));
+        };
+
         Node Node::logical_or(Node node) {
             return apply<op::Or>(this, node);
         }
@@ -373,53 +383,123 @@ namespace metadiff {
             return apply<op::Or>(node1, node2);
         }
 
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator||(L node1, Node node2) {
+            return node2->graph->wrap(node1).logical_or(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator||(Node node1, R node2) {
+            return node1.logical_or(node1->graph->wrap(node2));
+        };
+
         Node Node::gt(Node node) {
             return apply<op::GreaterThan>(this, node);
         }
 
         Node operator>(Node node1, Node node2) {
-            return apply<op::GreaterThan>(node1, node2);
+            return node1.gt(node2);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator>(L node1, Node node2) {
+            return node2->graph->wrap(node1).gt(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator>(Node node1, R node2) {
+            return node1.gt(node1->graph->wrap(node2));
+        };
 
         Node Node::ge(Node node) {
             return apply<op::GreaterThanOrEqual>(this, node);
         }
 
         Node operator>=(Node node1, Node node2) {
-            return apply<op::GreaterThanOrEqual>(node1, node2);
+            return node1.ge(node2);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator>=(L node1, Node node2) {
+            return node2->graph->wrap(node1).ge(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator>=(Node node1, R node2) {
+            return node1.ge(node1->graph->wrap(node2));
+        };
 
         Node Node::lt(Node node) {
             return apply<op::LessThan>(this, node);
         }
 
         Node operator<(Node node1, Node node2) {
-            return apply<op::LessThan>(node1, node2);
+            return node1.lt(node2);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator<(L node1, Node node2) {
+            return node2->graph->wrap(node1).lt(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator<(Node node1, R node2) {
+            return node1.lt(node1->graph->wrap(node2));
+        };
 
         Node Node::le(Node node) {
             return apply<op::LessThanOrEqual>(this, node);
         }
 
         Node operator<=(Node node1, Node node2) {
-            return apply<op::LessThanOrEqual>(node1, node2);
+            return node1.le(node2);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator<=(L node1, Node node2) {
+            return node2->graph->wrap(node1).le(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator<=(Node node1, R node2) {
+            return node1.le(node1->graph->wrap(node2));
+        };
 
         Node Node::eq(Node node) {
             return apply<op::Equals>(this, node);
         }
 
         Node operator==(Node node1, Node node2) {
-            return apply<op::Equals>(node1, node2);
+            return node1.eq(node2);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator==(L node1, Node node2) {
+            return node2->graph->wrap(node1).eq(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator==(Node node1, R node2) {
+            return node1.eq(node1->graph->wrap(node2));
+        };
 
         Node Node::neq(Node node) {
             return apply<op::NotEquals>(this, node);
         }
 
         Node operator!=(Node node1, Node node2) {
-            return apply<op::NotEquals>(node1, node2);
+            return node1.neq(node2);
         }
+
+        template <typename L, typename = std::enable_if<not std::is_same<L, Node>::value>>
+        Node operator!=(L node1, Node node2) {
+            return node2->graph->wrap(node1).neq(node2);
+        };
+
+        template <typename R, typename = std::enable_if<not std::is_same<R, Node>::value>>
+        Node operator!=(Node node1, R node2) {
+            return node1.neq(node1->graph->wrap(node2));
+        };
 
         Node Node::approx_eq(Node node, double tol) {
             GraphInPtr graph = unwrap()->graph;
