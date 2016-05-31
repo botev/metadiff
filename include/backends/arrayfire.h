@@ -16,13 +16,13 @@ namespace metadiff{
             ArrayfireBackend(bool debug = false) :
                     FunctionBackend("ArrayFire", debug) {
                 af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-                logger()->debug() << name << "] af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
+                logger()->debug() << "af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
             };
 
             ArrayfireBackend(std::string dir_path, bool debug = false) :
                     FunctionBackend("ArrayFire", dir_path, debug) {
                 af_path = getenv("AF_PATH") ? getenv("AF_PATH") : "/opt/arrayfire-3";
-                logger()->debug() << name << "] af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
+                logger()->debug() << "af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
             };
 
             ArrayfireBackend(std::string dir_path,
@@ -30,13 +30,13 @@ namespace metadiff{
                              bool debug = false) :
                     FunctionBackend("ArrayFire", dir_path, debug),
                     af_path(af_path) {
-                logger()->debug() << name << "] af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
+                logger()->debug() << "af_path set to '" + af_path + "', debug flag is " + std::to_string(debug);
             };
 
             void compile(std::string source_dir, std::string target_dir, std::string graph_name) {
                 std::string source_path = os::join_paths(source_dir, graph_name + ".cpp");
                 std::string dll_path = os::join_paths(target_dir, graph_name + ".so");
-                logger()->debug() << name << "] Compiling file " << source_path << " to " << dll_path;
+                logger()->debug() << "Compiling file " << source_path << " to " << dll_path;
                 std::string log_path = source_path + ".log";
                 std::string command = "MKL_NUM_THREADS=4 g++ -O3 -Wall -shared -fPIC -std=c++11 -laf ";
                 command += "-Werror=return-type -Wno-unused-variable -Wno-narrowing ";
@@ -44,7 +44,7 @@ namespace metadiff{
                 command += " -L" + os::join_paths(af_path, "lib");
                 command += " -o " + dll_path + " " + source_path;
                 command += " > " + log_path + " 2>&1";
-                logger()->debug() << name << "] Compile command: " << command;
+                logger()->debug() << "Compile command: " << command;
                 int response = system(command.c_str());
                 if (response != 0) {
                     std::ifstream log_file(log_path);
@@ -58,8 +58,9 @@ namespace metadiff{
                 return;
             }
 
-            EvaluationFunction link(std::string target_dir,
+            func_ptr link(std::string target_dir,
                                     std::string graph_name) {
+                logger()->debug() << os::join_paths(target_dir, graph_name + ".so");
                 return link_dll(os::join_paths(target_dir, graph_name + ".so"), "eval_func");
             }
 
@@ -68,7 +69,7 @@ namespace metadiff{
                                  std::vector<Node> inputs,
                                  std::vector<Node> targets) {
                 std::string source_path = os::join_paths(source_dir, graph->name + ".cpp");
-                logger()->trace() << name << "] Generating source file " << source_path;
+                logger()->trace() << "Generating source file " << source_path;
                 std::ofstream f;
                 f.open(source_path);
 

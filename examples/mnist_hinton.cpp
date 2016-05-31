@@ -15,7 +15,7 @@ struct program_args{
     int batch_size;
     int factor;
     bool burn;
-    md::AfBackend::EvaluationFunction func;
+    md::AfBackend func;
     float * data_ptr;
     int * labels_ptr;
 };
@@ -24,13 +24,12 @@ static program_args args;
 
 void extract_args(int argc, char **argv);
 void load_mnist(std::string folder);
-void build_model(md::AfBackend& backend);
+void build_model();
 void run_model();
 
 int main(int argc, char **argv) {
     // Some pre setup
     std::string name = "mnist_hinton";
-    spdlog::set_pattern("*** [%H:%M:%S %z] [thread %t] %v ***");
     md::metadiff_sink->add_sink(std::make_shared<spdlog::sinks::stdout_sink_st>());
 
     extract_args(argc, argv);
@@ -43,10 +42,10 @@ int main(int argc, char **argv) {
     af::setBackend(args.backend);
     for(auto i = 0; i < 3; i++){
         for(auto j = 0; j < 3; j++){
-            md::AfBackend backend = md::AfBackend(std::string(name));
+            args.func = md::AfBackend(std::string(name));
             args.batch_size = batch_size_grid[i];
             args.factor = factor_grid[j];
-            build_model(backend);
+            build_model();
             std::cout << "batch_size=" << args.batch_size << " factor=" << args.factor << std::endl;
             args.burn = true;
             std::cout << "Running burnout" << std::endl;
@@ -54,7 +53,7 @@ int main(int argc, char **argv) {
             args.burn = false;
             std::cout << "Benchmarking..." << std::endl;
             std::cout << "Run time: "<< (af::timeit(run_model) / args.iters) << " seconds per iteration" << std::endl;
-            backend.close();
+            args.func.close();
             sleep(5);
         }
     }
@@ -104,10 +103,10 @@ void load_mnist(std::string folder){
     dat::ReadTrainMNIST(folder, args.data_ptr, args.labels_ptr);
 }
 
-void build_model(md::AfBackend& backend){
+void build_model(){
     // Create graph
     auto graph = md::create_graph();
-    graph->name = backend.dir_path;
+    graph->name = args.func.dir_path;
     // Batch size
     auto n = graph->get_new_symbolic_integer(); // a
     // Architecture
@@ -154,8 +153,7 @@ void build_model(md::AfBackend& backend){
     for(int i=0;i<params.size();i++){
         updates.push_back(std::pair<md::Node, md::Node>(params[i], params[i] - learning_rate * grads[i]));
     }
-    std::string name = backend.name;
-    name += dat::kPathSeparator + backend.name;
+    std::string name = metadiff::os::join_paths(args.func.dir_path, graph->name);
     // Optimize
     md::NodeVec new_inputs;
     md::NodeVec new_loss;
@@ -164,7 +162,7 @@ void build_model(md::AfBackend& backend){
                                            new_loss, new_updates, new_inputs);
     md::dagre_to_file(name + "_optim.html", optimized, new_updates);
     af::timer start = af::timer::start();
-    args.func = backend.compile_function(optimized, new_inputs, new_loss, new_updates);
+    args.func.compile_function(optimized, new_inputs, new_loss, new_updates);
     std::cout << "Compile time: " << af::timer::stop(start) << " seconds" << std::endl;
 }
 
