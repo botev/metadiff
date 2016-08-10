@@ -577,28 +577,31 @@ namespace metadiff{
         };
 
         // Copies the graph and optimizes it, populating the execution data
-        Graph GraphInternal::optimize(NodeVec &targets, Updates &updates, NodeVec &inputs,
-                                      NodeVec &new_targets, Updates &new_updates, NodeVec &new_inputs) {
-            logger()->debug() << "Running optimization of graph " << name;
-            // Copy only the relevant part of the graph
-            Graph copy = create_graph();
-            add_temporary_updates(updates);
-            NodeVec marked(targets.size() + this->updates.size() + this->temporary_updates.size());
-            for (size_t i = 0; i < targets.size(); i++) {
-                marked[i] = targets[i];
-            }
-            for (size_t i = 0; i < this->updates.size(); i++) {
-                marked[i + targets.size()] = this->updates[i].second;
-            }
-            for (size_t i = 0; i < this->temporary_updates.size(); i++) {
-                marked[i + targets.size()] = this->temporary_updates[i].second;
-            }
+        Graph GraphInternal::optimize(const NodeVec &iTargets, 
+            const Updates &iUpdates, 
+            const NodeVec &iInputs,
+            NodeVec &new_targets, 
+            Updates &new_updates, 
+            NodeVec &new_inputs) {
 
-            NodeVec mapping = this->copy(copy.get(), get_ancestors_mask(marked));
+            logger()->debug() << "Running optimization of graph " << name;
+
+            // Copy only the relevant part of the graph
+            Graph optimize = create_graph();
+            add_temporary_updates(iUpdates);
+
+            NodeVec marked;
+            marked.reserve(iTargets.size() + updates.size() + temporary_updates.size());
+            for(auto& i : iTargets) marked.emplace_back(i);
+            for(auto& u : updates) marked.emplace_back(u.second); // from member
+            for(auto& t : temporary_updates) marked.emplace_back(t.second); // from member
+
+            NodeVec mapping = this->copy(optimize.get(), get_ancestors_mask(marked));
             clear_temporary_updates();
+
             // Optimize
-            for (size_t i = 0; i < copy->nodes.size(); i++) {
-                Node node = copy->nodes[i];
+            for (size_t i = 0; i < optimize->nodes.size(); i++) {
+                Node node = optimize->nodes[i];
                 if (node->op->name == "Input") {
                     node->execution.inlined = true;
                 }
@@ -621,19 +624,20 @@ namespace metadiff{
                     node->execution.inlined = true;
                 }
             }
+
             // Set the new_targets and new_updates
-            for (int i = 0; i < targets.size(); i++) {
-                new_targets.push_back(mapping[targets[i]->id]);
+            for (int i = 0; i < iTargets.size(); i++) {
+                new_targets.push_back(mapping[iTargets[i]->id]);
             }
-            for (int i = 0; i < updates.size(); i++) {
-                Node node1 = mapping[updates[i].first->id];
-                Node node2 = mapping[updates[i].second->id];
+            for (int i = 0; i < iUpdates.size(); i++) {
+                Node node1 = mapping[iUpdates[i].first->id];
+                Node node2 = mapping[iUpdates[i].second->id];
                 new_updates.push_back(std::pair<Node, Node>(node1, node2));
             }
-            for (int i = 0; i < inputs.size(); i++) {
-                new_inputs.push_back(mapping[inputs[i]->id]);
+            for (int i = 0; i < iInputs.size(); i++) {
+                new_inputs.push_back(mapping[iInputs[i]->id]);
             }
-            return copy;
+            return optimize;
         };
 
 //        Node GraphInternal::shared_var(af::array value, std::string name) {

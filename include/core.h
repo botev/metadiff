@@ -445,8 +445,12 @@ namespace metadiff {
             NodeVec gradient(Node objective, NodeVec params);
 
             /** Optimizes a graph with respect to the given nodes (INTERNAL) */
-            Graph optimize(NodeVec &targets, Updates &updates, NodeVec &inputs,
-                           NodeVec &new_targets, Updates &new_updates, NodeVec &new_inputs);
+            Graph optimize(const NodeVec &targets,
+              const Updates &updates,
+              const NodeVec &inputs,
+              NodeVec &new_targets, 
+              Updates &new_updates,
+              NodeVec &new_inputs);
 
             /** Creates a new derived node (INTERNAL) */
             Node derived_node(std::shared_ptr<Operator> op);
