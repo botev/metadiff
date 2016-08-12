@@ -80,6 +80,10 @@ namespace metadiff {
                 return {parent};
             };
 
+            void replace_parent(Node iOrg, Node iNew) {
+                parent = iNew;
+            }
+
             dType get_dtype() const {
                 return parent->dtype;
             };
@@ -132,6 +136,11 @@ namespace metadiff {
             NodeVec get_parents() const {
                 return {parent1, parent2};
             };
+
+            void replace_parent(Node iOrg, Node iNew) {
+                if (parent1->id == iOrg->id) parent1 = iNew;
+                if (parent2->id == iOrg->id) parent2 = iNew;
+            }
 
             dType get_dtype() const {
                 return graph->promote_type(parent1->dtype, parent2->dtype);
@@ -194,6 +203,13 @@ namespace metadiff {
             NodeVec get_parents() const {
                 return parents;
             };
+
+            void replace_parent(Node iOrg, Node iNew) {
+                for (auto& p : parents) 
+                {
+                    if (p->id == iOrg->id) p = iNew;
+                }
+            }
 
             dType get_dtype() const {
                 dType dtype = b8;

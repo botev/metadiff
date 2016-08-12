@@ -260,8 +260,12 @@ namespace metadiff {
             /** Returns the parents NodeVec of this operator */
             virtual NodeVec get_parents() const = 0;
 
+            void get_parents_ids(std::vector<int>& ids) const;
+
             /** Returns the arguments NodeVec of this operator */
             virtual NodeVec get_arguments() const = 0;
+
+            virtual void replace_parent(Node iOrg, Node iNew) {};
 
             /**
              * A function which should compute and return the gradient with respect
@@ -327,6 +331,7 @@ namespace metadiff {
             unsigned short grad_level;
             // Data populated by the optimizer
             ExecutionData execution;
+            bool active;
 
             NodeInternal(GraphInPtr graph, Device device) :
                     graph(graph),
@@ -351,7 +356,8 @@ namespace metadiff {
                     op(op),
                     grad_level(grad_level),
                     shape(shape),
-                    group(group) { }
+                    group(group),
+                    active(true) { }
         };
 
         /**
@@ -451,6 +457,10 @@ namespace metadiff {
               NodeVec &new_targets, 
               Updates &new_updates,
               NodeVec &new_inputs);
+
+            void optimize();
+
+            void removeInactiveNodes();
 
             /** Creates a new derived node (INTERNAL) */
             Node derived_node(std::shared_ptr<Operator> op);

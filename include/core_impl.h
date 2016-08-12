@@ -576,6 +576,98 @@ namespace metadiff{
             return grads;
         };
 
+        void Operator::get_parents_ids(std::vector<int>& ids) const {
+            for(auto parent : get_parents()) {
+                ids.push_back(parent->id);
+            }
+        }
+
+        void GraphInternal::removeInactiveNodes() {
+            nodes.erase(std::remove_if(
+                            nodes.begin(),
+                            nodes.end(),
+                            [](std::shared_ptr<NodeInternal> n)
+                                {return !n->active;}), 
+                        nodes.end());
+
+            // empty group??
+            // groups.erase(std::remove_if(
+            //                 groups.begin(),
+            //                 groups.end(),
+            //                 [](std::shared_ptr<NodeGroup> g)
+            //                     {return !n->active;}), 
+            //             nodes.end());
+        }
+
+        void GraphInternal::optimize() {
+
+            // key:operator name; value:node id
+            typedef std::unordered_map<std::string, Node> opMap;
+            // key:parents ids
+            std::map<std::vector<int>, opMap> nodeMap;
+
+            for(auto nPtr : nodes) {//from member
+
+                std::vector<int> parentIds{};
+                nPtr->op->get_parents_ids(parentIds);
+                if (parentIds.empty()) {
+                    //??
+                }
+                else {
+                    if (nodeMap.find(parentIds) == nodeMap.end()) {
+                        nodeMap[parentIds][nPtr->op->name] = nPtr;
+                    }
+                    else if(nodeMap[parentIds].find(nPtr->op->name) 
+                        == nodeMap[parentIds].end())
+                        nodeMap[parentIds][nPtr->op->name] = nPtr;
+                    else {
+                        // associate children with existing node
+                        auto existChildren = nodeMap[parentIds][nPtr->op->name]->children;
+                        existChildren.insert(existChildren.end(),
+                            nPtr->children.begin(),
+                            nPtr->children.end()); //unique????
+
+                        // replace current node with existing node from its children's parents
+                        for(auto c : nPtr->children) {
+                            // on only unary, binary, and NaryOperator
+                            c->op->replace_parent(nPtr, nodeMap[parentIds][nPtr->op->name]);
+                        }
+
+                        // remove current node from its parents's children
+                        for (auto p : nPtr->op->get_parents()){
+                            for(auto iter=p->children.begin(); iter!=p->children.end();)
+                            {
+                                if((*iter)->id==nPtr->id) {
+                                    iter = p->children.erase(iter);
+                                }
+                                else {
+                                    iter++;
+                                }
+                            }
+                        }
+
+                        // mark removal of current node
+                        nPtr->active = false;
+                        std::cout<<"Node "<<nPtr->id<<" is set to inactive"<<std::endl;
+                    }
+                }
+            }
+
+            //remove all inactive nodes from graph
+            removeInactiveNodes();
+
+            // for(auto nPtr : nodes) {
+            //     std::cout<<"Node "<<nPtr->id<<std::endl;
+            //     std::vector<int> parentIds{};
+            //     nPtr->op->get_parents_ids(parentIds);
+            //     std::cout<<"here"<<std::endl;
+            //     for (auto p : parentIds)
+            //         std::cout<<"parents "<<p<<std::endl;
+            //     for (auto c : nPtr->children)
+            //         std::cout<<"children "<<c->id<<std::endl;
+            // }
+        }
+
         // Copies the graph and optimizes it, populating the execution data
         Graph GraphInternal::optimize(const NodeVec &iTargets, 
             const Updates &iUpdates, 
