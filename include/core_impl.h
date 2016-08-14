@@ -239,6 +239,39 @@ namespace metadiff{
             return true;
         }
 
+        void Node::remove_child(Node node) {
+            for(auto iter=unwrap()->children.begin(); iter!=unwrap()->children.end();)
+            {
+                if((*iter)->id==node->id) {
+                    // std::cout<<"remove_child: "<<node->id<<" is removed from "<< unwrap()->id<<std::endl;
+                    iter = unwrap()->children.erase(iter);
+                }
+                else {
+                    iter++;
+                }
+            }
+        }
+
+        void Node::replace_parent_from_children(Node node) {
+            for(auto c : unwrap()->children) {
+                // on only unary, binary, and NaryOperator
+                c->op->replace_parent(*this, node);
+            }
+        }
+
+        Node Node::replace_with_constant(double value) {
+            unwrap()->active = false;
+            Node newNode = unwrap()->graph->constant_value(value);
+            // newNode->id = unwrap()->id;
+            newNode->children = unwrap()->children;
+
+            replace_parent_from_children(newNode);
+
+            std::cout<<"New constant Node "<<newNode->id<<" : "<<value<<std::endl;
+
+            return newNode;
+        }
+
         void Operator::send_grad_message(size_t target, Node msg,
                                          std::vector<Node> &messages) const {
             logger()->debug() << "Sending gradient message with id "
@@ -469,7 +502,7 @@ namespace metadiff{
                 }
             }
 //        NodeVec candidates = op->get_parents()
-//        for(int i=0; i<op->get_parents()[0].unwrap().chilidren)
+//        for(int i=0; i<op->get_parents()[0].unwrap().children)
 //        // For the moment only one such for the experiment
 //        if(op->name == "Exp"){
 //            Node parent = op->get_parents()[0];
@@ -583,12 +616,16 @@ namespace metadiff{
         }
 
         void GraphInternal::removeInactiveNodes() {
-            nodes.erase(std::remove_if(
-                            nodes.begin(),
-                            nodes.end(),
-                            [](std::shared_ptr<NodeInternal> n)
-                                {return !n->active;}), 
-                        nodes.end());
+
+            for(auto iter=nodes.begin();iter!=nodes.end();) {
+                if(!(*iter)->active) {
+                    std::cout<<"Node "<<(*iter)->id<<" is removed"<<std::endl;
+                    iter = nodes.erase(iter);
+                }
+                else {
+                    iter++;
+                }
+            }
 
             // empty group??
             // groups.erase(std::remove_if(
@@ -599,8 +636,16 @@ namespace metadiff{
             //             nodes.end());
         }
 
-        void GraphInternal::optimize() {
-
+        void GraphInternal::removeNode(Node node) {
+            for(auto iter=nodes.begin();iter!=nodes.end();iter++) {
+                if (node->id == (*iter)->id) {
+                    nodes.erase(iter);
+                    return;
+                }
+            }
+        }
+        
+        void GraphInternal::opt_merge() {
             // key:operator name; value:node id
             typedef std::unordered_map<std::string, Node> opMap;
             // key:parents ids
@@ -628,39 +673,96 @@ namespace metadiff{
                             nPtr->children.end()); //unique????
 
                         // replace current node with existing node from its children's parents
-                        for(auto c : nPtr->children) {
-                            // on only unary, binary, and NaryOperator
-                            c->op->replace_parent(nPtr, nodeMap[parentIds][nPtr->op->name]);
-                        }
+                        Node current = nPtr;
+                        current.replace_parent_from_children(nodeMap[parentIds][nPtr->op->name]);
 
                         // remove current node from its parents's children
                         for (auto p : nPtr->op->get_parents()){
-                            for(auto iter=p->children.begin(); iter!=p->children.end();)
-                            {
-                                if((*iter)->id==nPtr->id) {
-                                    iter = p->children.erase(iter);
-                                }
-                                else {
-                                    iter++;
-                                }
-                            }
+                            p.remove_child(nPtr);
                         }
 
                         // mark removal of current node
                         nPtr->active = false;
-                        std::cout<<"Node "<<nPtr->id<<" is set to inactive"<<std::endl;
                     }
                 }
             }
 
             //remove all inactive nodes from graph
             removeInactiveNodes();
+        }
+
+        void GraphInternal::const_folding_dfs(Node node, std::unordered_set<int>& visited) {
+
+            if (visited.find(node->id) != visited.end()) return;
+
+            visited.insert(node->id);
+
+            auto parents = node->op->get_parents();
+
+            if(parents.empty()) return;
+
+            // one parent is not constant and not deducable 
+            for (auto p: parents) {
+                if(!p.is_constant() and p->active) {
+                    return;
+                }
+            }
+
+            // calculate the constant value for deduction
+            if (node->op->name == "Add") {
+                double value = 0.0;
+                for (auto p : parents) {
+
+                    if(p->active) {
+                        
+                        // double val = std::static_pointer_cast<metadiff::op::ConstantValue>(node->op)->value;
+
+                        // std::cout<<"parent: "<<p->id<<" value: "<<val<<std::endl;
+
+                        double val = 0.0;
+
+                        value += val;
+                    }
+
+                    p.remove_child(node);
+
+                    // const has no parent, if it then has no children, remove it later
+                    if (p->children.empty())
+                        p->active = false;
+                }
+
+                Node newNode = node.replace_with_constant(value);
+            }
+
+            for (auto child : node->children) {
+                const_folding_dfs(child, visited);
+            }
+        }
+
+        void GraphInternal::opt_const_folding() {
+
+            // key: id, value: whether constant
+            std::unordered_set<int> visited;
+            visited.reserve(nodes.size());
+
+            for(auto nPtr : nodes) {
+                const_folding_dfs(nPtr, visited);
+            }
+
+            removeInactiveNodes();
+        }
+
+        void GraphInternal::optimize() {
+            // 1. merge
+            // opt_merge();
+
+            // 2. constant folding
+            // opt_const_folding();
 
             // for(auto nPtr : nodes) {
             //     std::cout<<"Node "<<nPtr->id<<std::endl;
             //     std::vector<int> parentIds{};
             //     nPtr->op->get_parents_ids(parentIds);
-            //     std::cout<<"here"<<std::endl;
             //     for (auto p : parentIds)
             //         std::cout<<"parents "<<p<<std::endl;
             //     for (auto c : nPtr->children)

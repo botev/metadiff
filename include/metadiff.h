@@ -13,6 +13,7 @@
 #include <fstream>
 #include <dlfcn.h>
 #include "sstream"
+#include <unordered_set>
 
 #include "os.h"
 #include "logging.h"

@@ -219,6 +219,12 @@ namespace metadiff {
 
             Node binary_cross_entropy_logit(Node node);
 
+            void remove_child(Node node);
+
+            Node replace_with_constant(double value);
+
+            void replace_parent_from_children(Node node);
+
         };
 
         /** Abstract class for operators */
@@ -459,8 +465,12 @@ namespace metadiff {
               NodeVec &new_inputs);
 
             void optimize();
+            void opt_merge();
+            void opt_const_folding();
+            void const_folding_dfs(Node node, std::unordered_set<int>& visited);
 
             void removeInactiveNodes();
+            void removeNode(Node node);
 
             /** Creates a new derived node (INTERNAL) */
             Node derived_node(std::shared_ptr<Operator> op);
@@ -683,6 +693,7 @@ namespace metadiff {
 
             /** Returns a vector representing the sequence from start to end. */
             Node seq(SymInt start, SymInt end);
+
         };
 
         /**
