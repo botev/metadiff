@@ -219,12 +219,14 @@ namespace metadiff {
 
             Node binary_cross_entropy_logit(Node node);
 
+            //below are graph optimization utilities
             void remove_child(Node node);
-
-            Node replace_with_constant(double value);
 
             void replace_parent_from_children(Node node);
 
+            Node replace_with_constant(double value);
+
+            Node replace_const_eli(int value, Node parent);
         };
 
         /** Abstract class for operators */
@@ -266,12 +268,11 @@ namespace metadiff {
             /** Returns the parents NodeVec of this operator */
             virtual NodeVec get_parents() const = 0;
 
+            /** get parents id in ids */
             void get_parents_ids(std::vector<int>& ids) const;
 
             /** Returns the arguments NodeVec of this operator */
             virtual NodeVec get_arguments() const = 0;
-
-            virtual void replace_parent(Node iOrg, Node iNew) {};
 
             /**
              * A function which should compute and return the gradient with respect
@@ -317,6 +318,12 @@ namespace metadiff {
              * Skips any alias operators to get the base operator
              */
             static std::shared_ptr<const Operator> get_base_op(std::shared_ptr<const Operator> const op);
+
+            //below are graph optimization utilities
+            virtual void replace_parent(Node iOrg, Node iNew) {};
+
+            // override for ConstantValue class
+            virtual double getConstVal() {return 0.0;};
         };
 
         /**
@@ -337,6 +344,7 @@ namespace metadiff {
             unsigned short grad_level;
             // Data populated by the optimizer
             ExecutionData execution;
+            // graph optimization variable - to remove inactive nodes
             bool active;
 
             NodeInternal(GraphInPtr graph, Device device) :
@@ -463,14 +471,6 @@ namespace metadiff {
               NodeVec &new_targets, 
               Updates &new_updates,
               NodeVec &new_inputs);
-
-            void optimize();
-            void opt_merge();
-            void opt_const_folding();
-            void const_folding_dfs(Node node, std::unordered_set<int>& visited);
-
-            void removeInactiveNodes();
-            void removeNode(Node node);
 
             /** Creates a new derived node (INTERNAL) */
             Node derived_node(std::shared_ptr<Operator> op);
@@ -694,6 +694,10 @@ namespace metadiff {
             /** Returns a vector representing the sequence from start to end. */
             Node seq(SymInt start, SymInt end);
 
+            //below are graph optimization utilities
+            void removeInactiveNodes();
+
+            void removeNode(Node node);
         };
 
         /**

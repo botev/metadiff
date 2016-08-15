@@ -5,15 +5,25 @@
 #ifndef METADIFF_METADIFF_H
 #define METADIFF_METADIFF_H
 
-#include "vector"
-#include "memory"
-#include "iostream"
-#include "iomanip"
+#include <memory>
+#include <iostream>
+#include <iomanip>
 #include <exception>
 #include <fstream>
 #include <dlfcn.h>
-#include "sstream"
+#include <sstream>
+#include <vector>
+#include <map>
 #include <unordered_set>
+#include <unordered_map>
+
+using std::vector;
+using std::string;
+using std::unordered_set;
+using std::unordered_map;
+using std::shared_ptr;
+using std::map;
+using std::ios;
 
 #include "os.h"
 #include "logging.h"
@@ -27,6 +37,7 @@
 #include "visual.h"
 #include "backends.h"
 #include "api.h"
+#include "optimize.h"
 
 
 #endif //METADIFF_METADIFF_H

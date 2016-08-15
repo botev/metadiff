@@ -53,6 +53,10 @@ namespace metadiff{
                     return false;
                 }
             }
+
+            double getConstVal() {
+                return value;
+            };
         };
 
         /** Matrix identity */

@@ -5,6 +5,8 @@
 #ifndef METADIFF_CORE_IMPL_H
 #define METADIFF_CORE_IMPL_H
 
+#include "optimize.h"
+
 namespace metadiff{
     namespace core {
         using namespace exceptions;
@@ -261,15 +263,35 @@ namespace metadiff{
 
         Node Node::replace_with_constant(double value) {
             unwrap()->active = false;
+
             Node newNode = unwrap()->graph->constant_value(value);
             // newNode->id = unwrap()->id;
             newNode->children = unwrap()->children;
 
             replace_parent_from_children(newNode);
 
-            std::cout<<"New constant Node "<<newNode->id<<" : "<<value<<std::endl;
+            logger()->debug()<<"New constant Node: "<<newNode->id<<" : "<<value;
 
             return newNode;
+        }
+
+        Node Node::replace_const_eli(int value, Node parent) {
+            unwrap()->active = false;
+            parent.remove_child(*this);
+
+            if (value == -1) {
+                Node newNode = parent.neg();
+                newNode->children = unwrap()->children;
+                replace_parent_from_children(newNode);
+
+                logger()->debug()<<"New Neg Node: "<<newNode->id;
+            }
+            else if (value == 1) {
+                parent->children = unwrap()->children;
+                replace_parent_from_children(parent);
+            }
+
+            return Node();
         }
 
         void Operator::send_grad_message(size_t target, Node msg,
@@ -644,120 +666,11 @@ namespace metadiff{
                 }
             }
         }
-        
-        void GraphInternal::opt_merge() {
-            // key:operator name; value:node id
-            typedef std::unordered_map<std::string, Node> opMap;
-            // key:parents ids
-            std::map<std::vector<int>, opMap> nodeMap;
-
-            for(auto nPtr : nodes) {//from member
-
-                std::vector<int> parentIds{};
-                nPtr->op->get_parents_ids(parentIds);
-                if (parentIds.empty()) {
-                    //??
-                }
-                else {
-                    if (nodeMap.find(parentIds) == nodeMap.end()) {
-                        nodeMap[parentIds][nPtr->op->name] = nPtr;
-                    }
-                    else if(nodeMap[parentIds].find(nPtr->op->name) 
-                        == nodeMap[parentIds].end())
-                        nodeMap[parentIds][nPtr->op->name] = nPtr;
-                    else {
-                        // associate children with existing node
-                        auto existChildren = nodeMap[parentIds][nPtr->op->name]->children;
-                        existChildren.insert(existChildren.end(),
-                            nPtr->children.begin(),
-                            nPtr->children.end()); //unique????
-
-                        // replace current node with existing node from its children's parents
-                        Node current = nPtr;
-                        current.replace_parent_from_children(nodeMap[parentIds][nPtr->op->name]);
-
-                        // remove current node from its parents's children
-                        for (auto p : nPtr->op->get_parents()){
-                            p.remove_child(nPtr);
-                        }
-
-                        // mark removal of current node
-                        nPtr->active = false;
-                    }
-                }
-            }
-
-            //remove all inactive nodes from graph
-            removeInactiveNodes();
-        }
-
-        void GraphInternal::const_folding_dfs(Node node, std::unordered_set<int>& visited) {
-
-            if (visited.find(node->id) != visited.end()) return;
-
-            visited.insert(node->id);
-
-            auto parents = node->op->get_parents();
-
-            if(parents.empty()) return;
-
-            // one parent is not constant and not deducable 
-            for (auto p: parents) {
-                if(!p.is_constant() and p->active) {
-                    return;
-                }
-            }
-
-            // calculate the constant value for deduction
-            if (node->op->name == "Add") {
-                double value = 0.0;
-                for (auto p : parents) {
-
-                    if(p->active) {
-                        
-                        // double val = std::static_pointer_cast<metadiff::op::ConstantValue>(node->op)->value;
-
-                        // std::cout<<"parent: "<<p->id<<" value: "<<val<<std::endl;
-
-                        double val = 0.0;
-
-                        value += val;
-                    }
-
-                    p.remove_child(node);
-
-                    // const has no parent, if it then has no children, remove it later
-                    if (p->children.empty())
-                        p->active = false;
-                }
-
-                Node newNode = node.replace_with_constant(value);
-            }
-
-            for (auto child : node->children) {
-                const_folding_dfs(child, visited);
-            }
-        }
-
-        void GraphInternal::opt_const_folding() {
-
-            // key: id, value: whether constant
-            std::unordered_set<int> visited;
-            visited.reserve(nodes.size());
-
-            for(auto nPtr : nodes) {
-                const_folding_dfs(nPtr, visited);
-            }
-
-            removeInactiveNodes();
-        }
 
         void GraphInternal::optimize() {
-            // 1. merge
-            // opt_merge();
 
-            // 2. constant folding
-            // opt_const_folding();
+            std::unique_ptr<opt::Optimizer> optimize(new opt::Optimizer(shared_from_this()));
+            optimize->run();
 
             // for(auto nPtr : nodes) {
             //     std::cout<<"Node "<<nPtr->id<<std::endl;
