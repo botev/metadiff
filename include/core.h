@@ -222,11 +222,15 @@ namespace metadiff {
             //below are graph optimization utilities
             void remove_child(Node node);
 
-            void replace_parent_from_children(Node node);
+            void replace_children_from(Node node);
+
+            void replace_parent_of_children(Node node);
 
             Node replace_with_constant(double value);
 
-            Node replace_const_eli(int value, Node parent);
+            void replace_const_eli(int value, Node parent);
+
+            bool is(const string& str);
         };
 
         /** Abstract class for operators */
@@ -695,6 +699,8 @@ namespace metadiff {
             Node seq(SymInt start, SymInt end);
 
             //below are graph optimization utilities
+            void optimize();
+
             void removeInactiveNodes();
 
             void removeNode(Node node);

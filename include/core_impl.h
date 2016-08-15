@@ -254,7 +254,11 @@ namespace metadiff{
             }
         }
 
-        void Node::replace_parent_from_children(Node node) {
+        void Node::replace_children_from(Node node) {
+            unwrap()->children = node->children;
+        }
+
+        void Node::replace_parent_of_children(Node node) {
             for(auto c : unwrap()->children) {
                 // on only unary, binary, and NaryOperator
                 c->op->replace_parent(*this, node);
@@ -266,32 +270,34 @@ namespace metadiff{
 
             Node newNode = unwrap()->graph->constant_value(value);
             // newNode->id = unwrap()->id;
-            newNode->children = unwrap()->children;
+            newNode.replace_children_from(*this);
 
-            replace_parent_from_children(newNode);
+            replace_parent_of_children(newNode);
 
             logger()->debug()<<"New constant Node: "<<newNode->id<<" : "<<value;
 
             return newNode;
         }
 
-        Node Node::replace_const_eli(int value, Node parent) {
+        void Node::replace_const_eli(int value, Node parent) {
             unwrap()->active = false;
             parent.remove_child(*this);
 
             if (value == -1) {
                 Node newNode = parent.neg();
-                newNode->children = unwrap()->children;
-                replace_parent_from_children(newNode);
+                newNode.replace_children_from(*this);
+                replace_parent_of_children(newNode);
 
                 logger()->debug()<<"New Neg Node: "<<newNode->id;
             }
             else if (value == 1) {
-                parent->children = unwrap()->children;
-                replace_parent_from_children(parent);
+                parent.replace_children_from(*this);
+                replace_parent_of_children(parent);
             }
+        }
 
-            return Node();
+        bool Node::is(const string& str) {
+            return unwrap()->op->name == str;
         }
 
         void Operator::send_grad_message(size_t target, Node msg,
