@@ -232,6 +232,7 @@ namespace metadiff {
 
             bool is(const string& str);
 
+            // no node can reach this node any more, although this ndoe still has links to other nodes
             void set_inactive();
 
             bool is_active();
@@ -717,6 +718,12 @@ namespace metadiff {
             void removeInactiveNodes();
 
             void removeNode(Node node);
+
+            void topo_sort();
+
+          private:
+            void topo_helper(shared_ptr<NodeInternal> node, 
+            stack<shared_ptr<NodeInternal> >& tpStack, unordered_set<shared_ptr<NodeInternal> >& visited);
         };
 
         /**

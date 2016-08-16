@@ -19,7 +19,22 @@ public:
         // opt_const_elimination();
         // opt_neg_neg();
         opt_sum_scalar_martix();
-        // To-Do: gonna ensure the Ids are consercutive
+
+        //remove all inactive nodes from graph
+        _graph->removeInactiveNodes();
+
+        // ensure the ordering of nodes in graph
+        _graph->topo_sort();
+
+        // for(auto nPtr : nodes) {
+        //     std::cout<<"Node "<<nPtr->id<<std::endl;
+        //     std::vector<int> parentIds{};
+        //     nPtr->op->get_parents_ids(parentIds);
+        //     for (auto p : parentIds)
+        //         std::cout<<"parents "<<p<<std::endl;
+        //     for (auto c : nPtr->children)
+        //         std::cout<<"children "<<c->id<<std::endl;
+        // }
     };
 
     void opt_merge() {
@@ -30,6 +45,7 @@ public:
         map<vector<int>, opMap> nodeMap;
 
         for(Node node : _graph->nodes) {
+            if(!node.is_active()) continue;
 
             vector<int> parentIds{};
             node->op->get_parents_ids(parentIds);
@@ -62,10 +78,7 @@ public:
                     node.set_inactive();
                 }
             }
-        }
-
-        //remove all inactive nodes from graph
-        _graph->removeInactiveNodes();
+        }        
     }
 
     void const_folding_dfs(Node node, unordered_set<int>& visited) {
@@ -117,10 +130,10 @@ public:
         visited.reserve(_graph->nodes.size());
 
         for(Node node : _graph->nodes) {
+            if(!node.is_active()) continue;
+
             const_folding_dfs(node, visited);
         }
-
-        _graph->removeInactiveNodes();
     }
 
     void opt_const_elimination() {
@@ -161,8 +174,6 @@ public:
             }
             // To-do: for mul(1, x, y) -> mul(x, y)
         }
-
-        _graph->removeInactiveNodes();
     }
 
     // div().div()?
@@ -183,8 +194,6 @@ public:
             node.set_inactive();
             parent.set_inactive();
         }
-
-        _graph->removeInactiveNodes();
     }
 
     void opt_neg_div() {
@@ -198,7 +207,7 @@ public:
 
         for (Node node : _graph->nodes) {
             // consider elementwise multiplications of multiple scalars and matrices
-            if (!node.is("Mul")) 
+            if (!node.is("Mul") or !node.is_active()) 
                 continue;
 
             auto sumLoc = std::find_if(node->children.begin(), node->children.end(),
@@ -217,13 +226,12 @@ public:
                     mp.push_back(p); //not scalar then it's matrix??
                 }
             }
-            if (sp.empty()) continue;
-            if (mp.empty()) continue;
+            if (sp.empty() or mp.empty()) continue;
 
             if (mp.size() >1)
                 node->op->update_parents(mp);
             else {
-                // if the matirx is the only matirx, bypass current node
+                // if the matrix is the only matrix, bypass current node
                 node.set_inactive();
                 mp[0].replace_children_from(node);
                 node.replace_parent_of_children(mp[0]);
@@ -243,10 +251,11 @@ public:
 
             sMul->children = sumNodeChildren;
         }
-
-        _graph->removeInactiveNodes();
     }
 
+    void opt_inplace_elementwise() {
+
+    }
           
 };}}
 #endif //METADIFF_OPT_OPTIMIZER_H

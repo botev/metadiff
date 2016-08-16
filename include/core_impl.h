@@ -5,8 +5,6 @@
 #ifndef METADIFF_CORE_IMPL_H
 #define METADIFF_CORE_IMPL_H
 
-#include "optimize.h"
-
 namespace metadiff{
     namespace core {
         using namespace exceptions;
@@ -681,20 +679,40 @@ namespace metadiff{
             }
         }
 
-        void GraphInternal::optimize() {
+        void GraphInternal::topo_sort() {
+            stack<shared_ptr<NodeInternal> > tpStack;
+            unordered_set<shared_ptr<NodeInternal> > visited;
 
+            for(shared_ptr<NodeInternal> node : nodes) {
+                topo_helper(node, tpStack, visited);
+            }
+
+            nodes = {};
+            size_t stackSize = tpStack.size();
+            for(size_t i=0; i<stackSize; i++) {
+                auto nd = tpStack.top();
+                nd->id = i;
+                nodes.push_back(nd);
+                tpStack.pop();
+            }
+        }
+
+        void GraphInternal::topo_helper(shared_ptr<NodeInternal> node, 
+            stack<shared_ptr<NodeInternal> >& tpStack, unordered_set<shared_ptr<NodeInternal> >& visited) {
+            if (visited.find(node) != visited.end()) return;
+            visited.insert(node);
+
+            for(Node child : node->children)
+            {
+                topo_helper(child.unwrap(), tpStack, visited);
+            }
+
+            tpStack.push(node);
+        }
+
+        void GraphInternal::optimize() {
             std::unique_ptr<opt::Optimizer> optimize(new opt::Optimizer(shared_from_this()));
             optimize->run();
-
-            // for(auto nPtr : nodes) {
-            //     std::cout<<"Node "<<nPtr->id<<std::endl;
-            //     std::vector<int> parentIds{};
-            //     nPtr->op->get_parents_ids(parentIds);
-            //     for (auto p : parentIds)
-            //         std::cout<<"parents "<<p<<std::endl;
-            //     for (auto c : nPtr->children)
-            //         std::cout<<"children "<<c->id<<std::endl;
-            // }
         }
 
         // Copies the graph and optimizes it, populating the execution data
