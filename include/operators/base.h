@@ -367,7 +367,6 @@ namespace metadiff {
             return Node::add(NodeVec {node1, node1->graph->wrap(node2)});
         };
 
-
         Node Node::neg() {
             // TODO x.neg().neg() = x
             return apply<op::Neg>(unwrap());

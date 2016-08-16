@@ -85,12 +85,22 @@ void build_model(){
     // auto z = x*y;
 
     //neg neg
-    auto x = graph->shared_variable(af::constant(float(2.0), 1, 1, f32), "x");
-    auto y = x.neg();
-    auto z = y.neg();
-    auto p = graph->shared_variable(af::constant(float(2.0), 1, 1, f32), "p");
-    auto o = p.neg();
-    auto q = z*o;
+    // auto x = graph->shared_variable(af::constant(float(2.0), 1, 1, f32), "x");
+    // auto y = x.neg();
+    // auto z = y.neg();
+    // auto p = graph->shared_variable(af::constant(float(2.0), 1, 1, f32), "p");
+    // auto o = p.neg();
+    // auto q = z*o;
+
+    // sum scalar martix
+    auto s1 = graph->shared_variable(af::constant(float(1.0), 1, 1, f32), "s1");
+    auto s2 = graph->shared_variable(af::constant(float(2.0), 1, 1, f32), "s2");
+    auto m1 = graph->shared_variable(af::constant(float(3.0), 2, 2, f32), "m1");
+    // auto m2 = graph->shared_variable(af::constant(float(4.0), 2, 2, f32), "m2");
+    
+    //this is not created as nary
+    //also it is elementwise .* looks like a dot product
+    auto r = md::sum(s1 * s2 * m1);
 
     md::dagre_to_file("bin/mnist_hinton/opt_before.html", graph);
 

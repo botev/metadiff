@@ -344,6 +344,10 @@ namespace metadiff{
         Node relu(Node node) {
             return node.relu();
         }
+
+        Node sum(Node node) {
+            return node.sum();
+        }
     }
 }
 #endif //METADIFF_API_H

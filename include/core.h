@@ -231,6 +231,10 @@ namespace metadiff {
             void replace_const_eli(int value, Node parent);
 
             bool is(const string& str);
+
+            void set_inactive();
+
+            bool is_active();
         };
 
         /** Abstract class for operators */
@@ -324,7 +328,16 @@ namespace metadiff {
             static std::shared_ptr<const Operator> get_base_op(std::shared_ptr<const Operator> const op);
 
             //below are graph optimization utilities
-            virtual void replace_parent(Node iOrg, Node iNew) {};
+
+            // only for NaryOperator
+            virtual void replace_parent(Node iOrg, Node iNew) {
+              logger()->error()<<"replace_parent for NaryOperator is called for other type!";
+            };
+
+            // only for NaryOperator
+            virtual void update_parents(NodeVec nodes) {
+              logger()->error()<<"update_parents for NaryOperator is called for other type!";
+            };
 
             // override for ConstantValue class
             virtual double getConstVal() {return 0.0;};

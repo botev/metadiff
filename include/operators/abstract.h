@@ -211,6 +211,10 @@ namespace metadiff {
                 }
             }
 
+            void update_parents(NodeVec nodes) {
+                parents = nodes;
+            }
+
             dType get_dtype() const {
                 dType dtype = b8;
                 for (size_t i = 0; i < parents.size(); i++) {

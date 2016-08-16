@@ -266,7 +266,7 @@ namespace metadiff{
         }
 
         Node Node::replace_with_constant(double value) {
-            unwrap()->active = false;
+            set_inactive();
 
             Node newNode = unwrap()->graph->constant_value(value);
             // newNode->id = unwrap()->id;
@@ -280,7 +280,7 @@ namespace metadiff{
         }
 
         void Node::replace_const_eli(int value, Node parent) {
-            unwrap()->active = false;
+            set_inactive();
             parent.remove_child(*this);
 
             if (value == -1) {
@@ -298,6 +298,14 @@ namespace metadiff{
 
         bool Node::is(const string& str) {
             return unwrap()->op->name == str;
+        }
+
+        void Node::set_inactive() {
+            unwrap()->active = false;
+        }
+
+        bool Node::is_active() {
+            return unwrap()->active;
         }
 
         void Operator::send_grad_message(size_t target, Node msg,
