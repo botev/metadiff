@@ -699,7 +699,8 @@ namespace metadiff{
 
         void GraphInternal::topo_helper(shared_ptr<NodeInternal> node, 
             stack<shared_ptr<NodeInternal> >& tpStack, unordered_set<shared_ptr<NodeInternal> >& visited) {
-            if (visited.find(node) != visited.end()) return;
+            if (visited.find(node) != visited.end())
+                return;
             visited.insert(node);
 
             for(Node child : node->children)
@@ -708,6 +709,28 @@ namespace metadiff{
             }
 
             tpStack.push(node);
+        }
+
+        unordered_set<shared_ptr<NodeInternal>>
+        GraphInternal::get_nodes_and_ancestors(const NodeVec& startNodes) {
+            unordered_set<shared_ptr<NodeInternal>> result;
+
+            for(Node node : startNodes) {
+                nodes_and_ancestors_dfs(node, result);
+            }
+
+            return result;
+        }
+
+        void GraphInternal::nodes_and_ancestors_dfs(Node node, unordered_set<shared_ptr<NodeInternal>>& result) {
+
+            if (result.find(node.unwrap()) != result.end())
+                return;
+
+            result.insert(node.unwrap());
+            for(Node parent : node->op->get_ancestors()) {
+                nodes_and_ancestors_dfs(parent, result);
+            }
         }
 
         void GraphInternal::optimize() {

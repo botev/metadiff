@@ -9,37 +9,73 @@ class Optimizer {
 
 private:
     shared_ptr<GraphInternal> _graph;
+    size_t _originalSize;
+    NodeVec _targets;
+    Updates _updates;
 
 public:
-    Optimizer(shared_ptr<GraphInternal> graph) : _graph(graph) {};
+    Optimizer(shared_ptr<GraphInternal> graph) : _graph(graph), _originalSize(_graph->nodes.size()) {};
+
+    Optimizer(shared_ptr<GraphInternal> graph,
+        NodeVec targets,
+        Updates updates)
+        : _targets(targets), _updates(updates), _graph(graph), _originalSize(_graph->nodes.size()) {}
 
     void run() {
+
+        opt_filter_nodes();
+        opt_inline();
+
         // opt_merge();
         // opt_const_folding();
         // opt_const_elimination();
         // opt_neg_neg();
-        opt_sum_scalar_martix();
+        // opt_sum_scalar_martix();
 
+        bool noNewNode = _originalSize >= _graph->nodes.size() ? true : false;
         //remove all inactive nodes from graph
         _graph->removeInactiveNodes();
 
-        // ensure the ordering of nodes in graph
-        _graph->topo_sort();
+        // if no new nodes are added, a topological sort is not needed
+        if (noNewNode)
+        {
+            for(int i=0; i<_graph->nodes.size(); i++) {
+                _graph->nodes[i]->id = i;
+            }
+        }
+        else {
+            // ensure the ordering of nodes in graph
+            // however, simple topo_sort causes core dump in run_model
+            _graph->topo_sort();
+        }
 
-        // for(auto nPtr : nodes) {
-        //     std::cout<<"Node "<<nPtr->id<<std::endl;
-        //     std::vector<int> parentIds{};
-        //     nPtr->op->get_parents_ids(parentIds);
-        //     for (auto p : parentIds)
-        //         std::cout<<"parents "<<p<<std::endl;
-        //     for (auto c : nPtr->children)
-        //         std::cout<<"children "<<c->id<<std::endl;
-        // }
     };
+
+    template<typename T>
+    void print_ids(T nodes) {
+        for(auto n : nodes)
+            // cout<<n->id<<"/"<<n->op->name<<" ";
+            cout<<n->id<<" ";
+        cout<<endl;
+    }
+
+    void opt_filter_nodes() {
+        NodeVec startNodes(_targets);
+        for(auto& u : _updates) 
+            startNodes.push_back(u.second);
+
+        unordered_set<shared_ptr<NodeInternal>> validNodes = _graph->get_nodes_and_ancestors(startNodes);
+
+        for(Node n : _graph->nodes) {
+            if (validNodes.find(n.unwrap()) == validNodes.end()) {
+                n.set_inactive();
+            }
+        }
+    }
 
     void opt_merge() {
         // logger()->debug() << "1. merge...";
-        // key:operator name; value:node id
+        // key:operator name; value:node
         typedef unordered_map<string, Node> opMap;
         // key:parents ids
         map<vector<int>, opMap> nodeMap;
@@ -253,9 +289,32 @@ public:
         }
     }
 
-    void opt_inplace_elementwise() {
+    void opt_inplace() {
 
     }
-          
-};}}
+
+    void opt_inline() {
+        // populating the execution data - inlined
+        // the actual inline checks are done during arrayfire generation
+        const vector<string> ops{"Input", "Shared", "Broadcast", "Transpose", "Neg"};
+
+        for (Node node : _graph->nodes) {
+
+            if(!node.is_active()) continue;
+
+            if (node.is_scalar() and node.is_constant()) {
+                node->execution.inlined = true;
+            }
+            else if (node->children.size() <= 1) {
+                node->execution.inlined = true;
+            }
+            else if(std::find(ops.begin(), ops.end(), node->op->name) != ops.end()) {
+                node->execution.inlined = true;
+            }
+        }
+    }
+
+};
+
+}}
 #endif //METADIFF_OPT_OPTIMIZER_H

@@ -367,7 +367,9 @@ namespace metadiff {
 
             NodeInternal(GraphInPtr graph, Device device) :
                     graph(graph),
-                    device(device) { }
+                    device(device),
+                    active(true),
+                    execution() { }
 
             NodeInternal(GraphInPtr graph,
                          Device device,
@@ -389,7 +391,8 @@ namespace metadiff {
                     grad_level(grad_level),
                     shape(shape),
                     group(group),
-                    active(true) { }
+                    active(true),
+                    execution() { }
         };
 
         /**
@@ -721,9 +724,14 @@ namespace metadiff {
 
             void topo_sort();
 
+            unordered_set<shared_ptr<NodeInternal>>
+            get_nodes_and_ancestors(const NodeVec& startNodes);
+
           private:
             void topo_helper(shared_ptr<NodeInternal> node, 
             stack<shared_ptr<NodeInternal> >& tpStack, unordered_set<shared_ptr<NodeInternal> >& visited);
+
+            void nodes_and_ancestors_dfs(Node node, unordered_set<shared_ptr<NodeInternal>>& result);
         };
 
         /**

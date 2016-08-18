@@ -14,6 +14,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <set>
 #include <stack>
 #include <unordered_set>
 #include <unordered_map>
@@ -24,8 +25,11 @@ using std::string;
 using std::unordered_set;
 using std::unordered_map;
 using std::shared_ptr;
+using std::unique_ptr;
 using std::map;
-using std::ios;
+using std::set;
+using std::cout;
+using std::endl;
 
 #include "os.h"
 #include "logging.h"
