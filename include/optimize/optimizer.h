@@ -24,7 +24,6 @@ public:
     void run() {
 
         opt_filter_nodes();
-        opt_inline();
 
         // opt_merge();
         // opt_const_folding();
@@ -32,11 +31,14 @@ public:
         // opt_neg_neg();
         // opt_sum_scalar_martix();
 
-        bool noNewNode = _originalSize >= _graph->nodes.size() ? true : false;
+        // opt_inline();
+        // opt_elementwise_inplace();
+
+        const bool noNewNode = _originalSize >= _graph->nodes.size() ? true : false;
         //remove all inactive nodes from graph
         _graph->removeInactiveNodes();
 
-        // if no new nodes are added, a topological sort is not needed
+        // if no new node is added, a topological sort is not needed
         if (noNewNode)
         {
             for(int i=0; i<_graph->nodes.size(); i++) {
@@ -48,7 +50,6 @@ public:
             // however, simple topo_sort causes core dump in run_model
             _graph->topo_sort();
         }
-
     };
 
     template<typename T>
@@ -289,17 +290,12 @@ public:
         }
     }
 
-    void opt_inplace() {
-
-    }
-
     void opt_inline() {
         // populating the execution data - inlined
-        // the actual inline checks are done during arrayfire generation
+        // the actual inline checks are done during arrayfire source generation
         const vector<string> ops{"Input", "Shared", "Broadcast", "Transpose", "Neg"};
 
         for (Node node : _graph->nodes) {
-
             if(!node.is_active()) continue;
 
             if (node.is_scalar() and node.is_constant()) {
@@ -314,6 +310,57 @@ public:
         }
     }
 
+    void opt_elementwise_inplace() {
+        /**
+         *  if one of the inputs of an elementwise operator has same type and shape to the output
+         *  and is no longer useful after the elementwise operator
+         *  reuse the storage of input as storage of output
+
+         *  populating the execution data - inplace
+         *  the actual inline checks are done during arrayfire source generation
+         *  this optimization should be done after opt_inline
+        */
+
+        for (Node node : _graph->nodes) {
+            if(!node.is_active()) continue;
+
+            if (node->op->is_elementwise()) {
+                //O(ancestors*children), but there won't be many of them)
+                for(Node ancestor : node->op->get_ancestors()) {
+
+                    // need a proper logic for it. could be:
+                    // 1. topo_sort (not done properly yet)
+                    // 2. all other children of ancestor have id smaller than this inplace child
+                    // only if it is no longer useful
+                    bool onlyChild = true;
+                    for (Node c : ancestor->children) {
+                        if (c.unwrap() != node.unwrap()) {
+                            onlyChild = false;
+                            break;
+                        }
+                    }
+                    if (!onlyChild) continue;
+
+                    for(Node child : node->children) {
+                        if (ancestor->shape == child->shape and 
+                            ancestor->dtype == child->dtype and
+                            !ancestor->execution.inlined) {
+                            // if the parent is already inlined
+                            // inplace from it has no gain
+
+                            // copy inplace reference or set to the ancestor
+                            if (ancestor->execution.inplace) {
+                                child->execution.inplace = ancestor->execution.inplace;
+                            }
+                            else {
+                                child->execution.inplace = ancestor.unwrap();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 };
 
 }}

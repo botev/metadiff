@@ -10,6 +10,13 @@ namespace metadiff{
         using namespace exceptions;
 #ifdef AFAPI
         class ArrayfireBackend : public FunctionBackend<af::array> {
+        private:
+            // types of variables to be generated
+            enum GenType {
+                AF_ARRAY = 0,
+                STD_FLOAT = 1
+            }; 
+
         public:
             std::string af_path;
 
@@ -127,6 +134,10 @@ namespace metadiff{
 
                 // An expression table for all nodes
                 std::vector<std::string> expression_table(graph->nodes.size(), "Undefined");
+				// keep track of the generated types of each node
+                std::vector<GenType> node_types(graph->nodes.size(), GenType::AF_ARRAY);
+
+                // consider inlined and inplace optimizations here
 
                 // Loop over all nodes and calculate their expressions
                 // as well as write anything that is not inlined
@@ -142,19 +153,49 @@ namespace metadiff{
                             f << "\tstd::cout << \"Calculating node '" << i << "'\" << std::endl;\n";
                         }
 
+                        // test if all ancestors of the node are floats
+                        // if yes, the node is also a float (not af::array)
+                        bool all_ans_float = true;
+                        auto ancestors = graph->nodes[i]->op->get_ancestors();
+                        if (ancestors.empty()) {
+                            all_ans_float = false;
+                        }
+                        for (Node ans: graph->nodes[i]->op->get_ancestors()) {
+                            if (node_types[ans->id] != GenType::STD_FLOAT) {
+                                all_ans_float = false;
+                                break;
+                            }
+                        }
+
                         // TODO this should be properly done for all scalar types
                         // The code generated is af::array node_index = <expression>;
-                        if (graph->nodes[i]->node_type == core::CONSTANT and Node(graph->nodes[i]).is_scalar()) {
+                        if ((graph->nodes[i]->node_type == core::CONSTANT and Node(graph->nodes[i]).is_scalar()) or all_ans_float) {
                             f << "\tfloat ";
+                            node_types[i] = GenType::STD_FLOAT;
+                        }
+                        else if (graph->nodes[i]->execution.inplace){
+                            // only create new array if the node is has no inplace node
+                            f << "\t";
                         }
                         else {
                             f << "\taf::array ";
                         }
-                        f << "node_" << i << " = " << expression << ";\n";
-                        expression_table[i] = "node_" + std::to_string(i);
+
+                        int nodeNum = i;
+                        // reuse the inplace node
+                        if (graph->nodes[i]->execution.inplace) {
+                            nodeNum = graph->nodes[i]->execution.inplace->id;
+                        }
+
+                        f << "node_" << nodeNum << " = " << expression << ";\n";
+                        expression_table[i] = "node_" + std::to_string(nodeNum);
 
                         if (debug) {
-                            f << "\tstd::cout << \"Node size:\" << node_" << i << ".dims() << std::endl;\n";
+                            // float has no dims()
+                            // f << "\tstd::cout << \"Node size:\" << node_" << nodeNum << ".dims() << std::endl;\n";
+                            if (graph->nodes[i]->execution.inplace) {
+                                f << "\tstd::cout << \"node " << i << " is inplace node "<< nodeNum << "\"<< std::endl;\n";
+                            }
                         }
                     }
                 }

@@ -316,6 +316,17 @@ namespace metadiff {
             }
         };
 
+        /** Abstract class for unary operators which are applied elementwise */
+        class ElementwiseUnary : public UnaryOperator {
+        public:
+            ElementwiseUnary(std::string const name,
+                             GraphInPtr graph,
+                             Node parent) :
+                UnaryOperator(name, graph, parent) {};
+
+            bool is_elementwise() final {return true;}
+        };
+
         /** Abstract class for binary operators which are applied elementwise */
         class ElementwiseBinary : public BinaryOperator {
         public:
@@ -337,6 +348,7 @@ namespace metadiff {
                     this->parent2 = parent2.broadcast(shape);
                 }
             }
+            bool is_elementwise() final {return true;}
         };
 
         /** Abstract class for nary operators which are applied elementwise */
@@ -357,7 +369,8 @@ namespace metadiff {
                         this->parents.push_back(parents[i]);
                     }
                 }
-            };
+            }
+            bool is_elementwise() final {return true;}
         };
 
         /** Abstract class for unary logical operators */

@@ -10,10 +10,10 @@ namespace metadiff {
         using namespace exceptions;
         
         /** Explicit operator for square */
-        class Square : public UnaryOperator {
+        class Square : public ElementwiseUnary {
         public:
             Square(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Square", graph, parent) { };
+                    ElementwiseUnary("Square", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Square>(graph, ancestors[0]);
@@ -27,10 +27,10 @@ namespace metadiff {
         };
 
         /** Exponential */
-        class Exp : public UnaryOperator {
+        class Exp : public ElementwiseUnary {
         public:
             Exp(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Exp", graph, parent) { };
+                    ElementwiseUnary("Exp", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Exp>(graph, ancestors[0]);
@@ -42,10 +42,10 @@ namespace metadiff {
         };
 
         /** Logarithm */
-        class Log : public UnaryOperator {
+        class Log : public ElementwiseUnary {
         public:
             Log(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Log", graph, parent) { };
+                    ElementwiseUnary("Log", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Log>(graph, ancestors[0]);
@@ -57,10 +57,10 @@ namespace metadiff {
         };
 
         /** Logarithm in base 10 */
-        class Log10 : public UnaryOperator {
+        class Log10 : public ElementwiseUnary {
         public:
             Log10(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Log10", graph, parent) { };
+                    ElementwiseUnary("Log10", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Log>(graph, ancestors[0]);
@@ -72,10 +72,10 @@ namespace metadiff {
         };
 
         /** Absolute value */
-        class Abs : public UnaryOperator {
+        class Abs : public ElementwiseUnary {
         public:
             Abs(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Abs", graph, parent) { };
+                    ElementwiseUnary("Abs", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Abs>(graph, ancestors[0]);
@@ -89,11 +89,11 @@ namespace metadiff {
         };
 
         /** Logarithm of x + 1 */
-        class Log1p : public UnaryOperator {
+        class Log1p : public ElementwiseUnary {
         public:
             Log1p(GraphInPtr graph,
                   Node parent) :
-                    UnaryOperator("Log1p", graph, parent) { };
+                    ElementwiseUnary("Log1p", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Log1p>(graph, ancestors[0]);
@@ -105,10 +105,10 @@ namespace metadiff {
         };
 
         /** Trigonometric sine function */
-        class Sin : public UnaryOperator {
+        class Sin : public ElementwiseUnary {
         public:
             Sin(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Sin", graph, parent) { };
+                    ElementwiseUnary("Sin", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Sin>(graph, ancestors[0]);
@@ -120,10 +120,10 @@ namespace metadiff {
         };
 
         /** Trigonometric cosine function */
-        class Cos : public UnaryOperator {
+        class Cos : public ElementwiseUnary {
         public:
             Cos(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Cos", graph, parent) { };
+                    ElementwiseUnary("Cos", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Cos>(graph, ancestors[0]);
@@ -135,10 +135,10 @@ namespace metadiff {
         };
 
         /** Trigonometric tangent function */
-        class Tan : public UnaryOperator {
+        class Tan : public ElementwiseUnary {
         public:
             Tan(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Tan", graph, parent) { };
+                    ElementwiseUnary("Tan", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Tan>(graph, ancestors[0]);
@@ -150,10 +150,10 @@ namespace metadiff {
         };
 
         /** Trigonometric cotangent function */
-        class Cot : public UnaryOperator {
+        class Cot : public ElementwiseUnary {
         public:
             Cot(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Cot", graph, parent) { };
+                    ElementwiseUnary("Cot", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Cot>(graph, ancestors[0]);
@@ -165,10 +165,10 @@ namespace metadiff {
         };
 
         /** Hyperbolic sine function */
-        class Sinh : public UnaryOperator {
+        class Sinh : public ElementwiseUnary {
         public:
             Sinh(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Sinh", graph, parent) { };
+                    ElementwiseUnary("Sinh", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Sinh>(graph, ancestors[0]);
@@ -180,10 +180,10 @@ namespace metadiff {
         };
 
         /** Hyperbolic cosine function */
-        class Cosh : public UnaryOperator {
+        class Cosh : public ElementwiseUnary {
         public:
             Cosh(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Cosh", graph, parent) { };
+                    ElementwiseUnary("Cosh", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Cosh>(graph, ancestors[0]);
@@ -195,10 +195,10 @@ namespace metadiff {
         };
 
         /** Hyperbolic tangent function */
-        class Tanh : public UnaryOperator {
+        class Tanh : public ElementwiseUnary {
         public:
             Tanh(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Tanh", graph, parent) { };
+                    ElementwiseUnary("Tanh", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Tanh>(graph, ancestors[0]);
@@ -211,10 +211,10 @@ namespace metadiff {
         };
 
         /** Hyperbolic cotangent function */
-        class Coth : public UnaryOperator {
+        class Coth : public ElementwiseUnary {
         public:
             Coth(GraphInPtr graph, Node parent) :
-                    UnaryOperator("Coth", graph, parent) { };
+                    ElementwiseUnary("Coth", graph, parent) { };
 
             std::shared_ptr<Operator> copy_to(GraphInPtr graph, NodeVec ancestors) const {
                 return std::make_shared<Coth>(graph, ancestors[0]);
