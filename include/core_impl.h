@@ -687,14 +687,14 @@ namespace metadiff{
                 topo_helper(node, tpStack, visited);
             }
 
-            nodes = {};
             size_t stackSize = tpStack.size();
             for(size_t i=0; i<stackSize; i++) {
                 auto nd = tpStack.top();
                 nd->id = i;
-                nodes.push_back(nd);
+                nodes[i] = nd;
                 tpStack.pop();
             }
+
         }
 
         void GraphInternal::topo_helper(shared_ptr<NodeInternal> node, 

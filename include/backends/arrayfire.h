@@ -192,7 +192,9 @@ namespace metadiff{
 
                         if (debug) {
                             // float has no dims()
-                            // f << "\tstd::cout << \"Node size:\" << node_" << nodeNum << ".dims() << std::endl;\n";
+
+                            if (node_types[i] != GenType::STD_FLOAT)
+                                f << "\tstd::cout << \"Node size:\" << node_" << nodeNum << ".dims() << std::endl;\n";
                             if (graph->nodes[i]->execution.inplace) {
                                 f << "\tstd::cout << \"node " << i << " is inplace node "<< nodeNum << "\"<< std::endl;\n";
                             }
@@ -380,7 +382,7 @@ namespace metadiff{
 
                 // Base operators
                 if (op_name == "Input") {
-                    return "inputs[" + std::to_string(node_in->id) + "]";
+                    return "inputs[0]";
                 }
                 if (op_name == "Shared") {
                     std::shared_ptr<op::SharedInput> cast_op2 = std::static_pointer_cast<op::SharedInput>(node_in->op);

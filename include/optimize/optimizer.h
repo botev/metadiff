@@ -27,6 +27,7 @@ public:
 
         // opt_merge();
         // opt_const_folding();
+        // opt_add_zero();
         // opt_const_elimination();
         // opt_neg_neg();
         // opt_sum_scalar_martix();
@@ -47,7 +48,6 @@ public:
         }
         else {
             // ensure the ordering of nodes in graph
-            // however, simple topo_sort causes core dump in run_model
             _graph->topo_sort();
         }
     };
@@ -199,10 +199,18 @@ public:
                         conNode.remove_child(node);
                         node.replace_const_eli(constVal, nConNode); //const value
                     }
-                    else if (node.is("Pow") and constVal == 1.0) {
-                        // pow(1,x)
-                        conNode.remove_child(node);
-                        node.replace_const_eli(1, nConNode); //const value
+                    else if (node.is("Pow")) {
+                        if (constVal == 0.0) {
+                            // pow(0, x)
+                        }
+                        else if (constVal == 1.0) {
+                            // pow(1,x)
+                            conNode.remove_child(node);
+                            node.replace_const_eli(1, nConNode); //const value
+                        }
+                        else if (constVal == -0.5) {
+                            // pow(x, -0.5) -> inv(sqrt(x))
+                        }
                     }
 
                     if (conNode->children.empty())
@@ -290,6 +298,39 @@ public:
         }
     }
 
+    /**
+     * eliminate zero in add operator
+     */
+    void opt_add_zero() {
+        for(Node node : _graph->nodes) {
+            if(!node.is_active() or !node.is("Add"))
+                continue;
+
+            NodeVec actives; 
+            for(Node ance : node->op->get_parents()) {
+                if (ance.is_constant() and ance->op->getConstVal() == 0.0) {
+                    ance.set_inactive();
+                }
+                else {
+                    actives.push_back(ance);
+                }
+            }
+            node->op->update_parents(actives);
+            int parentsSize = node->op->get_parents().size();
+            
+            if (parentsSize == 0) {
+                // it is now a node of constant zero
+                node.replace_with_constant(0.0);
+            }
+            else if (parentsSize == 1) {
+                // bypass current Add node
+                node.set_inactive();
+                node->op->get_parents()[0].replace_children_from(node);
+                node.replace_parent_of_children(node->op->get_parents()[0]);
+            }
+        }
+    }
+
     void opt_inline() {
         // populating the execution data - inlined
         // the actual inline checks are done during arrayfire source generation
@@ -361,6 +402,7 @@ public:
             }
         }
     }
+
 };
 
 }}
