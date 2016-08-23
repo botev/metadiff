@@ -36,7 +36,7 @@ namespace metadiff {
 
         void dagre_to_file(std::string file_path,
                            Graph graph,
-                           Updates& updates) {
+                           Updates updates) {
             // Open file
             std::ofstream f;
             f.open(file_path);

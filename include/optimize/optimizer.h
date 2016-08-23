@@ -5,35 +5,112 @@ namespace metadiff{
     namespace opt {
         using namespace core;
 
+/** optimization options */
+enum Option {
+    FAST = 0,
+    FULL = 1
+};
+
 class Optimizer {
 
 private:
-    shared_ptr<GraphInternal> _graph;
     size_t _originalSize;
+    // optimized graph
+    shared_ptr<GraphInternal> _graph;
+
+    // optimized new members
+    NodeVec _inputs;
     NodeVec _targets;
     Updates _updates;
 
+    inline shared_ptr<spdlog::logger> logger() const {
+            return logging::logger("optimizer");
+    }
+
+    /**
+    *   Default inplace optimization when single version of updates will be applied
+    *   Or
+    *   make deep copy and apply otimization on the copied graph
+    *   when multiple versions of updates will be applied on the same graph
+    *   in this case, new targets, updates, and inputs are stored in data members
+    */
+    Optimizer(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, bool inplace)
+    {
+        if (inplace) {
+            logger()->debug() << "Inplace optimization";
+            _graph = graph;
+            _originalSize = _graph->nodes.size();
+            _targets = targets;
+            _updates = updates;
+            _inputs = inputs;
+        }
+        else {
+            logger()->debug() << "Optimization on deep copy";
+            _graph = std::make_shared<GraphInternal>();
+            graph->add_temporary_updates(updates);
+
+            NodeVec marked;
+            marked.reserve(targets.size() + updates.size());
+            for(auto& i : targets) marked.push_back(i);
+            for(auto& u : updates) marked.push_back(u.second);
+
+            NodeVec mapping = graph->copy(_graph.get(), graph->get_ancestors_mask(marked));
+            graph->clear_temporary_updates();
+
+            for (int i = 0; i < targets.size(); i++) {
+                _targets.push_back(mapping[targets[i]->id]);
+            }
+            for (int i = 0; i < updates.size(); i++) {
+                Node node1 = mapping[updates[i].first->id];
+                Node node2 = mapping[updates[i].second->id];
+                _updates.push_back(std::pair<Node, Node>(node1, node2));
+            }
+            for (int i = 0; i < inputs.size(); i++) {
+                _inputs.push_back(mapping[inputs[i]->id]);
+            }
+        }
+    }
+
 public:
-    Optimizer(shared_ptr<GraphInternal> graph) : _graph(graph), _originalSize(_graph->nodes.size()) {};
 
-    Optimizer(shared_ptr<GraphInternal> graph,
-        NodeVec targets,
-        Updates updates)
-        : _targets(targets), _updates(updates), _graph(graph), _originalSize(_graph->nodes.size()) {}
+    /**
+    *   return a unique_ptr of Optimizer object
+    */
+    static unique_ptr<Optimizer> create(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, bool inplace=true) {
+            return unique_ptr<Optimizer>(new Optimizer(graph, inputs, targets, updates, inplace));
+    }
 
-    void run() {
+    /**
+    *   run the optimizer, return a unique_ptr of it
+    */
+    static unique_ptr<Optimizer> execute(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, 
+        bool inplace=true, Option option=Option::FAST) {
+            auto opti = create(graph, inputs, targets, updates, inplace);
+            opti->run(option);
+            return opti;
+    }
+
+    /**
+    *  this is to experiment new graph optimizations only
+    */
+    Optimizer(shared_ptr<GraphInternal> graph) : _graph(graph), _originalSize(_graph->nodes.size()) {}
+
+    void run(Option option=Option::FAST) {
+        logger()->debug() << "optimizating graph with option " <<option;
 
         opt_filter_nodes();
 
-        // opt_merge();
-        // opt_const_folding();
-        // opt_add_zero();
-        // opt_const_elimination();
-        // opt_neg_neg();
-        // opt_sum_scalar_martix();
+        if (option != Option::FAST) {
+            // opt_merge();
+            // opt_const_folding();
+            // opt_add_zero();
+            // opt_const_elimination();
+            // opt_neg_neg();
+            // opt_sum_scalar_martix();
+        }
 
-        // opt_inline();
-        // opt_elementwise_inplace();
+        opt_inline();
+        opt_elementwise_inplace();
 
         const bool noNewNode = _originalSize >= _graph->nodes.size() ? true : false;
         //remove all inactive nodes from graph
@@ -50,19 +127,17 @@ public:
             // ensure the ordering of nodes in graph
             _graph->topo_sort();
         }
-    };
 
-    template<typename T>
-    void print_ids(T nodes) {
-        for(auto n : nodes)
-            // cout<<n->id<<"/"<<n->op->name<<" ";
-            cout<<n->id<<" ";
-        cout<<endl;
+        logger()->debug() << "optimization finished";
     }
 
     void opt_filter_nodes() {
+        /**
+         * filter out irrelevant nodes in graph based on dfs from _targets and _updates
+        */
+        logger()->debug() << "opt_filter_nodes...";
         NodeVec startNodes(_targets);
-        for(auto& u : _updates) 
+        for(auto& u : _updates)
             startNodes.push_back(u.second);
 
         unordered_set<shared_ptr<NodeInternal>> validNodes = _graph->get_nodes_and_ancestors(startNodes);
@@ -292,7 +367,7 @@ public:
 
             sp.push_back(sumNode);
             Node sMul = Node::mul(sp);
-            std::cout<<"create mul node: "<<sMul->id<<std::endl;
+            logger()->debug()<<"create mul node: "<<sMul->id;
 
             sMul->children = sumNodeChildren;
         }
@@ -331,9 +406,18 @@ public:
         }
     }
 
+    void opt_canonize() {
+
+    }
+
+    
+
+    /**
+     * populating execution data - inlined
+     * the actual inline checks are done during source generation
+    */
     void opt_inline() {
-        // populating the execution data - inlined
-        // the actual inline checks are done during arrayfire source generation
+        logger()->debug() << "opt_inline...";
         const vector<string> ops{"Input", "Shared", "Broadcast", "Transpose", "Neg"};
 
         for (Node node : _graph->nodes) {
@@ -351,17 +435,17 @@ public:
         }
     }
 
+    /**
+     *  if one of the inputs of an elementwise operator has same type and shape to the output
+     *  and is no longer useful after the elementwise operator
+     *  reuse the storage of input as storage of output
+
+     *  populating execution data - inplace
+     *  the actual inline checks are done during source generation
+     *  this optimization should be done after opt_inline
+    */
     void opt_elementwise_inplace() {
-        /**
-         *  if one of the inputs of an elementwise operator has same type and shape to the output
-         *  and is no longer useful after the elementwise operator
-         *  reuse the storage of input as storage of output
-
-         *  populating the execution data - inplace
-         *  the actual inline checks are done during arrayfire source generation
-         *  this optimization should be done after opt_inline
-        */
-
+        logger()->debug() << "opt_elementwise_inplace...";
         for (Node node : _graph->nodes) {
             if(!node.is_active()) continue;
 
@@ -401,6 +485,39 @@ public:
                 }
             }
         }
+    }
+
+
+    /**
+    *   inline getter of optimized graph
+    *   it is as same as argument input when inplace optimization is done
+    */
+    inline shared_ptr<GraphInternal> getGraph() const {
+        return _graph;
+    }
+
+    /**
+    *   inline getter of optimized inputs
+    *   it is as same as argument input when inplace optimization is done
+    */
+    inline NodeVec getInputs() const {
+        return _inputs;
+    }
+
+    /**
+    *   inline getter of optimized targets
+    *   it is as same as argument input when inplace optimization is done
+    */
+    inline NodeVec getTargets() const {
+        return _targets;
+    }
+
+    /**
+    *   inline getter of optimized updates
+    *   it is as same as argument input when inplace optimization is done
+    */
+    inline Updates getUpdates() const {
+        return _updates;
     }
 
 };

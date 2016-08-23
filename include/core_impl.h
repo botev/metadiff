@@ -243,7 +243,7 @@ namespace metadiff{
             for(auto iter=unwrap()->children.begin(); iter!=unwrap()->children.end();)
             {
                 if((*iter)->id==node->id) {
-                    // std::cout<<"remove_child: "<<node->id<<" is removed from "<< unwrap()->id<<std::endl;
+                    logger()->debug()<<"remove_child: "<<node->id<<" is removed from "<< unwrap()->id;
                     iter = unwrap()->children.erase(iter);
                 }
                 else {
@@ -653,7 +653,7 @@ namespace metadiff{
 
             for(auto iter=nodes.begin();iter!=nodes.end();) {
                 if(!(*iter)->active) {
-                    std::cout<<"Node "<<(*iter)->id<<" is removed"<<std::endl;
+                    logger()->debug()<<"Node "<<(*iter)->id<<" is removed";
                     iter = nodes.erase(iter);
                 }
                 else {
