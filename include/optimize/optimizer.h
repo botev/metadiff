@@ -76,7 +76,7 @@ public:
     /**
     *   return a unique_ptr of Optimizer object
     */
-    static unique_ptr<Optimizer> create(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, bool inplace=true) {
+    static unique_ptr<Optimizer> create(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, bool inplace=false) {
             return unique_ptr<Optimizer>(new Optimizer(graph, inputs, targets, updates, inplace));
     }
 
@@ -84,7 +84,7 @@ public:
     *   run the optimizer, return a unique_ptr of it
     */
     static unique_ptr<Optimizer> execute(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, 
-        bool inplace=true, Option option=Option::FAST) {
+        bool inplace=false, Option option=Option::FAST) {
             auto opti = create(graph, inputs, targets, updates, inplace);
             opti->run(option);
             return opti;
