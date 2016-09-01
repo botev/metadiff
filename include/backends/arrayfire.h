@@ -10,6 +10,13 @@ namespace metadiff{
         using namespace exceptions;
 #ifdef AFAPI
         class ArrayfireBackend : public FunctionBackend<af::array> {
+        private:
+            // types of variables to be generated
+            enum GenType {
+                AF_ARRAY = 0,
+                STD_FLOAT = 1
+            }; 
+
         public:
             std::string af_path;
 
@@ -127,6 +134,12 @@ namespace metadiff{
 
                 // An expression table for all nodes
                 std::vector<std::string> expression_table(graph->nodes.size(), "Undefined");
+				// keep track of the generated types of each node
+                std::vector<GenType> node_types(graph->nodes.size(), GenType::AF_ARRAY);
+                // keep track of each tag
+                unordered_set<int> tags;
+
+                // consider inlined and inplace optimizations here
 
                 // Loop over all nodes and calculate their expressions
                 // as well as write anything that is not inlined
@@ -144,17 +157,44 @@ namespace metadiff{
 
                         // TODO this should be properly done for all scalar types
                         // The code generated is af::array node_index = <expression>;
-                        if (graph->nodes[i]->node_type == core::CONSTANT and Node(graph->nodes[i]).is_scalar()) {
+                        if (Node(graph->nodes[i]).is_constant() and Node(graph->nodes[i]).is_scalar()) {
                             f << "\tfloat ";
+                            node_types[i] = GenType::STD_FLOAT;
+                        }
+                        else if (graph->nodes[i]->execution.inplace){
+                            // only create new array if the node is has no inplace node
+                            f << "\t";
+                        }
+                        else if (graph->nodes[i]->execution.tag != -1 and 
+                            tags.find(graph->nodes[i]->execution.tag) != tags.end()) {
+                            f << "\t";
                         }
                         else {
                             f << "\taf::array ";
+                            tags.insert(graph->nodes[i]->execution.tag);
                         }
-                        f << "node_" << i << " = " << expression << ";\n";
-                        expression_table[i] = "node_" + std::to_string(i);
+
+                        int nodeNum = i;
+                        // reuse the inplace node
+                        if (graph->nodes[i]->execution.inplace) {
+                            nodeNum = graph->nodes[i]->execution.inplace->id;
+                        }
+
+                        if (graph->nodes[i]->execution.tag != -1) {
+                            nodeNum = graph->nodes[i]->execution.tag;
+                        }
+
+                        f << "node_" << nodeNum << " = " << expression << ";\n";
+                        expression_table[i] = "node_" + std::to_string(nodeNum);
 
                         if (debug) {
-                            f << "\tstd::cout << \"Node size:\" << node_" << i << ".dims() << std::endl;\n";
+                            // float has no dims()
+
+                            if (node_types[i] != GenType::STD_FLOAT)
+                                f << "\tstd::cout << \"Node size:\" << node_" << nodeNum << ".dims() << std::endl;\n";
+                            if (graph->nodes[i]->execution.inplace) {
+                                f << "\tstd::cout << \"node " << i << " is inplace node "<< nodeNum << "\"<< std::endl;\n";
+                            }
                         }
                     }
                 }
@@ -339,7 +379,7 @@ namespace metadiff{
 
                 // Base operators
                 if (op_name == "Input") {
-                    return "inputs[" + std::to_string(node_in->id) + "]";
+                    return "inputs[0]";
                 }
                 if (op_name == "Shared") {
                     std::shared_ptr<op::SharedInput> cast_op2 = std::static_pointer_cast<op::SharedInput>(node_in->op);

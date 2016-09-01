@@ -115,7 +115,7 @@ namespace metadiff{
         }
 
         void Node::copy_to(const GraphInPtr graph, NodeVec ancestors) const {
-            logger()->trace() << "Copying to node " << graph->name << "#" <<  graph->nodes.size();
+            // logger()->trace() << "Copying to node " << graph->name << "#" <<  graph->nodes.size();
             std::shared_ptr<NodeInternal> ptr = unwrap();
             std::shared_ptr<NodeInternal> node = std::make_shared<NodeInternal>(graph, ptr->device);
             node->id = graph->nodes.size();
@@ -237,6 +237,73 @@ namespace metadiff{
                 }
             }
             return true;
+        }
+
+        void Node::remove_child(Node node) {
+            for(auto iter=unwrap()->children.begin(); iter!=unwrap()->children.end();)
+            {
+                if((*iter)->id==node->id) {
+                    logger()->debug()<<"remove_child: "<<node->id<<" is removed from "<< unwrap()->id;
+                    iter = unwrap()->children.erase(iter);
+                }
+                else {
+                    iter++;
+                }
+            }
+        }
+
+        void Node::replace_children_from(Node node) {
+            unwrap()->children = node->children;
+        }
+
+        void Node::replace_parent_of_children(Node node) {
+            for(auto c : unwrap()->children) {
+                // on only unary, binary, and NaryOperator
+                c->op->replace_parent(*this, node);
+            }
+        }
+
+        Node Node::replace_with_constant(double value) {
+            set_inactive();
+
+            Node newNode = unwrap()->graph->constant_value(value);
+            // newNode->id = unwrap()->id;
+            newNode.replace_children_from(*this);
+
+            replace_parent_of_children(newNode);
+
+            logger()->debug()<<"New constant Node: "<<newNode->id<<" : "<<value;
+
+            return newNode;
+        }
+
+        void Node::replace_const_eli(int value, Node parent) {
+            set_inactive();
+            parent.remove_child(*this);
+
+            if (value == -1) {
+                Node newNode = parent.neg();
+                newNode.replace_children_from(*this);
+                replace_parent_of_children(newNode);
+
+                logger()->debug()<<"New Neg Node: "<<newNode->id;
+            }
+            else if (value == 1) {
+                parent.replace_children_from(*this);
+                replace_parent_of_children(parent);
+            }
+        }
+
+        bool Node::is(const string& str) {
+            return unwrap()->op->name == str;
+        }
+
+        void Node::set_inactive() {
+            unwrap()->active = false;
+        }
+
+        bool Node::is_active() {
+            return unwrap()->active;
         }
 
         void Operator::send_grad_message(size_t target, Node msg,
@@ -469,7 +536,7 @@ namespace metadiff{
                 }
             }
 //        NodeVec candidates = op->get_parents()
-//        for(int i=0; i<op->get_parents()[0].unwrap().chilidren)
+//        for(int i=0; i<op->get_parents()[0].unwrap().children)
 //        // For the moment only one such for the experiment
 //        if(op->name == "Exp"){
 //            Node parent = op->get_parents()[0];
@@ -576,29 +643,127 @@ namespace metadiff{
             return grads;
         };
 
-        // Copies the graph and optimizes it, populating the execution data
-        Graph GraphInternal::optimize(NodeVec &targets, Updates &updates, NodeVec &inputs,
-                                      NodeVec &new_targets, Updates &new_updates, NodeVec &new_inputs) {
-            logger()->debug() << "Running optimization of graph " << name;
-            // Copy only the relevant part of the graph
-            Graph copy = create_graph();
-            add_temporary_updates(updates);
-            NodeVec marked(targets.size() + this->updates.size() + this->temporary_updates.size());
-            for (size_t i = 0; i < targets.size(); i++) {
-                marked[i] = targets[i];
+        void Operator::get_parents_ids(std::vector<int>& ids) const {
+            for(auto parent : get_parents()) {
+                ids.push_back(parent->id);
             }
-            for (size_t i = 0; i < this->updates.size(); i++) {
-                marked[i + targets.size()] = this->updates[i].second;
-            }
-            for (size_t i = 0; i < this->temporary_updates.size(); i++) {
-                marked[i + targets.size()] = this->temporary_updates[i].second;
+        }
+
+        void GraphInternal::removeInactiveNodes() {
+
+            for(auto iter=nodes.begin();iter!=nodes.end();) {
+                if(!(*iter)->active) {
+                    logger()->debug()<<"Node "<<(*iter)->id<<" is removed";
+                    iter = nodes.erase(iter);
+                }
+                else {
+                    iter++;
+                }
             }
 
-            NodeVec mapping = this->copy(copy.get(), get_ancestors_mask(marked));
+            // empty group??
+            // groups.erase(std::remove_if(
+            //                 groups.begin(),
+            //                 groups.end(),
+            //                 [](std::shared_ptr<NodeGroup> g)
+            //                     {return !n->active;}), 
+            //             nodes.end());
+        }
+
+        void GraphInternal::removeNode(Node node) {
+            for(auto iter=nodes.begin();iter!=nodes.end();iter++) {
+                if (node->id == (*iter)->id) {
+                    nodes.erase(iter);
+                    return;
+                }
+            }
+        }
+
+        void GraphInternal::topo_sort() {
+            stack<shared_ptr<NodeInternal> > tpStack;
+            unordered_set<shared_ptr<NodeInternal> > visited;
+
+            for(shared_ptr<NodeInternal> node : nodes) {
+                topo_helper(node, tpStack, visited);
+            }
+
+            size_t stackSize = tpStack.size();
+            for(size_t i=0; i<stackSize; i++) {
+                auto nd = tpStack.top();
+                nd->id = i;
+                nodes[i] = nd;
+                tpStack.pop();
+            }
+
+        }
+
+        void GraphInternal::topo_helper(shared_ptr<NodeInternal> node, 
+            stack<shared_ptr<NodeInternal> >& tpStack, unordered_set<shared_ptr<NodeInternal> >& visited) {
+            if (visited.find(node) != visited.end())
+                return;
+            visited.insert(node);
+
+            for(Node child : node->children)
+            {
+                topo_helper(child.unwrap(), tpStack, visited);
+            }
+
+            tpStack.push(node);
+        }
+
+        unordered_set<shared_ptr<NodeInternal>>
+        GraphInternal::get_nodes_and_ancestors(const NodeVec& startNodes) {
+            unordered_set<shared_ptr<NodeInternal>> result;
+
+            for(Node node : startNodes) {
+                nodes_and_ancestors_dfs(node, result);
+            }
+
+            return result;
+        }
+
+        void GraphInternal::nodes_and_ancestors_dfs(Node node, unordered_set<shared_ptr<NodeInternal>>& result) {
+
+            if (result.find(node.unwrap()) != result.end())
+                return;
+
+            result.insert(node.unwrap());
+            for(Node parent : node->op->get_ancestors()) {
+                nodes_and_ancestors_dfs(parent, result);
+            }
+        }
+
+        void GraphInternal::optimize() {
+            std::unique_ptr<opt::Optimizer> optimize(new opt::Optimizer(shared_from_this()));
+            optimize->run();
+        }
+
+        // Copies the graph and optimizes it, populating the execution data
+        Graph GraphInternal::optimize(const NodeVec &iTargets, 
+            const Updates &iUpdates, 
+            const NodeVec &iInputs,
+            NodeVec &new_targets, 
+            Updates &new_updates, 
+            NodeVec &new_inputs) {
+
+            logger()->debug() << "Running optimization of graph " << name;
+
+            // Copy only the relevant part of the graph
+            Graph optimize = create_graph();
+            add_temporary_updates(iUpdates);
+
+            NodeVec marked;
+            marked.reserve(iTargets.size() + updates.size() + temporary_updates.size());
+            for(auto& i : iTargets) marked.emplace_back(i);
+            for(auto& u : updates) marked.emplace_back(u.second); // from member
+            for(auto& t : temporary_updates) marked.emplace_back(t.second); // from member
+
+            NodeVec mapping = this->copy(optimize.get(), get_ancestors_mask(marked));
             clear_temporary_updates();
+
             // Optimize
-            for (size_t i = 0; i < copy->nodes.size(); i++) {
-                Node node = copy->nodes[i];
+            for (size_t i = 0; i < optimize->nodes.size(); i++) {
+                Node node = optimize->nodes[i];
                 if (node->op->name == "Input") {
                     node->execution.inlined = true;
                 }
@@ -621,19 +786,20 @@ namespace metadiff{
                     node->execution.inlined = true;
                 }
             }
+
             // Set the new_targets and new_updates
-            for (int i = 0; i < targets.size(); i++) {
-                new_targets.push_back(mapping[targets[i]->id]);
+            for (int i = 0; i < iTargets.size(); i++) {
+                new_targets.push_back(mapping[iTargets[i]->id]);
             }
-            for (int i = 0; i < updates.size(); i++) {
-                Node node1 = mapping[updates[i].first->id];
-                Node node2 = mapping[updates[i].second->id];
+            for (int i = 0; i < iUpdates.size(); i++) {
+                Node node1 = mapping[iUpdates[i].first->id];
+                Node node2 = mapping[iUpdates[i].second->id];
                 new_updates.push_back(std::pair<Node, Node>(node1, node2));
             }
-            for (int i = 0; i < inputs.size(); i++) {
-                new_inputs.push_back(mapping[inputs[i]->id]);
+            for (int i = 0; i < iInputs.size(); i++) {
+                new_inputs.push_back(mapping[iInputs[i]->id]);
             }
-            return copy;
+            return optimize;
         };
 
 //        Node GraphInternal::shared_var(af::array value, std::string name) {

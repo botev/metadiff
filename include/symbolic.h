@@ -813,6 +813,23 @@ namespace metadiff {
             result.monomials.push_back(lhs / rhs.monomials[0]);
             return result;
         }
+
+       /**
+        * for comparator of map. not necessarily have logical meaning 
+        */
+        template<typename I, typename P>
+        bool operator<(const SymbolicPolynomial<I, P>& lhs, const SymbolicPolynomial<I, P>& rhs) {
+            for (size_t i=0; i<lhs.monomials.size(); i++) {
+                const int comp = lhs.monomials[i].to_string().compare(rhs.monomials[i].to_string());
+                if (comp<0) {
+                    return true;
+                }
+                else if (comp>0) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }
 #endif //METADIFF_SYMBOLIC_H

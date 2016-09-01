@@ -33,7 +33,7 @@ namespace metadiff {
 
             nodeType get_node_type() const {
                 return INPUT;
-            };
+            }
 
             unsigned short get_grad_level() const {
                 return 0;
@@ -81,7 +81,7 @@ namespace metadiff {
 
             nodeType get_node_type() const {
                 return INPUT;
-            };
+            }
 
             unsigned short get_grad_level() const {
                 return 0;
@@ -133,7 +133,7 @@ namespace metadiff {
 
             nodeType get_node_type() const {
                 return value.is_constant() ? CONSTANT : CONSTANT_DERIVED;
-            };
+            }
 
             unsigned short get_grad_level() const {
                 return 0;

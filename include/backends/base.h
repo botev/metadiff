@@ -103,11 +103,24 @@ namespace metadiff{
                 dlclose(dll_handle);
             }
 
+            /** integrate optimization with compile function */
+            unique_ptr<opt::Optimizer> compile_function(Graph graph,
+                                      std::vector<Node> inputs,
+                                      std::vector<Node> targets,
+                                      Updates updates,
+                                      const bool inplace = false,
+                                      opt::Option optOption = opt::Option::FAST) {
+
+                auto opti = opt::Optimizer::execute(graph, inputs, targets, updates, inplace, optOption);
+                do_compile(opti->getGraph(), opti->getInputs(), opti->getTargets(), opti->getUpdates());
+                return opti;
+            }
+
             /** Compiles a function from the graph given the inputs, targets and extra updates */
-            void compile_function(Graph graph,
+            void do_compile(Graph graph,
                                   std::vector<Node> inputs,
                                   std::vector<Node> targets,
-                                  Updates &updates) {
+                                  Updates updates) {
                 logger()->debug() << "Compiling function to " << dir_path;
                 os::create_dir(dir_path, true);
                 // Set path for the source

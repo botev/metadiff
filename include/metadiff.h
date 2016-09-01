@@ -5,14 +5,35 @@
 #ifndef METADIFF_METADIFF_H
 #define METADIFF_METADIFF_H
 
-#include "vector"
-#include "memory"
-#include "iostream"
-#include "iomanip"
+#include <memory>
+#include <iostream>
+#include <iomanip>
 #include <exception>
 #include <fstream>
 #include <dlfcn.h>
-#include "sstream"
+#include <sstream>
+#include <vector>
+#include <map>
+#include <set>
+#include <stack>
+#include <list>
+#include <queue>
+#include <unordered_set>
+#include <unordered_map>
+
+using std::vector;
+using std::stack;
+using std::queue;
+using std::string;
+using std::unordered_set;
+using std::unordered_map;
+using std::pair;
+using std::shared_ptr;
+using std::unique_ptr;
+using std::map;
+using std::set;
+using std::cout;
+using std::endl;
 
 #include "os.h"
 #include "logging.h"
@@ -21,8 +42,9 @@
 #include "shared.h"
 #include "core.h"
 #include "exceptions.h"
-#include "core_impl.h"
 #include "operators.h"
+#include "optimize.h"
+#include "core_impl.h"
 #include "visual.h"
 #include "backends.h"
 #include "api.h"

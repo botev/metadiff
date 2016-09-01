@@ -189,7 +189,7 @@ namespace metadiff{
         Node Node::flatten(unsigned short dims) {
             std::shared_ptr<NodeInternal> ptr = unwrap();
             if (dims == 0 or dims > 4) {
-                auto err = InvalidArguments(ptr->op->get_parents(), "Flatten", "dims = " + std::to_string(dims) + " is outside [1,4]");
+                auto err =  exceptions::InvalidArguments(ptr->op->get_parents(), "Flatten", "dims = " + std::to_string(dims) + " is outside [1,4]");
                 ptr->op->logger()->error() << "Flatten" << "] " << err.msg;
                 throw err;
             }
