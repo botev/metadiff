@@ -136,6 +136,8 @@ namespace metadiff{
                 std::vector<std::string> expression_table(graph->nodes.size(), "Undefined");
 				// keep track of the generated types of each node
                 std::vector<GenType> node_types(graph->nodes.size(), GenType::AF_ARRAY);
+                // keep track of each tag
+                unordered_set<int> tags;
 
                 // consider inlined and inplace optimizations here
 
@@ -153,23 +155,9 @@ namespace metadiff{
                             f << "\tstd::cout << \"Calculating node '" << i << "'\" << std::endl;\n";
                         }
 
-                        // test if all ancestors of the node are floats
-                        // if yes, the node is also a float (not af::array)
-                        bool all_ans_float = true;
-                        auto ancestors = graph->nodes[i]->op->get_ancestors();
-                        if (ancestors.empty()) {
-                            all_ans_float = false;
-                        }
-                        for (Node ans: graph->nodes[i]->op->get_ancestors()) {
-                            if (node_types[ans->id] != GenType::STD_FLOAT) {
-                                all_ans_float = false;
-                                break;
-                            }
-                        }
-
                         // TODO this should be properly done for all scalar types
                         // The code generated is af::array node_index = <expression>;
-                        if ((graph->nodes[i]->node_type == core::CONSTANT and Node(graph->nodes[i]).is_scalar()) or all_ans_float) {
+                        if (Node(graph->nodes[i]).is_constant() and Node(graph->nodes[i]).is_scalar()) {
                             f << "\tfloat ";
                             node_types[i] = GenType::STD_FLOAT;
                         }
@@ -177,14 +165,23 @@ namespace metadiff{
                             // only create new array if the node is has no inplace node
                             f << "\t";
                         }
+                        else if (graph->nodes[i]->execution.tag != -1 and 
+                            tags.find(graph->nodes[i]->execution.tag) != tags.end()) {
+                            f << "\t";
+                        }
                         else {
                             f << "\taf::array ";
+                            tags.insert(graph->nodes[i]->execution.tag);
                         }
 
                         int nodeNum = i;
                         // reuse the inplace node
                         if (graph->nodes[i]->execution.inplace) {
                             nodeNum = graph->nodes[i]->execution.inplace->id;
+                        }
+
+                        if (graph->nodes[i]->execution.tag != -1) {
+                            nodeNum = graph->nodes[i]->execution.tag;
                         }
 
                         f << "node_" << nodeNum << " = " << expression << ";\n";

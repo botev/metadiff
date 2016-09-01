@@ -12,9 +12,86 @@ enum Option {
 };
 
 class Optimizer {
+public:
+    /**
+    *   return a unique_ptr of Optimizer object
+    */
+    static unique_ptr<Optimizer> create(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, bool inplace=false) {
+            return unique_ptr<Optimizer>(new Optimizer(graph, inputs, targets, updates, inplace));
+    }
+
+    /**
+    *   run the optimizer, return a unique_ptr of it
+    */
+    static unique_ptr<Optimizer> execute(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, 
+        bool inplace=false, Option option=Option::FAST) {
+            auto opti = create(graph, inputs, targets, updates, inplace);
+            opti->run(option);
+            return opti;
+    }
+
+    /**
+    *   this is to experiment new graph optimizations only
+    */
+    Optimizer(shared_ptr<GraphInternal> graph) : _graph(graph), _lastNodeId(graph->nodes.back()->id) {
+        logger()->debug() << "Experiment optimization";
+    }
+
+    /**
+    *   run optimization based on given option
+    */
+    void run(Option option=Option::FAST) {
+        logger()->debug() << "optimizating graph with option " << option;
+
+        opt_filter_nodes();
+
+        if (option != Option::FAST) {
+            size_t lastId = _lastNodeId;
+            size_t lastSize = _graph->nodes.size();
+            // hard code iterations
+            for (size_t i=0; i<10; i++) {
+                logger()->debug() << "Iteration " << i+1;
+
+                // opt_merge();
+                // opt_const_folding();
+                // opt_const_elimination();
+                // opt_neg_neg();
+                // opt_add_zero();
+                // opt_sum_scalar_mul();
+
+                //remove all inactive nodes from graph
+                _graph->removeInactiveNodes();
+
+                if (lastSize == _graph->nodes.size() and lastId == _graph->nodes.back()->id)
+                    break;
+                lastId = _graph->nodes.back()->id;
+                lastSize = _graph->nodes.size();
+            }
+
+            const bool noNewNode = _lastNodeId >= _graph->nodes.back()->id ? true : false;
+            // if no new node is added, a topological sort is not needed
+            if (noNewNode)
+            {
+                for(int i=0; i<_graph->nodes.size(); i++) {
+                    _graph->nodes[i]->id = i;
+                }
+            }
+            else {
+                // ensure the ordering of nodes in graph
+                _graph->topo_sort();
+            }
+        }
+
+        opt_inline();
+        opt_elementwise_inplace();
+        // opt_planning(); buggy...
+
+        logger()->debug() << "optimization finished";
+    }
 
 private:
-    size_t _originalSize;
+    // use this id to track if new node is added in optimization
+    size_t _lastNodeId;
     // optimized graph
     shared_ptr<GraphInternal> _graph;
 
@@ -39,7 +116,6 @@ private:
         if (inplace) {
             logger()->debug() << "Inplace optimization";
             _graph = graph;
-            _originalSize = _graph->nodes.size();
             _targets = targets;
             _updates = updates;
             _inputs = inputs;
@@ -69,72 +145,16 @@ private:
                 _inputs.push_back(mapping[inputs[i]->id]);
             }
         }
+
+        _lastNodeId = _graph->nodes.back()->id;
     }
 
-public:
 
     /**
-    *   return a unique_ptr of Optimizer object
+     * filter out irrelevant nodes in graph based on dfs from _targets and _updates
     */
-    static unique_ptr<Optimizer> create(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, bool inplace=false) {
-            return unique_ptr<Optimizer>(new Optimizer(graph, inputs, targets, updates, inplace));
-    }
-
-    /**
-    *   run the optimizer, return a unique_ptr of it
-    */
-    static unique_ptr<Optimizer> execute(shared_ptr<GraphInternal> graph, NodeVec inputs, NodeVec targets, Updates updates, 
-        bool inplace=false, Option option=Option::FAST) {
-            auto opti = create(graph, inputs, targets, updates, inplace);
-            opti->run(option);
-            return opti;
-    }
-
-    /**
-    *  this is to experiment new graph optimizations only
-    */
-    Optimizer(shared_ptr<GraphInternal> graph) : _graph(graph), _originalSize(_graph->nodes.size()) {}
-
-    void run(Option option=Option::FAST) {
-        logger()->debug() << "optimizating graph with option " <<option;
-
-        opt_filter_nodes();
-
-        if (option != Option::FAST) {
-            // opt_merge();
-            // opt_const_folding();
-            // opt_add_zero();
-            // opt_const_elimination();
-            // opt_neg_neg();
-            // opt_sum_scalar_martix();
-        }
-
-        opt_inline();
-        opt_elementwise_inplace();
-
-        const bool noNewNode = _originalSize >= _graph->nodes.size() ? true : false;
-        //remove all inactive nodes from graph
-        _graph->removeInactiveNodes();
-
-        // if no new node is added, a topological sort is not needed
-        if (noNewNode)
-        {
-            for(int i=0; i<_graph->nodes.size(); i++) {
-                _graph->nodes[i]->id = i;
-            }
-        }
-        else {
-            // ensure the ordering of nodes in graph
-            _graph->topo_sort();
-        }
-
-        logger()->debug() << "optimization finished";
-    }
-
     void opt_filter_nodes() {
-        /**
-         * filter out irrelevant nodes in graph based on dfs from _targets and _updates
-        */
+
         logger()->debug() << "opt_filter_nodes...";
         NodeVec startNodes(_targets);
         for(auto& u : _updates)
@@ -149,8 +169,12 @@ public:
         }
     }
 
+    /**
+    *   merge indentical pattern in graph
+    *   If two nodes have identical inputs and operator, they are considered identical
+    */
     void opt_merge() {
-        // logger()->debug() << "1. merge...";
+        logger()->debug() << "opt_merge...";
         // key:operator name; value:node
         typedef unordered_map<string, Node> opMap;
         // key:parents ids
@@ -162,7 +186,7 @@ public:
             vector<int> parentIds{};
             node->op->get_parents_ids(parentIds);
             if (parentIds.empty()) {
-                //??
+                // consider merge constant values 
             }
             else {
                 if (nodeMap.find(parentIds) == nodeMap.end()) {
@@ -190,9 +214,10 @@ public:
                     node.set_inactive();
                 }
             }
-        }        
+        }
     }
 
+    /** helper method for opt_const_folding */
     void const_folding_dfs(Node node, unordered_set<int>& visited) {
 
         if (visited.find(node->id) != visited.end()) return;
@@ -211,12 +236,15 @@ public:
         }
 
         // calculate the constant value for deduction
-        if (node->op->name == "Add") {
-            double value = 0.0;
+        if (node.is("Add") or node.is("Mul")) {
+            double value = node.is("Add") ? 0.0 : 1.0;
             for (Node p : parents) {
 
                 if(p.is_active()) {
-                    value += p->op->getConstVal();
+                    if (node.is("Add"))
+                        value += p->op->getConstVal();
+                    else
+                        value *= p->op->getConstVal();
                 }
 
                 p.remove_child(node);
@@ -234,8 +262,11 @@ public:
         }
     }
 
+    /**
+    *   If inputs of a nodes are all constants, compute the value and replace the node
+    */
     void opt_const_folding() {
-        // logger()->debug() << "2. opt_const_folding...";
+        logger()->debug() << "opt_const_folding...";
 
         // ids of nodes
         unordered_set<int> visited;
@@ -248,8 +279,11 @@ public:
         }
     }
 
+    /**
+    *    eliminate constants in mul
+    */
     void opt_const_elimination() {
-        // logger()->debug() << "3. opt_const_elimination...";
+        logger()->debug() << "opt_const_elimination...";
 
         for(Node node : _graph->nodes) {
             if (!node.is_active()) continue;
@@ -274,19 +308,19 @@ public:
                         conNode.remove_child(node);
                         node.replace_const_eli(constVal, nConNode); //const value
                     }
-                    else if (node.is("Pow")) {
-                        if (constVal == 0.0) {
-                            // pow(0, x)
-                        }
-                        else if (constVal == 1.0) {
-                            // pow(1,x)
-                            conNode.remove_child(node);
-                            node.replace_const_eli(1, nConNode); //const value
-                        }
-                        else if (constVal == -0.5) {
-                            // pow(x, -0.5) -> inv(sqrt(x))
-                        }
-                    }
+                    // else if (node.is("Pow")) {
+                    //     if (constVal == 0.0) {
+                    //         // pow(0, x)
+                    //     }
+                    //     else if (constVal == 1.0) {
+                    //         // pow(1,x)
+                    //         conNode.remove_child(node);
+                    //         node.replace_const_eli(1, nConNode); //const value
+                    //     }
+                    //     else if (constVal == -0.5) {
+                    //         // pow(x, -0.5) -> inv(sqrt(x))
+                    //     }
+                    // }
 
                     if (conNode->children.empty())
                         conNode.set_inactive();
@@ -296,9 +330,9 @@ public:
         }
     }
 
-    // div().div()?
+    /** eliminate double neg() calls on a node */
     void opt_neg_neg() {
-
+        logger()->debug() << "opt_neg_neg...";
         for(Node node : _graph->nodes) {
 
             if (!node.is("Neg") or !node.is_active()) continue;
@@ -322,8 +356,11 @@ public:
         // current Div is Unary division (inverse)
     }
 
-    void opt_sum_scalar_martix() {
-        // sum(scalar * tensor) -> scalar * sum(tensor)
+    /**
+    *   sum(scalar * tensor) -> scalar * sum(tensor)
+    */
+    void opt_sum_scalar_mul() {
+        logger()->debug() << "opt_sum_scalar_mul...";
 
         for (Node node : _graph->nodes) {
             // consider elementwise multiplications of multiple scalars and matrices
@@ -381,7 +418,7 @@ public:
             if(!node.is_active() or !node.is("Add"))
                 continue;
 
-            NodeVec actives; 
+            NodeVec actives{}; 
             for(Node ance : node->op->get_parents()) {
                 if (ance.is_constant() and ance->op->getConstVal() == 0.0) {
                     ance.set_inactive();
@@ -409,8 +446,6 @@ public:
     void opt_canonize() {
 
     }
-
-    
 
     /**
      * populating execution data - inlined
@@ -452,10 +487,7 @@ public:
             if (node->op->is_elementwise()) {
                 //O(ancestors*children), but there won't be many of them)
                 for(Node ancestor : node->op->get_ancestors()) {
-
-                    // need a proper logic for it. could be:
-                    // 1. topo_sort (not done properly yet)
-                    // 2. all other children of ancestor have id smaller than this inplace child
+                    // all other children of ancestor have id smaller than this inplace child
                     // only if it is no longer useful
                     bool onlyChild = true;
                     for (Node c : ancestor->children) {
@@ -487,7 +519,83 @@ public:
         }
     }
 
+    /**
+    *   naive memory planning
+    */
+    void opt_planning() {
+        logger()->debug() << "opt_planning...";
+        auto pool = std::make_shared<TagPool>();
 
+        // prepare initial queue for bfs
+        unordered_set<int> visited;
+        std::list<Node> bfsq;
+        for(Node node : _graph->nodes) {
+
+            if (node.is("Input") or node.is("Shared") or node.is_constant()) {
+                node->execution.inlined = true;
+                for (auto c : node->children)
+                    bfsq.push_back(c);
+            }
+        }
+
+        while (!bfsq.empty()) {
+            Node current = bfsq.front();
+            bfsq.pop_front();
+
+            if(visited.find(current->id) != visited.end()) continue;
+            visited.insert(current->id);
+
+            pool->allocate(current);
+            cout<<"allocate "<< current->execution.tag<<" "<< current->id<<endl;
+
+            if (current->children.size() == 1) {
+                // inplace
+                current->children[0]->execution.tag = current->execution.tag;
+                bfsq.push_front(current->children[0]);
+            }
+            else {
+                // memory sharing
+                for (int i=0; i<current->children.size(); i++) {
+                    bfsq.push_front(current->children[i]);
+                    pool->allocate(current->children[i]);
+                    cout<<"allocateC "<< current->children[i]->execution.tag<<" "<< current->children[i]->id<<endl;
+                }
+                // release the tag back to pool after all immediate children have been allocated a tag
+                pool->push(current->execution.tag);
+            }
+        }
+    }
+
+    class TagPool {
+    public:
+        TagPool(): _counter(0), _pool(){}
+        inline int top() {return _pool.top();}
+        inline void pop() {_pool.pop();}
+        inline void push(int x) {_pool.push(x);}
+
+        /**
+        *   allocate a tag to a node
+        */
+        void allocate(Node node) {
+
+            if (node->execution.tag != -1) return;
+
+            if (_pool.empty()) {
+                node->execution.tag = _counter++;
+            }
+            else {
+                // from pool
+                node->execution.tag = _pool.top();
+                _pool.pop();
+            }
+        }
+
+    private:
+        int _counter;
+        stack<int> _pool;
+    };
+
+public:
     /**
     *   inline getter of optimized graph
     *   it is as same as argument input when inplace optimization is done

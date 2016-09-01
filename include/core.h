@@ -359,8 +359,9 @@ namespace metadiff {
              * This is possible only when some of the operands lifespan expires
              */
             shared_ptr<NodeInternal> inplace;
+
             /** The graph optimizer allocated register id*/
-            size_t register_id;
+            int tag;
             /**
              * For synchronization and memory allocation this will contain the time step after
              * which the node can be destroyed
@@ -370,12 +371,12 @@ namespace metadiff {
             ExecutionData() :
                     inlined(false),
                     inplace(nullptr),
-                    register_id(0),
+                    tag(-1),
                     lifespan(0) { };
 
             ExecutionData(ExecutionData const &data) :
                     inlined(data.inlined),
-                    register_id(data.register_id),
+                    tag(data.tag),
                     lifespan(data.lifespan) { };
         };
 
@@ -751,6 +752,8 @@ namespace metadiff {
             Node seq(SymInt start, SymInt end);
 
             //below are graph optimization utilities
+
+            /** This method is to test graph optimization only*/
             void optimize();
 
             void removeInactiveNodes();

@@ -115,7 +115,7 @@ namespace metadiff{
         }
 
         void Node::copy_to(const GraphInPtr graph, NodeVec ancestors) const {
-            logger()->trace() << "Copying to node " << graph->name << "#" <<  graph->nodes.size();
+            // logger()->trace() << "Copying to node " << graph->name << "#" <<  graph->nodes.size();
             std::shared_ptr<NodeInternal> ptr = unwrap();
             std::shared_ptr<NodeInternal> node = std::make_shared<NodeInternal>(graph, ptr->device);
             node->id = graph->nodes.size();
